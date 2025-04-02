@@ -1,17 +1,11 @@
 <?php
 
 /**
- *
- * RM - allow multple providers to have been chosen
- *
- *
  * Holds library functions (and hashes) used by the appointment reporting module
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @author    Ken Chapple <ken@mi-squared.com>
- * @author    Ian Jardine <https://github.com/epsdky>
  * @copyright Copyright (c) 2011 Ken Chapple <ken@mi-squared.com>
- * @copyright Copyright (c) 2023 Ian Jardine <https://github.com/epsdky>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
 */
 
@@ -108,10 +102,12 @@ function checkEvent($recurrtype, $recurrspec)
 
 function fetchEvents($from_date, $to_date, $where_param = null, $orderby_param = null, $tracker_board = false, $nextX = 0, $bind_param = null, $query_param = null)
 {
+
     $sqlBindArray = array();
 
     if ($query_param) {
         $query = $query_param;
+
         if ($bind_param) {
             $sqlBindArray = $bind_param;
         }
@@ -136,14 +132,9 @@ function fetchEvents($from_date, $to_date, $where_param = null, $orderby_param =
             $where .= $where_param;
         }
 
-        // RM add values before more custom conditions are added to the search string
-        if ($bind_param) {
-            $sqlBindArray = array_merge($sqlBindArray, $bind_param);
-        }
-
         // Filter out appointments based on a custom module filter
         $apptFilterEvent = new AppointmentsFilterEvent(new BoundFilter());
-        $apptFilterEvent = $GLOBALS["kernel"]->getEventDispatcher()->dispatch($apptFilterEvent, AppointmentsFilterEvent::EVENT_HANDLE, 10);
+        $apptFilterEvent = $GLOBALS["kernel"]->getEventDispatcher()->dispatch(AppointmentsFilterEvent::EVENT_HANDLE, $apptFilterEvent, 10);
         $boundFilter = $apptFilterEvent->getBoundFilter();
         $sqlBindArray = array_merge($sqlBindArray, $boundFilter->getBoundValues());
         $where .= " AND " . $boundFilter->getFilterClause();
@@ -152,6 +143,7 @@ function fetchEvents($from_date, $to_date, $where_param = null, $orderby_param =
         if ($orderby_param) {
              $order_by = $orderby_param;
         }
+
         // Tracker Board specific stuff
         $tracker_fields = '';
         $tracker_joins = '';
@@ -167,8 +159,7 @@ function fetchEvents($from_date, $to_date, $where_param = null, $orderby_param =
         $query = "SELECT " .
         "e.pc_eventDate, e.pc_endDate, e.pc_startTime, e.pc_endTime, e.pc_duration, e.pc_recurrtype, e.pc_recurrspec, e.pc_recurrfreq, e.pc_catid, e.pc_eid, e.pc_gid, " .
         "e.pc_title, e.pc_hometext, e.pc_apptstatus, " .
-        "p.fname, p.mname, p.lname, p.DOB, p.pid, p.pubpid, p.phone_home, p.phone_cell, " .
-        "p.street AS address1, p.street_line_2 AS address2," .
+        "p.fname, p.mname, p.lname, p.pid, p.pubpid, p.phone_home, p.phone_cell, " .
         "p.hipaa_allowsms, p.phone_home, p.phone_cell, p.hipaa_voice, p.hipaa_allowemail, p.email, " .
         "u.fname AS ufname, u.mname AS umname, u.lname AS ulname, u.id AS uprovider_id, " .
         "f.name, " .
@@ -182,6 +173,10 @@ function fetchEvents($from_date, $to_date, $where_param = null, $orderby_param =
         "LEFT OUTER JOIN openemr_postcalendar_categories AS c ON c.pc_catid = e.pc_catid " .
         "WHERE $where " .
         "ORDER BY $order_by";
+
+        if ($bind_param) {
+            $sqlBindArray = array_merge($sqlBindArray, $bind_param);
+        }
     }
 
 
@@ -210,7 +205,6 @@ function fetchEvents($from_date, $to_date, $where_param = null, $orderby_param =
 
         ///////
         $incX = 0;
-
         switch ($event['pc_recurrtype']) {
             case '0':
                 $events2[] = $event;
@@ -364,7 +358,6 @@ function fetchAllEvents($from_date, $to_date, $provider_id = null, $facility_id 
         array_push($sqlBindArray, $facility_id, $facility_id);
     }
 
-
     $appointments = fetchEvents($from_date, $to_date, $where, null, false, 0, $sqlBindArray);
     return $appointments;
 }
@@ -376,23 +369,9 @@ function fetchAppointments($from_date, $to_date, $patient_id = null, $provider_i
 
     $where = "";
 
- //RM multiple providers
-    if (!empty($provider_id)) {
-        // provider_id can be a string or an array
-        if (is_array($provider_id)) {
-            $quantity = sizeof($provider_id);
-            $where .= " AND ( e.pc_aid = ?";
-            for ($i = 1; $i < $quantity; $i++) {
-                $where .= " OR e.pc_aid = ? ";
-            }
-            $where .= ")";
-            foreach ($provider_id as $x) {
-                array_push($sqlBindArray, $x);
-            }
-        } else {
-            $where .= " AND e.pc_aid = ?";
-            array_push($sqlBindArray, $provider_id);
-        }
+    if ($provider_id) {
+        $where .= " AND e.pc_aid = ?";
+        array_push($sqlBindArray, $provider_id);
     }
 
     if ($patient_id) {
@@ -437,7 +416,6 @@ function fetchAppointments($from_date, $to_date, $patient_id = null, $provider_i
         $where .= " AND e.pc_facility = 0";
     }
 
-
     $appointments = fetchEvents($from_date, $to_date, $where, '', $tracker_board, $nextX, $sqlBindArray);
     return $appointments;
 }
@@ -455,46 +433,6 @@ function fetchNextXAppts($from_date, $patient_id, $nextX = 1, $group_id = null)
     }
 
     return $nextXAppts;
-}
-
-function fetchXPastAppts($pid2, $pastApptsNumber, $orderOfAppts = '1')
-{
-
-    $currentDate = date("Y-m-d");
-    $totalAppts = [];
-    $res2 = sqlStatement("SELECT MIN(pc_eventDate) as minDate " .
-        "FROM openemr_postcalendar_events " .
-        "WHERE pc_pid = ? " .
-        "AND pc_eventDate < ? ;", array($pid2, $currentDate));
-    $row2 = sqlFetchArray($res2);
-
-    if ($row2['minDate']) {
-        $periodOf = '26';
-        $limitRight = date("Y-m-d", strtotime("$currentDate -1 day"));
-        $limitLeft = date("Y-m-d", strtotime("$limitRight -$periodOf weeks"));
-        $apptRangeLeft = $row2['minDate'];
-        $count2 = 0;
-
-        while (($limitRight >= $apptRangeLeft) && ($count2 < $pastApptsNumber)) {
-            $appts2 = fetchAppointments($limitLeft, $limitRight, $pid2);
-            $totalAppts = array_merge($appts2, $totalAppts);
-            $limitRight = date("Y-m-d", strtotime("$limitLeft -1 day"));
-            $limitLeft = date("Y-m-d", strtotime("$limitRight -$periodOf weeks"));
-            $count2 = count($totalAppts);
-        }
-        if ($orderOfAppts == '1') {
-            $eventDate  = array_column($totalAppts, 'pc_eventDate');
-            $eventTime  = array_column($totalAppts, 'pc_startTime');
-            array_multisort($eventDate, SORT_ASC, $eventTime, SORT_ASC, $totalAppts);
-            $totalAppts = array_slice($totalAppts, -$pastApptsNumber, $pastApptsNumber);
-        } elseif ($orderOfAppts == '2') {
-            $eventDate  = array_column($totalAppts, 'pc_eventDate');
-            $eventTime  = array_column($totalAppts, 'pc_startTime');
-            array_multisort($eventDate, SORT_DESC, $eventTime, SORT_ASC, $totalAppts);
-            $totalAppts = array_slice($totalAppts, 0, $pastApptsNumber);
-        }
-    }
-    return $totalAppts;
 }
 
 // get the event slot size in seconds
@@ -532,37 +470,11 @@ function getAvailableSlots($from_date, $to_date, $provider_id = null, $facility_
         // find next appointment with the same provider
         $next_appointment_date = 0;
         $next_appointment_time = 0;
-        $appts_count = count($appointments);
-        if (
-            $appts_count == 1
-            && $appointments[0]['pc_catid'] == '2'
-        ) {
-            $next_appointment_date = $appointments[$i]['pc_eventDate'];
-            $next_appointment_time = $appointments[$i]['pc_endTime'];
-        } else {
-            for ($j = $i + 1; $j < $appts_count; ++$j) {
-                if ($appointments[$j]['uprovider_id'] == $provider_id) {
-                    // if consecutive appointments are in office on separate days...
-                    if (
-                        $appointments[$i]['pc_catid'] == '2'
-                        && $appointments[$j]['pc_catid'] == '2'
-                    ) {
-                        $next_appointment_date = $appointments[$i]['pc_eventDate'];
-                        // default IN OFFICE appt for provider uses a duration of 0
-                        // which opens up the entire day after the start time
-                        // which prevents the next appointment time from being set
-                        // for the $same_day assignment below, so this fix...
-                        if ($appointments[$i]['pc_duration'] == 0) {
-                            $next_appointment_time = $GLOBALS['schedule_end'] . ":00";
-                        } else {
-                            $next_appointment_time = $appointments[$i]['pc_endTime'];
-                        }
-                    } else {
-                        $next_appointment_date = $appointments[$j]['pc_eventDate'];
-                        $next_appointment_time = $appointments[$j]['pc_startTime'];
-                    }
-                    break;
-                }
+        for ($j = $i + 1; $j < count($appointments); ++$j) {
+            if ($appointments[$j]['uprovider_id'] == $provider_id) {
+                $next_appointment_date = $appointments[$j]['pc_eventDate'];
+                $next_appointment_time = $appointments[$j]['pc_startTime'];
+                break;
             }
         }
 

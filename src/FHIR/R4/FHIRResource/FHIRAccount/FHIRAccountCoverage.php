@@ -169,7 +169,7 @@ A coverage may only be responsible for specific types of charges, and the sequen
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->coverage)) {

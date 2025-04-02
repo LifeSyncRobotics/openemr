@@ -12,7 +12,7 @@
  */
 
 require_once(dirname(__FILE__) . "/../../interface/globals.php");
-require_once(dirname(__FILE__) . "/../user.inc.php");
+require_once(dirname(__FILE__) . "/../user.inc");
 
 use OpenEMR\Common\Csrf\CsrfUtils;
 use Symfony\Component\HttpFoundation\Response;

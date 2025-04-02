@@ -48,7 +48,7 @@ function json_sanitize($json)
 // If the label contains any illegal characters, then the script will die.
 function check_file_dir_name($label)
 {
-    if (preg_match('/[^A-Za-z0-9_.-]/', $label)) {
+    if (empty($label) || preg_match('/[^A-Za-z0-9_.-]/', $label)) {
         error_log("ERROR: The following variable contains invalid characters:" . errorLogEscape($label));
         die(xlt("ERROR: The following variable contains invalid characters") . ": " . attr($label));
     } else {
@@ -110,7 +110,7 @@ function isWhiteFile($file)
         }
         // allow module writers to modify the white list... this only gets executed the first time this function runs
         $event = new IsAcceptedFileFilterEvent($file, $white_list);
-        $resultEvent = $GLOBALS['kernel']->getEventDispatcher()->dispatch($event, IsAcceptedFileFilterEvent::EVENT_GET_ACCEPTED_LIST);
+        $resultEvent = $GLOBALS['kernel']->getEventDispatcher()->dispatch(IsAcceptedFileFilterEvent::EVENT_GET_ACCEPTED_LIST, $event);
         $white_list = $resultEvent->getAcceptedList();
     }
 
@@ -129,7 +129,7 @@ function isWhiteFile($file)
             $event = new IsAcceptedFileFilterEvent($file, $white_list);
             $event->setAllowedFile(false);
             $event->setMimeType($mimetype);
-            $resultEvent = $GLOBALS['kernel']->getEventDispatcher()->dispatch($event, IsAcceptedFileFilterEvent::EVENT_FILTER_IS_ACCEPTED_FILE);
+            $resultEvent = $GLOBALS['kernel']->getEventDispatcher()->dispatch(IsAcceptedFileFilterEvent::EVENT_FILTER_IS_ACCEPTED_FILE, $event);
             $isAllowedFile = $resultEvent->isAllowedFile();
         }
     }
@@ -176,27 +176,4 @@ function dateEmptySql($sqlColumn, $time = false, $rev = false)
     }
 
     return $stat;
-}
-
-/**
- * Compares a multibyte unicode string identifier in a case insensitive way to see if the two strings
- * are semantically identical.  Note that NFKC will treat several 'similar' semantically meaning texts as the same and so
- * should be used for identifiers (things such as proper nouns, etc).
- * @see https://learn.microsoft.com/en-us/windows/win32/intl/using-unicode-normalization-to-represent-strings - * Note if trying to understand string normalization, Microsoft has a good explanation here
- * @see https://www.unicode.org/faq/normalization.html#2 for explanation on why we use NFKC
- * @see https://stackoverflow.com/a/38855868
- * @param $string1
- * @param $string2
- * @return bool
- */
-function mb_is_string_equal_ci($string1, $string2): bool
-{
-    if ($string1 == $string2) {
-        return true;
-    }
-
-    $string1_normalized = Normalizer::normalize($string1, Normalizer::FORM_KC);
-    $string2_normalized = Normalizer::normalize($string2, Normalizer::FORM_KC);
-    return mb_strtolower($string1_normalized) === mb_strtolower($string2_normalized)
-        || mb_strtoupper($string1_normalized) === mb_strtoupper($string2_normalized);
 }

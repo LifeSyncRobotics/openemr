@@ -42,9 +42,6 @@ class GlobalSetting
     // multiple select language selector
     const DATA_TYPE_MULTI_LANGUAGE_SELECT = "m_lang";
 
-    // multiple select dashboard cards
-    const DATA_TYPE_MULTI_DASHBOARD_CARDS = "m_dashboard_cards";
-
     // list of default visits in OpenEMR
     const DATA_TYPE_DEFAULT_VISIT_CATEGORY = "default_visit_category";
     // CSS Theme selector
@@ -56,9 +53,6 @@ class GlobalSetting
     // textbox
     const DATA_TYPE_TEXT = "text";
 
-    // html display section
-    const DATA_TYPE_HTML_DISPLAY_SECTION = "html_display_section";
-
     /**
      * Multiple list box with a dropdown selector to add list items.  Items can be re-arranged in order.  Selected
      * list items save the options property of the list into the globals setting.  Multiple values are separated by a
@@ -69,7 +63,7 @@ class GlobalSetting
     /**
      * Add to this list if the field supports options
      */
-    const DATA_TYPES_WITH_OPTIONS = [self::DATA_TYPE_MULTI_SORTED_LIST_SELECTOR, self::DATA_TYPE_HTML_DISPLAY_SECTION];
+    const DATA_TYPES_WITH_OPTIONS = [self::DATA_TYPE_MULTI_SORTED_LIST_SELECTOR];
 
     /**
      * Mappings of the data types and the options they support
@@ -78,16 +72,9 @@ class GlobalSetting
         self::DATA_TYPE_MULTI_SORTED_LIST_SELECTOR => [
             self::DATA_TYPE_OPTION_LIST_ID
         ]
-        ,self::DATA_TYPE_HTML_DISPLAY_SECTION => [
-            self::DATA_TYPE_OPTION_RENDER_CALLBACK
-        ]
     ];
 
     const DATA_TYPE_OPTION_LIST_ID = 'list_id';
-
-    const DATA_TYPE_OPTION_RENDER_CALLBACK = 'render_callback';
-
-    const DATA_TYPE_ADDRESS_BOOK = 'address_book';
 
     protected $label = null;
     /**

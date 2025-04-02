@@ -684,7 +684,7 @@ class FHIRResearchElementDefinitionCharacteristic extends FHIRBackboneElement im
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->definitionCodeableConcept)) {

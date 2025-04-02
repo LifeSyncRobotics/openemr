@@ -26,8 +26,7 @@ class AllergyIntoleranceRestController
         'title',
         'begdate',
         'enddate',
-        'diagnosis',
-        'comments'
+        'diagnosis'
     );
 
     public function __construct()

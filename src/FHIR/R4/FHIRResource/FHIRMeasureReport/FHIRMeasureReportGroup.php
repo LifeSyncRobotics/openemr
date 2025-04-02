@@ -233,7 +233,7 @@ class FHIRMeasureReportGroup extends FHIRBackboneElement implements \JsonSeriali
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->code)) {

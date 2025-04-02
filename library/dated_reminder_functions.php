@@ -10,44 +10,15 @@
  * @author    Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2012 tajemo.co.za <http://www.tajemo.co.za/>
  * @copyright Copyright (c) 2018 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2018-2023 Jerry Padgett <sjpadhgett@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
-
-use OpenEMR\Modules\FaxSMS\Controller\AppDispatch;
-
-/*
- * We really need to set up a separate service for this stuff i.e. Node server.
- * Get it out of app space and running all the timers.
- *
- * */
-
-/**
- * @return array
- */
-function GetServiceOtherCounts(): array
-{
-    $counts['faxCnt'] = $counts['smsCnt'] = 0;
-    // unless main.php is reloaded Globals is most accurate.
-    if (!empty($GLOBALS['oefax_enable_fax'] ?? null)) {
-        $client = AppDispatch::getApiService('fax');
-        $counts['faxCnt'] = (int)$client->fetchReminderCount();
-    }
-    if (!empty($GLOBALS['oefax_enable_sms'] ?? null)) {
-        $client = AppDispatch::getApiService('sms');
-        $counts['smsCnt'] = (int)$client->fetchReminderCount();
-    }
-    $counts['serviceTotal'] = $counts['faxCnt'] + $counts['smsCnt'];
-
-    return $counts;
-}
 
 /**
  * Get Portal Alerts function
  *
  * @returns array of alerts count
  */
-function GetPortalAlertCounts(): array
+function GetPortalAlertCounts()
 {
     $counts = array();
     $s_user = '%' . $_SESSION['authUser'] . '%';
@@ -144,7 +115,7 @@ function RemindersArray($days_to_show, $today, $alerts_to_show, $userID = null)
  *
  * @param $days_to_show
  * @param $today
- * @param $userID
+ * @param defaults to current user if none specified
  * @returns int with number of due reminders for specified user
  */
 function GetDueReminderCount($days_to_show, $today, $userID = false)
@@ -177,10 +148,6 @@ function GetDueReminderCount($days_to_show, $today, $userID = false)
 // @ GetAllReminderCount function
 // @ returns int with number of unprocessed reminders for specified user, defaults to current user if none specified
 // ------------------------------------------------
-/**
- * @param $userID
- * @return mixed
- */
 function GetAllReminderCount($userID = false)
 {
     if (!$userID) {
@@ -210,12 +177,7 @@ function GetAllReminderCount($userID = false)
 // @ getRemindersHTML(array $reminders)
 // @ returns HTML as a string, for printing
 // ------------------------------------------------
-/**
- * @param $today
- * @param $reminders
- * @return string
- */
-function getRemindersHTML($today, $reminders = array()): string
+function getRemindersHTML($today, $reminders = array())
 {
     global $hasAlerts;
 // --- initialize the string as blank
@@ -258,7 +220,7 @@ function getRemindersHTML($today, $reminders = array()): string
             </p>';
     }
 
-    return ($pdHTML == '' ? '<i class=\'fa fa-exclamation-circle fa-lg\' aria-hidden=\'true\'></i> ' . xlt('No Reminders') : $pdHTML);
+    return ($pdHTML == '' ? '<i class=\'fa fa-exclamation-circle fa-lg text-success\' aria-hidden=\'true\'></i> ' . xlt('No Reminders') : $pdHTML);
 }
 
 // ------------------------------------------------
@@ -270,12 +232,7 @@ function getRemindersHTML($today, $reminders = array()): string
 // @ setReminderAsProccessed(int $rID)
 // @ marks reminder as processed
 // ------------------------------------------------
-/**
- * @param $rID
- * @param $userID
- * @return void
- */
-function setReminderAsProcessed($rID, $userID = false): void
+function setReminderAsProcessed($rID, $userID = false)
 {
     if (!$userID) {
         $userID = $_SESSION['authUserID'];
@@ -304,12 +261,7 @@ function setReminderAsProcessed($rID, $userID = false): void
 // @ getReminderById(int $mID)
 // @ returns an array with message details for forwarding
 // ------------------------------------------------
-/**
- * @param $mID
- * @param $userID
- * @return bool|array
- */
-function getReminderById($mID, $userID = false): bool|array
+function getReminderById($mID, $userID = false)
 {
     if (!$userID) {
         $userID = $_SESSION['authUserID'];
@@ -342,16 +294,7 @@ function getReminderById($mID, $userID = false): bool|array
 //                   )
 // @ returns an array with message details for forwarding
 // ------------------------------------------------
-/**
- * @param $sendTo
- * @param $fromID
- * @param $message
- * @param $dueDate
- * @param $patID
- * @param $priority
- * @return bool
- */
-function sendReminder($sendTo, $fromID, $message, $dueDate, $patID, $priority): bool
+function sendReminder($sendTo, $fromID, $message, $dueDate, $patID, $priority)
 {
     if (
 // ------- Should run data checks before running this function for more accurate error reporting
@@ -396,11 +339,7 @@ function sendReminder($sendTo, $fromID, $message, $dueDate, $patID, $priority): 
 
 // ------- get current patient name
 // ---- returns string, blank if no current patient
-/**
- * @param $patientID
- * @return string
- */
-function getPatName($patientID): string
+function getPatName($patientID)
 {
     $patientID = intval($patientID);
     $pSQL = sqlStatement("SELECT pd.title ptitle, pd.fname pfname, pd.mname pmname, pd.lname plname FROM `patient_data` pd WHERE pd.pid = ?", array($patientID));
@@ -409,10 +348,7 @@ function getPatName($patientID): string
 }
 
 // -- log reminders array function uses $_GET to filter
-/**
- * @return array
- */
-function logRemindersArray(): array
+function logRemindersArray()
 {
 
     // set blank array for data to be parsed to sql

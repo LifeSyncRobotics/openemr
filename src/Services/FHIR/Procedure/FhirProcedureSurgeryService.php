@@ -57,13 +57,7 @@ class FhirProcedureSurgeryService extends FhirServiceBase
             'patient' => $this->getPatientContextSearchField(),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['begdate']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField(),
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['date_modified']);
     }
 
     /**
@@ -91,11 +85,7 @@ class FhirProcedureSurgeryService extends FhirServiceBase
 
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($dataRecord['date_modified'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['date_modified']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $procedureResource->setMeta($meta);
 
         $id = new FHIRId();
@@ -135,7 +125,7 @@ class FhirProcedureSurgeryService extends FhirServiceBase
         }
 
         if (!empty($dataRecord['begdate'])) {
-            $procedureResource->setPerformedDateTime(UtilsService::getLocalDateAsUTC($dataRecord['begdate']));
+            $procedureResource->setPerformedDateTime(gmdate('c', strtotime($dataRecord['begdate'])));
         }
 
         if (!empty($dataRecord['comments'])) {

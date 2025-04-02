@@ -15,12 +15,11 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
-use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 
 if (!AclMain::aclCheckCore('acct', 'rep_a')) {
@@ -29,6 +28,15 @@ if (!AclMain::aclCheckCore('acct', 'rep_a')) {
 }
 
 $alertmsg = '';
+
+function bucks($amount)
+{
+    if ($amount) {
+        return oeFormatMoney($amount);
+    }
+
+    return "";
+}
 
 $form_start_date = (!empty($_POST['form_start_date'])) ?  DateToYYYYMMDD($_POST['form_start_date']) : date('Y-01-01');
 $form_end_date  = (!empty($_POST['form_end_date'])) ? DateToYYYYMMDD($_POST['form_end_date']) : date('Y-m-d');
@@ -251,13 +259,13 @@ if (!empty($_POST['form_refresh'])) {
  &nbsp;<?php echo text(oeFormatShortDate($inv_duedate)); ?>
 </td>
 <td class="detail" align="right">
-        <?php echo FormatMoney::getBucks($inv_amount); ?>&nbsp;
+        <?php echo bucks($inv_amount); ?>&nbsp;
 </td>
 <td class="detail" align="right">
-        <?php echo FormatMoney::getBucks($inv_paid); ?>&nbsp;
+        <?php echo bucks($inv_paid); ?>&nbsp;
 </td>
 <td class="detail" align="right">
-        <?php echo FormatMoney::getBucks($inv_amount - $inv_paid); ?>&nbsp;
+        <?php echo bucks($inv_amount - $inv_paid); ?>&nbsp;
 </td>
 </tr>
         <?php
@@ -280,13 +288,13 @@ if (!empty($_POST['form_refresh'])) {
  &nbsp;
 </td>
 <td class="detail" align="right">
-    <?php echo FormatMoney::getBucks($total_amount); ?>&nbsp;
+    <?php echo bucks($total_amount); ?>&nbsp;
 </td>
 <td class="detail" align="right">
-    <?php echo FormatMoney::getBucks($total_paid); ?>&nbsp;
+    <?php echo bucks($total_paid); ?>&nbsp;
 </td>
 <td class="detail" align="right">
-    <?php echo FormatMoney::getBucks($total_amount - $total_paid); ?>&nbsp;
+    <?php echo bucks($total_amount - $total_paid); ?>&nbsp;
 </td>
 </tr>
     <?php

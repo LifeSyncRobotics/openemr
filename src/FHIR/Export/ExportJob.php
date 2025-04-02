@@ -22,8 +22,6 @@ namespace OpenEMR\FHIR\Export;
 
 use http\Exception\InvalidArgumentException;
 use OpenEMR\Common\Uuid\UuidRegistry;
-use OpenEMR\Services\Search\SearchComparator;
-use OpenEMR\Services\Utils\DateFormatterUtils;
 
 class ExportJob
 {
@@ -210,16 +208,6 @@ class ExportJob
     public function getResourceIncludeTime(): \DateTime
     {
         return $this->resourceIncludeTime;
-    }
-
-    public function getResourceIncludeSearchParamValue()
-    {
-        return SearchComparator::GREATER_THAN_OR_EQUAL_TO . $this->getResourceIncludeISO8601Date();
-    }
-
-    public function getResourceIncludeISO8601Date(): string
-    {
-        return DateFormatterUtils::getFormattedISO8601DateFromDateTime($this->resourceIncludeTime);
     }
 
     /**

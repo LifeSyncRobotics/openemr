@@ -14,7 +14,7 @@
 
 namespace OpenEMR\Billing;
 
-require_once(dirname(__FILE__) . "/../../library/patient.inc.php");
+require_once(dirname(__FILE__) . "/../../library/patient.inc");
 
 use OpenEMR\Billing\BillingUtilities;
 
@@ -114,8 +114,7 @@ class SLEOB
         $debug,
         $time = '',
         $codetype = '',
-        $date = null,
-        $payer_claim_number = null
+        $date = ''
     ) {
         $codeonly = $code;
         $modifier = '';
@@ -136,8 +135,8 @@ class SLEOB
         );
         $query = "INSERT INTO ar_activity ( " .
             "pid, encounter, sequence_no, code_type, code, modifier, payer_type, post_time, post_date, post_user, " .
-            "session_id, memo, pay_amount, payer_claim_number " .
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "session_id, memo, pay_amount " .
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         sqlStatement(
             $query,
             array(
@@ -153,8 +152,7 @@ class SLEOB
                 $_SESSION['authUserID'],
                 $session_id,
                 $memo,
-                $amount,
-                $payer_claim_number
+                $amount
             )
         );
         sqlCommitTrans();
@@ -246,9 +244,9 @@ class SLEOB
         $tmp = array(1 => 'primary', 2 => 'secondary', 3 => 'tertiary');
         $value = $tmp[$payer_type];
         $query = "SELECT provider FROM insurance_data WHERE " .
-            "pid = ? AND type = ? AND (date <= ? OR date IS NULL) AND (date_end >= ? OR date_end IS NULL) " .
+            "pid = ? AND type = ? AND (date <= ? OR date IS NULL) " .
             "ORDER BY date DESC LIMIT 1";
-        $nprow = sqlQuery($query, array($patient_id, $value, $date_of_service, $date_of_service));
+        $nprow = sqlQuery($query, array($patient_id, $value, $date_of_service));
         if (empty($nprow)) {
             return 0;
         }

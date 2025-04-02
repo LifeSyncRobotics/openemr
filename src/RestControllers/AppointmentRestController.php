@@ -13,10 +13,8 @@
 namespace OpenEMR\RestControllers;
 
 use OpenEMR\Common\Logging\SystemLogger;
-use OpenEMR\RestControllers\RestControllerHelper;
 use OpenEMR\Services\AppointmentService;
-use OpenEMR\Services\PatientService;
-use OpenEMR\Validators\ProcessingResult;
+use OpenEMR\RestControllers\RestControllerHelper;
 
 class AppointmentRestController
 {
@@ -33,29 +31,9 @@ class AppointmentRestController
         return RestControllerHelper::responseHandler($serviceResult, null, 200);
     }
 
-    public function getOneForPatient($auuid, $patientUuid)
-    {
-        $serviceResult = $this->appointmentService->search(['puuid' => $patientUuid, 'pc_uuid' => $auuid]);
-        $data = ProcessingResult::extractDataArray($serviceResult);
-        return RestControllerHelper::responseHandler($data[0] ?? [], null, 200);
-    }
-
     public function getAll()
     {
         $serviceResult = $this->appointmentService->getAppointmentsForPatient(null);
-        return RestControllerHelper::responseHandler($serviceResult, null, 200);
-    }
-
-    public function getAllForPatientByUuid($puuid)
-    {
-        $patientService = new PatientService();
-        $result = ProcessingResult::extractDataArray($patientService->getOne($puuid));
-        if (!empty($result)) {
-            $serviceResult = $this->appointmentService->getAppointmentsForPatient($result[0]['pid']);
-        } else {
-            $serviceResult = [];
-        }
-
         return RestControllerHelper::responseHandler($serviceResult, null, 200);
     }
 
@@ -82,8 +60,7 @@ class AppointmentRestController
     public function delete($eid)
     {
         try {
-            $this->appointmentService->deleteAppointmentRecord($eid);
-            $serviceResult = ['message' => 'record deleted'];
+            $serviceResult = $this->appointmentService->delete($eid);
         } catch (\Exception $exception) {
             (new SystemLogger())->errorLogCaller($exception->getMessage(), ['trace' => $exception->getTraceAsString(), 'eid' => $eid]);
             return RestControllerHelper::responseHandler(['message' => 'Failed to delete appointment'], null, 500);

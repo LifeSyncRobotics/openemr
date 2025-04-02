@@ -37,7 +37,6 @@ class FormROS extends ORDataObject
 
     var $id;
     var $date;
-    var $date_of_onset;
     var $pid;
     var $weight_change = "N/A";
     var $weakness = "N/A";

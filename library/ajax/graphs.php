@@ -74,17 +74,15 @@ function graphsGetValues($name)
         $values = sqlStatement(
             "SELECT " .
             "ld.field_value AS " . add_escape_custom($name) . ", " .
-            // If data was entered retroactively then cannot use the data entry date.
-            "IF (LEFT(f.date, 10) = LEFT(fe.date, 10), f.date, fe.date) AS date " .
-            "FROM forms AS f, form_encounter AS fe, lbf_data AS ld WHERE " .
+            "f.date " .
+            "FROM forms AS f, lbf_data AS ld WHERE " .
             "f.pid = ? AND " .
             "f.formdir = ? AND " .
             "f.deleted = 0 AND " .
-            "fe.pid = f.pid AND fe.encounter = f.encounter AND " .
             "ld.form_id = f.form_id AND " .
             "ld.field_id = ? AND " .
             "ld.field_value != '0' " .
-            "ORDER BY date",
+            "ORDER BY f.date",
             array($pid, $table, $name)
         );
     } else {
@@ -229,10 +227,10 @@ $data = array();
 while ($row = sqlFetchArray($values)) {
     if ($row["$name"]) {
         $x = $row['date'];
-        if ($multiplier ?? null) {
+        if ($multiplier) {
             // apply unit conversion multiplier
             $y = $row["$name"] * $multiplier;
-        } elseif ($isConvertFtoC ?? null) {
+        } elseif ($isConvertFtoC) {
             // apply temp F to C conversion
             $y = convertFtoC($row["$name"]);
         } else {
@@ -249,10 +247,10 @@ if ($isBP) {
     while ($row = sqlFetchArray($values_alt)) {
         if ($row["$name_alt"]) {
             $x = $row['date'];
-            if ($multiplier ?? null) {
+            if ($multiplier) {
                 // apply unit conversion multiplier
                 $y = $row["$name_alt"] * $multiplier;
-            } elseif ($isConvertFtoC ?? null) {
+            } elseif ($isConvertFtoC) {
                 // apply temp F to C conversion
                 $y = convertFtoC($row["$name_alt"]);
             } else {

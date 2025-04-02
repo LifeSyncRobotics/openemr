@@ -6,7 +6,7 @@
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @author    Jerry Padgett <sjpadgett@gmail.com>
- * @copyright Copyright (c) 2016-2023 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2016-2021 Jerry Padgett <sjpadgett@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -16,7 +16,6 @@ use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Core\Header;
 use OpenEMR\Services\DocumentTemplates\DocumentTemplateService;
-use OpenEMR\Services\QuestionnaireService;
 
 if (!(isset($GLOBALS['portal_onsite_two_enable'])) || !($GLOBALS['portal_onsite_two_enable'])) {
     echo xlt('Patient Portal is turned off');
@@ -24,8 +23,11 @@ if (!(isset($GLOBALS['portal_onsite_two_enable'])) || !($GLOBALS['portal_onsite_
 }
 
 $authUploadTemplates = AclMain::aclCheckCore('admin', 'forms');
+
 $templateService = new DocumentTemplateService();
+
 $patient = json_decode($_POST['upload_pid'] ?? '');
+
 $template_content = null;
 
 if (($_POST['mode'] ?? null) === 'save_profiles') {
@@ -53,7 +55,7 @@ if (($_REQUEST['mode'] ?? null) === 'getPdf') {
     die(xlt('Invalid File'));
 }
 
-if (($_POST['mode'] ?? null) === 'get') {
+if ($_POST['mode'] === 'get') {
     if ($_REQUEST['docid']) {
         $template = $templateService->fetchTemplate($_POST['docid']);
         echo $template['template_content'];
@@ -146,75 +148,7 @@ if (($_POST['mode'] ?? null) === 'save') {
         exit;
     }
     die(xlt('Invalid Request Parameters'));
-}
-
-if (isset($_POST['blank-nav-button'])) {
-    if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"], 'import-template-upload')) {
-        CsrfUtils::csrfNotVerified();
-    }
-    if (!$authUploadTemplates) {
-        xlt("Not Authorized to Upload Templates");
-        exit;
-    }
-    $is_blank = isset($_POST['blank-nav-button']);
-    $upload_name = $_POST['upload_name'] ?? '';
-    $category = $_POST['template_category'] ?? '';
-    $patient = '-1';
-    if (!empty($upload_name)) {
-        $name = preg_replace("/[^A-Z0-9.]/i", " ", $upload_name);
-        try {
-            $content = "{ParseAsHTML}";
-            $success = $templateService->insertTemplate($patient, $category, $upload_name, $content, 'application/text');
-            if (!$success) {
-                header('refresh:3;url= import_template_ui.php');
-                echo "<h4 style='color:red;'>" . xlt("New template save failed. Try again.") . "</h4>";
-                exit;
-            }
-        } catch (Exception $e) {
-            header('refresh:3;url= import_template_ui.php');
-            echo '<h3>' . xlt('Error') . "</h3><h4 style='color:red;'>" .
-                text($e->getMessage()) . '</h4>';
-            exit;
-        }
-    }
-    header("location: " . $_SERVER['HTTP_REFERER']);
-    die();
-}
-
-if (isset($_REQUEST['q_mode']) && !empty($_REQUEST['q_mode'])) {
-    if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"], 'import-template-upload')) {
-        CsrfUtils::csrfNotVerified();
-    }
-    if (!$authUploadTemplates) {
-        xlt("Not Authorized to Upload Templates");
-        exit;
-    }
-    $id = 0;
-    $q = $_POST['questionnaire'] ?? '';
-    $l = $_POST['lform'] ?? '';
-    if (!empty($q)) {
-        $service = new QuestionnaireService();
-        try {
-            $id = $service->saveQuestionnaireResource($q, null, null, null, $l);
-        } catch (Exception $e) {
-            header('refresh:3;url= import_template_ui.php');
-            echo '<h3>' . xlt('Error') . "</h3><h4 style='color:red;'>" .
-                text($e->getMessage()) . '</h4>';
-            exit;
-        }
-        if (empty($id)) {
-            header('refresh:3;url= import_template_ui.php');
-            echo '<h3>' . xlt('Error') . "</h3><h4 style='color:red;'>" .
-                xlt("Import failed to save.") . '</h4>';
-            exit;
-        }
-    }
-    header("location: " . $_SERVER['HTTP_REFERER']);
-    die();
-}
-
-// templates file import
-if ((count($_FILES['template_files']['name'] ?? []) > 0) && !empty($_FILES['template_files']['name'][0] ?? '')) {
+} elseif (!empty($_FILES["template_files"])) {
     if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"], 'import-template-upload')) {
         CsrfUtils::csrfNotVerified();
     }
@@ -228,7 +162,7 @@ if ((count($_FILES['template_files']['name'] ?? []) > 0) && !empty($_FILES['temp
     for ($i = 0; $i < $total; $i++) {
         if ($_FILES['template_files']['error'][$i] !== UPLOAD_ERR_OK) {
             header('refresh:3;url= import_template_ui.php');
-            echo '<h3>' . xlt('Error') . "</h3><h4 style='color:red;'>" .
+            echo '<title>' . xlt('Error') . " ...</title><h4 style='color:red;'>" .
                 xlt('An error occurred: Missing file to upload. Returning to form.') . '</h4>';
             exit;
         }
@@ -243,16 +177,9 @@ if ((count($_FILES['template_files']['name'] ?? []) > 0) && !empty($_FILES['temp
             $patient = ['-1'];
         }
         // get em and dispose
-        try {
-            $success = $templateService->uploadTemplate($name, $_POST['template_category'], $_FILES['template_files']['tmp_name'][$i], $patient, isset($_POST['upload_submit_questionnaire']));
-            if (!$success) {
-                echo "<p>" . xlt("Unable to save files. Use back button!") . "</p>";
-                exit;
-            }
-        } catch (Exception $e) {
-            header('refresh:3;url= import_template_ui.php');
-            echo '<h3>' . xlt('Error') . "</h3><h4 style='color:red;'>" .
-                text($e->getMessage()) . '</h4>';
+        $success = $templateService->uploadTemplate($name, $_POST['template_category'], $_FILES['template_files']['tmp_name'][$i], $patient);
+        if (!$success) {
+            echo "<p>" . xlt("Unable to save files. Use back button!") . "</p>";
             exit;
         }
     }
@@ -260,46 +187,7 @@ if ((count($_FILES['template_files']['name'] ?? []) > 0) && !empty($_FILES['temp
     die();
 }
 
-if (isset($_POST['repository-submit']) && !empty($_POST['upload_name'] ?? '')) {
-    if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"], 'import-template-upload')) {
-        CsrfUtils::csrfNotVerified();
-    }
-    if (!$authUploadTemplates) {
-        xlt("Not Authorized to Upload Templates");
-        exit;
-    }
-    $selected_q = (int)($_POST['select_item'] ?? 0);
-    $upload_name = $_POST['upload_name'] ?? '';
-    $category = $_POST['template_category'] ?? '';
-    if (empty($category)) {
-        $category = 'questionnaire';
-    }
-    if (empty($patient) || $patient === [-1]) {
-        $patient = '-1';
-    }
-    if (!empty($upload_name)) {
-        // will use same name as questionnaire from repository
-        try {
-            $content = "{ParseAsHTML}{Questionnaire:$selected_q}" . "\n";
-            $mimetype = 'application/text';
-            $success = $templateService->insertTemplate($patient, $category, $upload_name, $content, 'application/text');
-            if (!$success) {
-                header('refresh:3;url= import_template_ui.php');
-                echo "<h4 style='color:red;'>" . xlt("New template save failed. Try again.") . "</h4>";
-                exit;
-            }
-        } catch (Exception $e) {
-            header('refresh:3;url= import_template_ui.php');
-            echo '<h3>' . xlt('Error') . "</h3><h4 style='color:red;'>" .
-                text($e->getMessage()) . '</h4>';
-            exit;
-        }
-    }
-    header("location: " . $_SERVER['HTTP_REFERER']);
-    die();
-}
-
-if (($_REQUEST['mode'] ?? '') === 'editor_render_html') {
+if ($_REQUEST['mode'] === 'editor_render_html') {
     if ($_REQUEST['docid']) {
         $content = $templateService->fetchTemplate($_REQUEST['docid']);
         $template_content = $content['template_content'];
@@ -326,29 +214,29 @@ function renderEditorHtml($template_id, $content)
     global $authUploadTemplates;
 
     $lists = [
-        '{ParseAsHTML}', '{ParseAsText}', '{styleBlockStart}', '{styleBlockEnd}', '{SignaturesRequired}', '{TextInput}', '{sizedTextInput:120px}', '{smTextInput}', '{TextBox:03x080}', '{CheckMark}', '{RadioGroup:option1_many...}', '{RadioGroupInline:option1_many...}', '{ynRadioGroup}', '{TrueFalseRadioGroup}', '{DatePicker}', '{DateTimePicker}', '{StandardDatePicker}', '{CurrentDate:"global"}', '{CurrentTime}', '{DOS}', '{ReferringDOC}', '{PatientID}', '{PatientName}', '{PatientSex}', '{PatientDOB}', '{PatientPhone}', '{Address}', '{City}', '{State}', '{Zip}', '{PatientSignature}', '{AdminSignature}', '{WitnessSignature}', '{AcknowledgePdf:pdf name or id:title}', '{EncounterForm:LBF}', '{Questionnaire:name or id}', '{Medications}', '{ProblemList}', '{Allergies}', '{ChiefComplaint}', '{DEM: }', '{HIS: }', '{LBF: }', '{GRP}{/GRP}'
+        '{ParseAsHTML}', '{SignaturesRequired}', '{TextInput}', '{sizedTextInput:120px}', '{smTextInput}', '{TextBox:03x080}', '{CheckMark}', '{ynRadioGroup}', '{TrueFalseRadioGroup}', '{DatePicker}', '{DateTimePicker}', '{StandardDatePicker}', '{CurrentDate:"global"}', '{CurrentTime}', '{DOS}', '{ReferringDOC}', '{PatientID}', '{PatientName}', '{PatientSex}', '{PatientDOB}', '{PatientPhone}', '{Address}', '{City}', '{State}', '{Zip}', '{PatientSignature}', '{AdminSignature}', '{WitnessSignature}', '{AcknowledgePdf:pdf name or id:title}', '{EncounterForm:LBF}', '{Medications}', '{ProblemList}', '{Allergies}', '{ChiefComplaint}', '{DEM: }', '{HIS: }', '{LBF: }', '{GRP}{/GRP}'
     ];
     ?>
     <!DOCTYPE html>
     <html>
     <head>
-        <?php Header::setupHeader(['summernote']); ?>
+        <?php Header::setupHeader(['ckeditor']); ?>
     </head>
     <style>
-        input:focus,
-        input:active {
-            outline: 0 !important;
-            -webkit-appearance: none;
-            box-shadow: none !important;
-        }
+      input:focus,
+      input:active {
+        outline: 0 !important;
+        -webkit-appearance: none;
+        box-shadow: none !important;
+      }
 
-        .list-group-item {
-            font-size: .9rem;
-        }
+      .list-group-item {
+        font-size: .9rem;
+      }
 
-        .note-editable {
-            height: 78vh !important;
-        }
+      .cke_contents {
+        height: 78vh !important;
+      }
     </style>
     <body>
         <div class="container-fluid">
@@ -403,23 +291,26 @@ function renderEditorHtml($template_id, $content)
                     input.select();
                 })
             })
-        });
-        $(function () {
-            $('#templateContent').summernote({
-                placeholder: 'Start typing here...',
-                height: 550,
-                minHeight: 300,
-                maxHeight: 800,
-                width: '100%',
-                tabsize: 4,
-                focus: true,
-                disableDragAndDrop: true,
-                dialogsInBody: true,
-                dialogsFade: true
+            editor = CKEDITOR.instances['templateContent'];
+            if (editor) {
+                editor.destroy(true);
+            }
+            CKEDITOR.disableAutoInline = true;
+            CKEDITOR.config.extraPlugins = "preview,save,docprops,justify";
+            CKEDITOR.config.allowedContent = true;
+            //CKEDITOR.config.fullPage = true;
+            CKEDITOR.config.height = height;
+            CKEDITOR.config.width = '100%';
+            CKEDITOR.config.resize_dir = 'both';
+            CKEDITOR.config.resize_minHeight = max / 2;
+            CKEDITOR.config.resize_maxHeight = max;
+            CKEDITOR.config.resize_minWidth = '50%';
+            CKEDITOR.config.resize_maxWidth = '100%';
+
+            editor = CKEDITOR.replace('templateContent', {
+                removeButtons: 'PasteFromWord'
             });
         });
-    </script>
-    <script>
     </script>
     </html>
 <?php }
@@ -446,27 +337,23 @@ function renderProfileHtml()
         <?php } ?>
     </head>
     <style>
-        body {
-            overflow: hidden;
-        }
+      body {
+        overflow: hidden;
+      }
 
-        .list-group-item {
-            cursor: move;
-        }
+      .list-group-item {
+        cursor: move;
+      }
 
-        strong {
-            font-weight: 600;
-        }
+      strong {
+        font-weight: 600;
+      }
 
-        .col-height {
-            max-height: 95vh;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-
-        .note-editor.dragover .note-dropzone {
-            display: none
-        }
+      .col-height {
+        max-height: 95vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
     </style>
     <script>
         const profiles = <?php echo js_escape($profile_list); ?>;
@@ -504,15 +391,10 @@ function renderProfileHtml()
                             return true
                         },
                     },
-                    onAdd: function (evt) {
-                        let el = evt.item;
-                        el.getElementsByTagName('form')[0].classList.remove("d-none");
-                    },
                     animation: 150
                 });
             });
         });
-        top.restoreSession();
 
         function submitProfiles() {
             top.restoreSession();
@@ -525,7 +407,7 @@ function renderProfileHtml()
                 let lists = ulItem.querySelectorAll('li');
                 lists.forEach((item, index) => {
                     //console.log({index, item})
-                    let pform = item.getElementsByTagName('form')[0];
+                    let pform = document.getElementById(ulItem.dataset.profile + '-form');
                     let formData = $(pform).serializeArray();
                     listData = {
                         'form': formData,
@@ -571,7 +453,7 @@ function renderProfileHtml()
                         </div>
                     </nav>
                     <div class="border-left border-right">
-                        <div class='bg-dark text-light py-1 mb-2 text-center'><?php echo xlt('Available Templates'); ?></div>
+                        <div class='bg-dark text-light py-1 text-center'><?php echo xlt('Available Templates'); ?></div>
                         <ul id='drag_repository' class='list-group mx-2 mb-2'>
                             <?php
                             foreach ($templates as $cat => $files) {
@@ -586,55 +468,10 @@ function renderProfileHtml()
                                     if ($file['mime'] === 'application/pdf') {
                                         continue;
                                     }
-                                    /* The drag container */
-                                    echo "<li class='list-group-item px-1 py-1 mb-1 bg-primary' data-id='$template_id' data-name='$this_name' data-category='$title_esc'>" .
+                                    echo "<li class='list-group-item px-1 py-1 mb-2' data-id='$template_id' data-name='$this_name' data-category='$title_esc'>" .
                                         "<strong>" . text($file['template_name']) .
                                         '</strong>' . ' ' . xlt('in category') . ' ' .
-                                        '<strong>' . text($title) . '</strong>';
-                                    ?>
-                                    <form class='form form-inline bg-light text-dark py-1 pl-1 d-none'>
-                                        <div class='input-group-sm input-group-prepend'>
-                                            <label class="form-check-inline d-none"><?php echo xlt('OneTime') ?>
-                                                <input name="onetimeIsOkay" type='checkbox' class="input-control-sm ml-1 mt-1" title="<?php echo xla('Enable Auto Portal log in for presenting document to patient.') ?>" />
-                                            </label>
-                                        </div>
-                                        <label class='font-weight-bold mr-1 d-none'><?php echo xlt('Notify') ?></label>
-                                        <div class='input-group-sm input-group-prepend d-none'>
-                                            <input name="notify_days" type="text" style="width: 50px;" class='input-control-sm ml-1' placeholder="<?php echo xla('days') ?>" value="" />
-                                            <label class="mx-1"><?php echo xlt('Days') ?></label>
-                                        </div>
-                                        <div class='input-group-sm input-group-prepend'>
-                                            <select name="notify_when" class='input-control-sm mx-1 d-none'>
-                                                <option value=""><?php echo xlt('Unassigned'); ?></option>
-                                                <option value="new"><?php echo xlt('New'); ?></option>
-                                                <option value='before_appointment'><?php echo xlt('Before Appointment'); ?></option>
-                                                <option value='after_appointment'><?php echo xlt('After Appointment'); ?></option>
-                                                <option value="before_expires"><?php echo xlt('Before Expires'); ?></option>
-                                                <option value="in_edit"><?php echo xlt('In Edit'); ?></option>
-                                            </select>
-                                        </div>
-                                        <div class='input-group-sm input-group-prepend'>
-                                            <label class="form-check-inline"><?php echo xlt('Recurring') ?>
-                                                <input name="recurring" type='checkbox' class="input-control-sm ml-1 mt-1" />
-                                            </label>
-                                        </div>
-                                        <div class='input-group-sm input-group-prepend'>
-                                            <label><?php echo xlt('On') ?></label>
-                                            <select name="when" class='input-control-sm mx-1'>
-                                                <!--<option value=""><?php /*echo xlt('Unassigned') */ ?></option>-->
-                                                <option value="completed"><?php echo xlt('Completed') ?></option>
-                                                <option value='always'><?php echo xlt('Always') ?></option>
-                                                <option value='once'><?php echo xlt('One time') ?></option>
-                                            </select>
-                                        </div>
-                                        <div class='input-group-sm input-group-prepend'>
-                                            <label><?php echo xlt('Every') ?></label>
-                                            <input name="days" type="text" style="width: 50px;" class='input-control-sm ml-1' placeholder="<?php echo xla('days') ?>" value="" />
-                                            <label class="mx-1"><?php echo xlt('Days') ?></label>
-                                        </div>
-                                    </form>
-                                    <?php
-                                    echo '</li>' . "\n";
+                                        '<strong>' . text($title) . '</strong>' . '</li>' . "\n";
                                 }
                             }
                             ?>
@@ -647,8 +484,34 @@ function renderProfileHtml()
                         foreach ($profile_list as $profile => $profiles) {
                             $profile_items_list = $templateService->getTemplateListByProfile($profile);
                             $profile_esc = attr($profile);
+                            $events = $templateService->fetchAllProfileEvents();
+                            $recurring = attr($events[$profile]['recurring'] ?? '');
+                            $trigger = attr($events[$profile]['event_trigger'] ?? '');
+                            $days = attr($events[$profile]['period'] ?? '');
                             ?>
-                            <div class='bg-dark text-light mb-1 py-1 pl-1'><?php echo xlt($profiles['title']) ?></div>
+                            <form id="<?php echo $profile_esc ?>-form" name="<?php echo $profile_esc; ?>" class='form form-inline bg-dark text-light py-1 pl-1'>
+                                <label class='mr-1'><?php echo xlt($profiles['title']) ?></label>
+                                <div class='input-group-prepend ml-auto'>
+                                    <label for="<?php echo $profile_esc ?>-recurring" class="form-check-inline"><?php echo xlt('Recurring') ?>
+                                        <input <?php echo $recurring ? 'checked' : '' ?> name="recurring" type='checkbox' class="input-control ml-1 mt-1" id="<?php echo $profile_esc ?>-recurring" />
+                                    </label>
+                                </div>
+                                <!-- @TODO Hide for now until sensible events can be determined. -->
+                                <div class='input-group-prepend d-none'>
+                                    <label for="<?php echo $profile_esc ?>-when"><?php echo xlt('On') ?></label>
+                                    <select name="when" class='input-control-sm mx-1' id="<?php echo $profile_esc ?>-when">
+                                        <!--<option value=""><?php /*echo xlt('Unassigned') */?></option>-->
+                                        <option <?php echo $trigger === 'completed' ? 'selected' : ''; ?> value="completed"><?php echo xlt('Completed') ?></option>
+                                        <option <?php echo $trigger === 'always' ? 'selected' : ''; ?> value='always'><?php echo xlt('Always') ?></option>
+                                        <option <?php echo $trigger === 'once' ? 'selected' : ''; ?> value='once'><?php echo xlt('One time') ?></option>
+                                    </select>
+                                </div>
+                                <div class='input-group-prepend'>
+                                    <label for="<?php echo $profile_esc ?>-days"><?php echo xlt('Every') ?></label>
+                                    <input name="days" type="text" style="width: 50px" class='input-control-sm ml-1' id="<?php echo $profile_esc ?>-days" placeholder="<?php echo xla('days') ?>" value="<?php echo $days ?>" />
+                                    <label class="mx-1" for="<?php echo $profile_esc ?>-days"><?php echo xlt('Days') ?></label>
+                                </div>
+                            </form>
                             <?php
                             echo "<ul id='$profile_esc' class='list-group mx-2 mb-2' data-profile='$profile_esc'>\n";
                             foreach ($profile_items_list as $cat => $files) {
@@ -660,63 +523,11 @@ function renderProfileHtml()
                                     $this_cat = attr($file['category']);
                                     $title = $category_list[$file['category']]['title'] ?: $cat;
                                     $this_name = attr($file['template_name']);
-                                    $events = $templateService->fetchTemplateEvent($profile, $template_id);
-                                    $recurring = attr($events['recurring'] ?? '');
-                                    $trigger = attr($events['event_trigger'] ?? ''); // max 32 char
-                                    $notify_trigger = attr($events['notify_trigger'] ?? ''); // max 32 char
-                                    $days = attr($events['period'] ?? '');
-                                    $notify_days = attr($events['notify_period'] ?? '');
                                     if ($file['mime'] === 'application/pdf') {
                                         continue;
                                     }
-                                    ?>
-                                    <li class='list-group-item bg-warning text-light px-1 py-1 mb-1' data-id="<?php echo $template_id; ?>" data-name="<?php echo $this_name; ?>" data-category="<?php echo $this_cat; ?>">
-                                        <span class="p-1 font-weight-bold"><?php echo text($file['template_name']) . ' ' . xlt('in category') . ' ' . text($title); ?></span>
-                                        <!-- Notice! The notify event input is patched out until I get around to it. -->
-                                        <form class='form form-inline bg-light text-dark py-1 pl-1'>
-                                            <div class='input-group-sm input-group-prepend d-none'>
-                                                <label class="form-check-inline"><?php echo xlt('OneTime') ?>
-                                                    <input name="onetimeIsOkay" type='checkbox' class="input-control-sm ml-1 mt-1" title="<?php echo xla('Enable Auto Portal log in for presenting document to patient.') ?>" />
-                                                </label>
-                                            </div>
-                                            <label class='font-weight-bold mr-1 d-none'><?php echo xlt('Notify') ?></label>
-                                            <div class='input-group-sm input-group-prepend d-none'>
-                                                <input name="notify_days" type="text" style="width: 50px;" class='input-control-sm ml-1' placeholder="<?php echo xla('days') ?>" value="<?php echo $notify_days ?>" />
-                                                <label class="mx-1"><?php echo xlt('Days') ?></label>
-                                            </div>
-                                            <div class='input-group-sm input-group-prepend d-none'>
-                                                <select name="notify_when" class='input-control-sm mx-1'>
-                                                    <option value=""><?php echo xlt('Unassigned'); ?></option>
-                                                    <option <?php echo $notify_trigger === 'new' ? 'selected' : ''; ?> value="new"><?php echo xlt('New'); ?></option>
-                                                    <option <?php echo $notify_trigger === 'before_appointment' ? 'selected' : ''; ?> value='before_appointment'><?php echo xlt('Before Appointment'); ?></option>
-                                                    <option <?php echo $notify_trigger === 'after_appointment' ? 'selected' : ''; ?> value='after_appointment'><?php echo xlt('After Appointment'); ?></option>
-                                                    <option <?php echo $notify_trigger === 'before_expires' ? 'selected' : ''; ?> value="before_expires"><?php echo xlt('Before Expires'); ?></option>
-                                                    <option <?php echo $notify_trigger === 'in_edit' ? 'selected' : ''; ?> value="in_edit"><?php echo xlt('In Edit'); ?></option>
-                                                </select>
-                                            </div>
-                                            <div class='input-group-sm input-group-prepend'>
-                                                <label class="form-check-inline"><?php echo xlt('Recurring') ?>
-                                                    <input <?php echo $recurring ? 'checked' : '' ?> name="recurring" type='checkbox' class="input-control-sm ml-1 mt-1" />
-                                                </label>
-                                            </div>
-                                            <div class='input-group-sm input-group-prepend'>
-                                                <label><?php echo xlt('On') ?></label>
-                                                <select name="when" class='input-control-sm mx-1'>
-                                                    <!--<option value=""><?php /*echo xlt('Unassigned') */ ?></option>-->
-                                                    <option <?php echo $trigger === 'completed' ? 'selected' : ''; ?> value="completed"><?php echo xlt('Completed') ?></option>
-                                                    <option <?php echo $trigger === 'always' ? 'selected' : ''; ?> value='always'><?php echo xlt('Always') ?></option>
-                                                    <option <?php echo $trigger === 'once' ? 'selected' : ''; ?> value='once'><?php echo xlt('One time') ?></option>
-                                                    <option <?php echo $trigger === '30:90:365' ? 'selected' : ''; ?> value='30:90:365'><?php echo xlt('30-90-365') ?></option>
-                                                </select>
-                                            </div>
-                                            <div class='input-group-sm input-group-prepend'>
-                                                <label><?php echo xlt('Every') ?></label>
-                                                <input name="days" type="text" style="width: 50px;" class='input-control-sm ml-1' placeholder="<?php echo xla('days') ?>" value="<?php echo $days ?>" />
-                                                <label class="mx-1" for="<?php echo $profile_esc ?>-days"><?php echo xlt('Days') ?></label>
-                                            </div>
-                                        </form>
-                                    </li>
-                                    <?php
+                                    echo "<li class='list-group-item px-1 py-1 mb-2' data-id='$template_id' data-name='$this_name' data-category='$this_cat'>" .
+                                        text($file['template_name']) . ' ' . xlt('in category') . ' ' . text($title) . "</li>\n";
                                 }
                             }
                             echo "</ul>\n";

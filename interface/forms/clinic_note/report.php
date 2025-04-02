@@ -13,7 +13,7 @@
  */
 
 require_once("../../globals.php");
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 function clinic_note_report($pid, $encounter, $cols, $id)
 {

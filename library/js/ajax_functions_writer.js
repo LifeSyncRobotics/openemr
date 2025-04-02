@@ -5,60 +5,32 @@
 // modified to use activeElement for general edit sjpadgett@gmail.com 06/18/2019
 //
 
-/**
- *
- * @type {CKEDITOR.ClassicEditor}  This assumes there is a single ajax_functions_writer.js file inside the frame.  If there are multiples this will create problems.
- */
-let oeCustomTemplateEditor = null;
-/**
- *
- * @param {CKEDITOR.ClassicEditor} editor
- */
-function initAjaxFunctionWritersWithEditor(editor) {
-    oeCustomTemplateEditor = editor;
-}
 function moveOptions_11(theSelFrom, theSelTo) {
-    if (!oeCustomTemplateEditor) {
-        console.error("CKEDITOR instance not found. Verify initAjaxFunctionWritersWithEditor was called");
-        return;
-    }
     document.getElementById(theSelFrom).style.color = "red";
     document.getElementById(theSelFrom).style.fontStyle = "italic";
     var str = document.getElementById(theSelFrom).innerHTML;
-    oeCustomTemplateEditor.model.change(writer => {
-        let data = oeCustomTemplateEditor.getData();
-        if (data == '<br>') {
-            oeCustomTemplateEditor.setData("");
-        }
-    });
+    if (window.frames[0].document.body.innerHTML == '<br />')
+        window.frames[0].document.body.innerHTML = "";
     var patt = /\?\?/;
     var result = patt.test(str);
     if (result) {
-        url = 'quest_popup.php?content=' + encodeURIComponent(str);
-        // patched out 1/19/24 sjp better to be a dialog.
-        //window.open(url, 'quest_pop', 'width=640,height=190,menubar=no,toolbar=0,location=0, directories=0, status=0,left=400,top=375');
-        dlgopen(url,'quest_pop', 640, 250, '', '', {
-            allowDrag: true,
-            allowResize: true,
-        });
+        url = 'quest_popup.php?content=' + str;
+        window.open(url, 'quest_pop', 'width=640,height=190,menubar=no,toolbar=0,location=0, directories=0, status=0,left=400,top=375');
+        //dlgopen(url,'quest_pop', '', 640, 190);
     } else {
         val = str;
-        oeCustomTemplateEditor.model.change(writer => {
-            let textNode = writer.createText(val);
-            oeCustomTemplateEditor.model.insertContent(textNode);
-        });
+        CKEDITOR.instances.textarea1.insertText(val);
     }
 }
 
-function updateEditorContent(content) {
-    if (!oeCustomTemplateEditor) {
-        console.error("CKEDITOR instance not found. Verify initAjaxFunctionWritersWithEditor was called");
-        return;
-    }
-    oeCustomTemplateEditor.model.change(writer => {
-        let textNode = writer.createText(content);
-        oeCustomTemplateEditor.model.insertContent(textNode);
-    });
+function movePD(val, theSelTo) {
+    var textAreaContent = window.frames[0].document.body.innerHTML;
+    var textFrom = val;
+    if (textAreaContent != '')
+        textAreaContent += "  " + textFrom;
+    else
+        textAreaContent += textFrom;
+    window.frames[0].document.body.innerHTML = textAreaContent;
 }
 
 function nl2br(str) {
@@ -66,17 +38,10 @@ function nl2br(str) {
 }
 
 function br2nl(str) {
-    return str.replace(/<\s*\/?br\s*[/]?>/gi, "\r\n");
+    return str.replace(/<\s*\/?br\s*[\/]?>/gi, "\r\n");
 }
 
-/**
- * Retrieves the textbox content to put in the editor window from the calling document page.
- * If the content has a *** in it, it will split the content and put the first part in the editor window.
- * @param id - the id of the textbox to get content from
- * @param ccFlag - if 'id' then use getElementById, otherwise use querySelector with name attribute
- * @returns {string}
- */
-function getCallingDocumentEditorContent(id, ccFlag) {
+function edit(id, ccFlag = '') {
     let val = '';
     if (ccFlag) {
         // text edits
@@ -95,20 +60,50 @@ function getCallingDocumentEditorContent(id, ccFlag) {
         val = window.opener.document.getElementById(id).value;
     }
     arr = val.split("|*|*|*|");
-    return arr[0];
-}
-function edit(id, ccFlag = '') {
-
-    document.getElementById('textarea1').value = getCallingDocumentEditorContent(id, ccFlag);
+    document.getElementById('textarea1').value = arr[0];
 }
 
-function SelectToSave(textara, ccFlag = '', contentToSave = "") {
+function ascii_write(asc, theSelTo) {
+    var is_chrome = navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
+    var is_ie = navigator.userAgent.toLowerCase().indexOf('msie') > -1;
+    var is_apple = navigator.userAgent.toLowerCase().indexOf('apple') > -1;
+    if (asc == 13) {
+        if (!is_ie) {
+            var plugin = CKEDITOR.plugins.enterkey,
+                enterBr = plugin.enterBr,
+                editor = CKEDITOR.instances.textarea1;
+            forceMode = editor.config.forceEnterMode;
+            mode = editor.config.enterMode;
+            editor.fire('saveSnapshot');	// Save undo step.
+            enterBr(editor, mode, null, forceMode);
+            if (is_chrome || is_apple)
+                enterBr(editor, mode, null, forceMode);
+        } else {
+            CKEDITOR.instances.textarea1.insertText('\r\n');
+        }
+    } else {
+        if (asc == 'para') {
+            var textFrom = "\r\n\r\n";
+            CKEDITOR.instances.textarea1.insertText(textFrom);
+            if (is_chrome || is_apple)
+                CKEDITOR.instances.textarea1.insertText(textFrom);
+        } else {
+            if (asc == 32)
+                var textFrom = "  ";
+            else
+                var textFrom = String.fromCharCode(asc);
+            CKEDITOR.instances.textarea1.insertText(textFrom);
+        }
+    }
+}
+
+function SelectToSave(textara, ccFlag = '') {
     let textAreaContent = '';
     let mainForm = window.opener.document;
     if (ccFlag) {
         // text templates
         let textEl = '';
-        textAreaContent = contentToSave;
+        textAreaContent = window.frames[0].document.body.innerText;
         if (ccFlag === 'id') {
             textEl = mainForm.getElementById(textara);
             if (textEl === null) {
@@ -125,7 +120,7 @@ function SelectToSave(textara, ccFlag = '', contentToSave = "") {
         textEl.value = jsText(br2nl(textAreaContent));
     } else {
         // must be html for nation note.
-        textAreaContent = contentToSave;
+        textAreaContent = window.frames[0].document.body.innerHTML;
         if (mainForm.getElementById(textara + '_div'))
             mainForm.getElementById(textara + '_div').innerHTML = textAreaContent;
         if (mainForm.getElementById(textara + '_optionTD') && document.getElementById('options'))
@@ -139,6 +134,17 @@ function SelectToSave(textara, ccFlag = '', contentToSave = "") {
     }
     // close our dialog however insert turns out.
     dlgclose();
+}
+
+function removeHTMLTags(strInputCode) {
+    /*
+            This line is optional, it replaces escaped brackets with real ones,
+            i.e. < is replaced with < and > is replaced with >
+    */
+    strInputCode = strInputCode.replace(/&(lt|gt);/g, function (strMatch, p1) {
+        return (p1 == "lt") ? "<" : ">";
+    });
+    var strTagStrippedText = strInputCode.replace(/<\/?[^>]+(>|$)/g, "");
 }
 
 function supportDragAndDrop(thedata) {
@@ -234,6 +240,7 @@ function save_item() {
         success: function (thedata) {
             //alert(thedata)
             document.getElementById('template_sentence').innerHTML = supportDragAndDrop(thedata);
+            ;
             cancel_item('');
         },
         error: function () {
@@ -263,6 +270,7 @@ function update_item(id) {
         success: function (thedata) {
             //alert(thedata)
             document.getElementById('template_sentence').innerHTML = supportDragAndDrop(thedata);
+            ;
             cancel_item(id);
         },
         error: function () {

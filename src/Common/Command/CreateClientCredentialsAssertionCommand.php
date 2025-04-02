@@ -53,7 +53,6 @@ class CreateClientCredentialsAssertionCommand implements IOpenEMRCommand
      */
     public function execute(CommandContext $context)
     {
-        echo "Executing command 'CreateClientCredentialsAssertion'\n";
         $opts = getopt('c:i:a:hk');
 
         $keyLocation = $context->getRootPath() . "tests" . DIRECTORY_SEPARATOR . "Tests" . DIRECTORY_SEPARATOR
@@ -111,7 +110,7 @@ class CreateClientCredentialsAssertionCommand implements IOpenEMRCommand
         echo "\n\nSample CURL request using assertion: \n";
         $assertionType = CustomClientCredentialsGrant::OAUTH_JWT_CLIENT_ASSERTION_TYPE;
         $scope = 'system/*.\$export system/*.\$bulkdata-status system/Group.\$export system/Patient.\$export '
-        . 'system/Encounter.read system/Binary.read';
+        . 'system/Encounter.read system/Document.read';
         echo "--> curl -k -X POST --data-urlencode \"client_assertion_type=$assertionType\" \\\n"
         . "  --data-urlencode \"client_assertion=$assertion\" \\\n"
         . "  --data-urlencode \"grant_type=client_credentials\" \\\n"

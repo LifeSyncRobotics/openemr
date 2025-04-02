@@ -198,7 +198,7 @@ class FHIRSubstanceReferenceInformationGene extends FHIRBackboneElement implemen
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->geneSequenceOrigin)) {

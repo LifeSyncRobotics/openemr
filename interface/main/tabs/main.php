@@ -9,11 +9,9 @@
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @author    Ranganath Pathak <pathak@scrs1.org>
  * @author    Jerry Padgett <sjpadgett@gmail.com>
- * @author    Stephen Nielson <snielson@discoverandchange.com>
  * @copyright Copyright (c) 2016 Kevin Yeh <kevin.y@integralemr.com>
  * @copyright Copyright (c) 2016-2019 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2019 Ranganath Pathak <pathak@scrs1.org>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -24,15 +22,8 @@ require_once $GLOBALS['srcdir'] . '/ESign/Api.php';
 use Esign\Api;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
-use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Core\Header;
 use OpenEMR\Events\Main\Tabs\RenderEvent;
-use OpenEMR\Menu\MainMenuRole;
-use OpenEMR\Services\LogoService;
-use Symfony\Component\Filesystem\Path;
-
-$logoService = new LogoService();
-$menuLogo = $logoService->getLogo('core/menu/primary/');
 
 // Ensure token_main matches so this script can not be run by itself
 //  If do not match, then destroy the session and go back to login screen
@@ -52,14 +43,92 @@ if ($GLOBALS['prevent_browser_refresh'] > 1) {
 }
 
 $esignApi = new Api();
-$twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
-
 ?>
 <!DOCTYPE html>
 <html>
 
 <head>
     <title><?php echo text($openemr_name); ?></title>
+    <!-- Include jQuery library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+//const sessionData={ <?php echo $authUser ?>};
+console.log("Hello");
+<?php
+     require_once("../../globals.php");
+     session_start();
+
+     // Access session variables
+    $authUser = $_SESSION['authUser'];
+    
+    foreach ($_SESSION as $key => $value) {
+        if (is_array($value)) {
+            // Convert array to a string representation
+            $value = json_encode($value);
+        } else {
+            // Escape single quotes in the value
+            $value = addslashes($value);
+        }
+        echo "console.log('{$key}:', '{$value}');\n";
+    }
+    ?>
+</script>
+
+    <script>
+        $(document).ready(function() {
+            // Function to get user group using AJAX
+            function getUserGroup(username) {
+                $.ajax({
+                    url: "../../../library/ajax/adminacl_ajax.php",
+                    method: "POST",
+                    data: {
+                        control: "membership",
+                        action: "list",
+                        name: username,
+                        csrf_token_form: "<?php echo CsrfUtils::collectCsrfToken(); ?>"
+                    },
+                    success: function(response) {
+                        console.log("User Group:", response);
+                        const groupValue = $(response).find('active group value').text();
+                        console.log("Group:", groupValue);
+                        setMenuBackgroundColor(groupValue);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching user group:", error);
+                    }
+                });
+            }
+            
+            // Function to set menu background color based on user group
+            function setMenuBackgroundColor(group) {
+                let color;
+                switch (group) {
+                    case "Administrators":
+                        color = "red";
+                        break;
+                    case "Clinicians":
+                        color = "blue";
+                        break;
+                    case "Receptionists":
+                        color = "green";
+                        break;
+                    case "Physicians":
+                        color = "purple";
+                        break;
+                    default:
+                        color = "gray";
+                }
+                $('#mainMenu').css('background-color', color);
+            }
+
+
+            // Get the user group for authUser
+            const authUser = "<?php echo $authUser; ?>";
+            getUserGroup(authUser);
+        });
+    </script>
+
 
     <script>
         // This is to prevent users from losing data by refreshing or backing out of OpenEMR.
@@ -81,7 +150,7 @@ $twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
         window.name = "main";
 
         // This flag indicates if another window or frame is trying to reload the login
-        // page to this top-level window.  It is set by javascript returned by auth.inc.php
+        // page to this top-level window.  It is set by javascript returned by auth.inc
         // and is checked by handlers of beforeunload events.
         var timed_out = false;
         // some globals to access using top.variable
@@ -92,53 +161,13 @@ $twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
         var csrf_token_js = <?php echo js_escape(CsrfUtils::collectCsrfToken()); ?>;
         var userDebug = <?php echo js_escape($GLOBALS['user_debug']); ?>;
         var webroot_url = <?php echo js_escape($web_root); ?>;
-        var jsLanguageDirection = <?php echo js_escape($_SESSION['language_direction']); ?> || 'ltr';
-        var jsGlobals = {}; // this should go away and replace with just global_enable_group_therapy
+        var jsLanguageDirection = <?php echo js_escape($_SESSION['language_direction']); ?>;
+        var jsGlobals = {};
         // used in tabs_view_model.js.
-        jsGlobals.enable_group_therapy = <?php echo js_escape($GLOBALS['enable_group_therapy']); ?>;
-        jsGlobals.languageDirection = jsLanguageDirection;
-        jsGlobals.date_display_format = <?php echo js_escape($GLOBALS['date_display_format']); ?>;
-        jsGlobals.time_display_format = <?php echo js_escape($GLOBALS['time_display_format']); ?>;
-        jsGlobals.timezone = <?php echo js_escape($GLOBALS['gbl_time_zone'] ?? ''); ?>;
-        jsGlobals.assetVersion = <?php echo js_escape($GLOBALS['v_js_includes']); ?>;
+        jsGlobals.enable_group_therapy = <?php echo js_escape($GLOBALS['enable_group_therapy']); ?>
+
         var WindowTitleAddPatient = <?php echo ($GLOBALS['window_title_add_patient_name'] ? 'true' : 'false' ); ?>;
         var WindowTitleBase = <?php echo js_escape($openemr_name); ?>;
-        const isSms = "<?php echo !empty($GLOBALS['oefax_enable_sms'] ?? null); ?>";
-        const isFax = "<?php echo !empty($GLOBALS['oefax_enable_fax']) ?? null?>";
-        const isServicesOther = (isSms || isFax);
-
-        /**
-         * Async function to get session value from the server
-         * Usage Example
-         * let authUser;
-         * let sessionPid = await top.getSessionValue('pid');
-         * // If using then() method a promise is returned instead of the value.
-         * await top.getSessionValue('authUser').then(function (auth) {
-         *    authUser = auth;
-         *    console.log('authUser', authUser);
-         * });
-         * console.log('session pid', sessionPid);
-         * console.log('auth User', authUser);
-        */
-        async function getSessionValue(key) {
-            restoreSession();
-            let csrf_token_js = <?php echo js_escape(CsrfUtils::collectCsrfToken('default')); ?>;
-            const config = {
-                url: `${webroot_url}/library/ajax/set_pt.php?csrf_token_form=${csrf_token_js}`,
-                method: 'POST',
-                data: {
-                    mode: 'session_key',
-                    key: key
-                }
-            };
-            try {
-                const response = await $.ajax(config);
-                restoreSession();
-                return response;
-            } catch (error) {
-                throw error;
-            }
-        }
 
         function goRepeaterServices() {
             // Ensure send the skip_timeout_reset parameter to not count this as a manual entry in the
@@ -152,9 +181,6 @@ $twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
             let request = new FormData;
             request.append("skip_timeout_reset", "1");
             request.append("isPortal", isPortalEnabled);
-            request.append("isServicesOther", isServicesOther);
-            request.append("isSms", isSms);
-            request.append("isFax", isFax);
             request.append("csrf_token_form", csrf_token_js);
             fetch(webroot_url + "/library/ajax/dated_reminders_counter.php", {
                 method: 'POST',
@@ -187,19 +213,6 @@ $twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
                         app_view_model.application_data.user().portalMail(mail);
                         app_view_model.application_data.user().portalChats(chats);
                         app_view_model.application_data.user().portalPayments(payments);
-                    }
-                }
-                if (isServicesOther) {
-                    let sms = data.smsCnt;
-                    let fax = data.faxCnt;
-                    let total = data.serviceTotal;
-                    let enable = ((1 * sms) + (1 * fax));
-                    // Will turn off button display if no notification!
-                    app_view_model.application_data.user().servicesOther(enable);
-                    if (enable > 0) {
-                        app_view_model.application_data.user().serviceAlerts(total);
-                        app_view_model.application_data.user().smsAlerts(sms);
-                        app_view_model.application_data.user().faxAlerts(fax);
                     }
                 }
                 // Always send reminder count text to model
@@ -262,7 +275,7 @@ $twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
         }
     </script>
 
-    <?php Header::setupHeader(['knockout', 'tabs-theme', 'i18next', 'hotkeys', 'i18formatting']); ?>
+    <?php Header::setupHeader(['knockout', 'tabs-theme', 'i18next', 'hotkeys']); ?>
     <script>
         // set up global translations for js
         function setupI18n(lang_id) {
@@ -336,46 +349,26 @@ $twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
     // prepare Issues popup link global that is used in creating the menu
     $GLOBALS['allow_issue_menu_link'] = ((AclMain::aclCheckCore('encounters', 'notes', '', 'write') || AclMain::aclCheckCore('encounters', 'notes_a', '', 'write')) &&
         AclMain::aclCheckCore('patients', 'med', '', 'write'));
+    ?>
 
-    // we use twig templates here so modules can customize some of these files
-    // at some point we will twigify all of main.php so we can extend it.
-    echo $twig->render("interface/main/tabs/tabs_template.html.twig", []);
-    echo $twig->render("interface/main/tabs/menu_template.html.twig", []);
-    // TODO: patient_data_template.php is a more extensive refactor that could be done in a future feature request but to not jeopardize 7.0.3 release we will hold off.
-    ?>
+    <?php require_once("templates/tabs_template.php"); ?>
+    <?php require_once("templates/menu_template.php"); ?>
     <?php require_once("templates/patient_data_template.php"); ?>
-    <?php
-    echo $twig->render("interface/main/tabs/therapy_group_template.html.twig", []);
-    echo $twig->render("interface/main/tabs/user_data_template.html.twig", [
-        'openemr_name' => $GLOBALS['openemr_name']
-    ]);
-    // Collect the menu then build it
-    $menuMain = new MainMenuRole($GLOBALS['kernel']->getEventDispatcher());
-    $menu_restrictions = $menuMain->getMenu();
-    echo $twig->render("interface/main/tabs/menu_json.html.twig", ['menu_restrictions' => $menu_restrictions]);
-    ?>
+    <?php require_once("templates/therapy_group_template.php"); ?>
+    <?php require_once("templates/user_data_template.php"); ?>
+    <?php require_once("menu/menu_json.php"); ?>
     <?php $userQuery = sqlQuery("select * from users where username = ?", array($_SESSION['authUser'])); ?>
 
     <script>
-        <?php
-        if ($_SESSION['default_open_tabs']) :
-            // For now, only the first tab is visible, this could be improved upon by further customizing the list options in a future feature request
-            $visible = "true";
-            foreach ($_SESSION['default_open_tabs'] as $i => $tab) :
-                $_unsafe_url = preg_replace('/(\?.*)/m', '', Path::canonicalize($fileroot . DIRECTORY_SEPARATOR . $tab['notes']));
-                if (realpath($_unsafe_url) === false || strpos($_unsafe_url, $fileroot) !== 0) {
-                    unset($_SESSION['default_open_tabs'][$i]);
-                    continue;
-                }
-                $url = json_encode($webroot . "/" . $tab['notes']);
-                $target = json_encode($tab['option_id']);
-                $label = json_encode(xl("Loading") . " " . $tab['title']);
-                $loading = xlj("Loading");
-                echo "app_view_model.application_data.tabs.tabsList.push(new tabStatus($label, $url, $target, $loading, true, $visible, false));\n";
-                $visible = "false";
-            endforeach;
-        endif;
-        ?>
+        <?php if (!empty($_SESSION['frame1url']) && !empty($_SESSION['frame1target'])) { ?>
+            // Use session variables and tabStatus object to set up initial/default first tab
+            app_view_model.application_data.tabs.tabsList.push(new tabStatus(<?php echo xlj("Loading"); ?> + "...", <?php echo json_encode("../" . $_SESSION['frame1url']); ?>, <?php echo json_encode($_SESSION['frame1target']); ?>, <?php echo xlj("Loading"); ?> + " " + <?php echo json_encode($_SESSION['frame1label']); ?>, true, true, false));
+        <?php } ?>
+
+        <?php if (!empty($_SESSION['frame2url']) && !empty($_SESSION['frame2target'])) { ?>
+            // Use session variables and tabStatus object to set up initial/default second tab, if none is set in globals, this tab will not be displayed initially
+            app_view_model.application_data.tabs.tabsList.push(new tabStatus(<?php echo xlj("Loading"); ?> + "...", <?php echo json_encode("../" . $_SESSION['frame2url']); ?>, <?php echo json_encode($_SESSION['frame2target']); ?>, <?php echo xlj("Loading"); ?> + " " + <?php echo json_encode($_SESSION['frame2label']); ?>, true, false, false));
+        <?php } ?>
 
         app_view_model.application_data.user(new user_data_view_model(<?php echo json_encode($_SESSION["authUser"])
                                                                             . ',' . json_encode($userQuery['fname'])
@@ -422,15 +415,14 @@ if (!empty($GLOBALS['kernel']->getEventDispatcher())) {
     <div id="mainBox" <?php echo $disp_mainBox ?>>
         <nav class="navbar navbar-expand-xl navbar-light bg-light py-0">
             <?php if ($GLOBALS['display_main_menu_logo'] === '1') : ?>
-                <a class="navbar-brand" href="https://www.open-emr.org" title="OpenEMR <?php echo xla("Website"); ?>" rel="noopener" target="_blank">
-                    <img src="<?php echo $menuLogo;?>" class="d-inline-block align-middle" height="16" alt="<?php echo xlt('Main Menu Logo');?>">
-                </a>
+            <a class="navbar-brand mt-2 mt-xl-0 mr-3 mr-xl-2" href="https://www.open-emr.org" title="OpenEMR <?php echo xla("Website"); ?>" rel="noopener" target="_blank">
+                <?php echo file_get_contents($GLOBALS['images_static_absolute'] . "/menu-logo.svg"); ?>
+            </a>
             <?php endif; ?>
             <button class="navbar-toggler mr-auto" type="button" data-toggle="collapse" data-target="#mainMenu" aria-controls="mainMenu" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="mainMenu" data-bind="template: {name: 'menu-template', data: application_data}"></div>
-            <?php if ($GLOBALS['search_any_patient'] != 'none') : ?>
             <form name="frm_search_globals" class="form-inline">
                 <div class="input-group">
                     <input type="text" id="anySearchBox" class="form-control-sm <?php echo $any_search_class ?> form-control" name="anySearchBox" placeholder="<?php echo xla("Search by any demographics") ?>" autocomplete="off">
@@ -439,7 +431,6 @@ if (!empty($GLOBALS['kernel']->getEventDispatcher())) {
                     </div>
                 </div>
             </form>
-            <?php endif; ?>
             <span id="userData" data-bind="template: {name: 'user-data-template', data: application_data}"></span>
         </nav>
         <div id="attendantData" class="body_title acck" data-bind="template: {name: app_view_model.attendant_template_type, data: application_data}"></div>
@@ -473,11 +464,9 @@ if (!empty($GLOBALS['kernel']->getEventDispatcher())) {
             }
         });
         document.addEventListener('touchstart', {}); //specifically added for iOS devices, especially in iframes
-        <?php if (($_ENV['OPENEMR__NO_BACKGROUND_TASKS'] ?? 'false') !== 'true') { ?>
-            $(function () {
-                goRepeaterServices();
-            });
-        <?php } ?>
+        $(function() {
+            goRepeaterServices();
+        });
     </script>
     <?php
     // fire off an event here

@@ -81,4 +81,6 @@ function ttMouseOut() {
  ttClearTimer();
  var ttobject = document.getElementById("tooltipdiv");
  ttobject.style.visibility='hidden';
+ ttobject.style.left = '-1000px';
 }
+

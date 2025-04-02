@@ -169,7 +169,7 @@ class FHIROperationDefinitionOverload extends FHIRBackboneElement implements \Js
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (0 < count($this->parameterName)) {

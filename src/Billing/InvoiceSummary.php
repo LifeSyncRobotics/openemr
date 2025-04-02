@@ -250,7 +250,7 @@ class InvoiceSummary
             $balance += $cdata['bal'];
         }
 
-        if (number_format($balance, 2) > 0) {
+        if ($balance > 0) {
             return 0;
         }
 

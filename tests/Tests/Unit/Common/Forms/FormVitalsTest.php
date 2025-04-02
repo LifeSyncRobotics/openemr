@@ -28,12 +28,6 @@ use PHPUnit\Framework\TestCase;
 
 class FormVitalsTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $GLOBALS['pid'] = 0; // should this be 0?
-    }
-
     const NOTE_UNIT_TEST = "OEUnitTest";
     const VITAL_DETAILS_COLUMN = "bps";
 

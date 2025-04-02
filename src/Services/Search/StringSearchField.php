@@ -16,16 +16,12 @@ use OpenEMR\Services\Search\SearchFieldType;
 class StringSearchField extends BasicSearchField
 {
     private const VALID_MODIFIERS = [SearchModifier::CONTAINS, SearchModifier::EXACT, SearchModifier::PREFIX, SearchModifier::MISSING, SearchModifier::NOT_EQUALS_EXACT];
-    public function __construct($field, $values, $modifier = null, $isAnd = null)
+    public function __construct($field, $values, $modifier = null, $isAnd = true)
     {
         if (array_search($modifier, self::VALID_MODIFIERS) === false) {
             $modifier = SearchModifier::PREFIX;
         }
         parent::__construct($field, SearchFieldType::STRING, $field, $values, $modifier);
-        // backwards compatability to let the isAnd parameter be overridden by the basic search
-        // prior to this check $isAnd would default to true and break UNION search values
-        if ($isAnd === true || $isAnd === false) {
-            $this->setIsAnd($isAnd);
-        }
+        $this->setIsAnd($isAnd);
     }
 }

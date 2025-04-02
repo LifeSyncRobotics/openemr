@@ -412,7 +412,7 @@ class FHIRSubstanceSpecificationRelationship extends FHIRBackboneElement impleme
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->substanceReference)) {

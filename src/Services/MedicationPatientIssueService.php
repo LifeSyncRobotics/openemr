@@ -40,7 +40,7 @@ class MedicationPatientIssueService extends BaseService
         $insert = $this->buildInsertColumns($whiteListDict);
 
         $sql = "INSERT INTO " . self::TABLE_NAME . " SET " . $insert['set'];
-        return QueryUtils::sqlInsert($sql, $insert['bind']);
+        QueryUtils::sqlStatementThrowException($sql, $insert['bind']);
     }
 
     public function updateIssue($record)
@@ -78,9 +78,9 @@ class MedicationPatientIssueService extends BaseService
 
     public function getRecordByIssueListId($list_id)
     {
-        $records = $this->search(['list_id' => new TokenSearchField('list_id', [$list_id])])->getData();
-        if (!empty($records)) {
-            return array_pop($records);
+        $records = $this->search(['list_id' => new TokenSearchField('list_id', [$list_id])]);
+        if (!empty($records->getData())) {
+            return array_pop($records->getData());
         }
         return null;
     }

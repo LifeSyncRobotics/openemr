@@ -26,7 +26,6 @@ class CcdaServiceRequestModelGenerator
 {
     private $data;
     private $createdtime;
-    private $exportwithDocuments;
 
     /**
      * @var EncounterccdadispatchTable
@@ -37,7 +36,6 @@ class CcdaServiceRequestModelGenerator
     {
         $this->encounterCCDADispatchTable = $table;
         $this->data = "";
-        $this->exportwithDocuments = $_REQUEST['with_documents'] ?? false;
     }
     public function getEncounterccdadispatchTable(): EncounterccdadispatchTable
     {
@@ -77,7 +75,7 @@ class CcdaServiceRequestModelGenerator
                     $end = date('YmdHisO', $end);
                 }
             }
-        } elseif ($document_type == 'ccd' || $document_type == 'toc') {
+        } else if ($document_type == 'ccd' || $document_type == 'toc') {
             if (empty($end)) {
                 $end = date('YmdHisO'); // current date
             }
@@ -114,7 +112,7 @@ class CcdaServiceRequestModelGenerator
         ];
     }
 
-    public function create_data($pid, $encounter, $sections, $components, $recipients, $params, $document_type, $referral_reason, ?int $send, $date_options = [])
+    public function create_data($pid, $encounter, $sections, $components, $recipients, $params, $document_type, $referral_reason, int $send = null, $date_options = [])
     {
         global $assignedEntity;
         global $representedOrganization;
@@ -215,10 +213,6 @@ class CcdaServiceRequestModelGenerator
 
         if (in_array('unstructured_document', $sections_list)) {
             $this->data .= $this->getEncounterccdadispatchTable()->getUnstructuredDocuments($pid, $encounter);
-        }
-
-        if ($this->exportwithDocuments) {
-            $this->data .= $this->getEncounterccdadispatchTable()->getDocumentsForExport($pid, $encounter);
         }
 
         /***************CCDA Body Information***************/

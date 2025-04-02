@@ -95,13 +95,7 @@ class FhirObservationLaboratoryService extends FhirServiceBase implements IPatie
             'category' => new FhirSearchParameterDefinition('category', SearchFieldType::TOKEN, ['category']),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['report_date']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('result_uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField()
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['report_date']);
     }
 
 
@@ -165,11 +159,7 @@ class FhirObservationLaboratoryService extends FhirServiceBase implements IPatie
         $observation = new FHIRObservation();
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($dataRecord['report_date'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['report_date']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $observation->setMeta($meta);
 
         $id = new FHIRId();
@@ -177,7 +167,7 @@ class FhirObservationLaboratoryService extends FhirServiceBase implements IPatie
         $observation->setId($id);
 
         if (!empty($dataRecord['report_date'])) {
-            $observation->setEffectiveDateTime(UtilsService::getLocalDateAsUTC($dataRecord['report_date']));
+            $observation->setEffectiveDateTime(gmdate('c', strtotime($dataRecord['report_date'])));
         } else {
             $observation->setEffectiveDateTime(UtilsService::createDataMissingExtension());
         }

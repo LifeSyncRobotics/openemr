@@ -176,7 +176,7 @@ function form_delete($formdir, $formid, $patient_id, $encounter_id)
 
 // Delete a specified document including its associated relations.
 //  Note the specific file is not deleted (instead flagged as deleted), since required to keep file for
-//   ONC certification purposes.
+//   ONC 2015 certification purposes.
 //
 function delete_document($document)
 {
@@ -237,10 +237,10 @@ function popup_close() {
 
                 $res = sqlStatement("SELECT * FROM forms WHERE pid = ?", array($patient));
                 while ($row = sqlFetchArray($res)) {
-                    row_delete("forms", "pid = '" . add_escape_custom($row['pid']) .
-                            "' AND form_id = '" . add_escape_custom($row['form_id']) . "'");
-                    row_delete("form_encounter", "pid = '" . add_escape_custom($row['pid']) . "'");
+                    form_delete($row['formdir'], $row['form_id'], $row['pid'], $row['encounter']);
                 }
+
+                row_delete("forms", "pid = '" . add_escape_custom($patient) . "'");
 
                 // Delete all documents for the patient.
                 $res = sqlStatement("SELECT id FROM documents WHERE foreign_id = ? AND deleted = 0", array($patient));
@@ -435,14 +435,8 @@ function popup_close() {
                     echo "let message = " . js_escape($info_msg) . ";
                     (async (message, time) => {
                     await asyncAlertMsg(message, time, 'success', 'lg');
-                    })(message, 2000)
-                    .then(res => {";
-                    // auto close on msg timeout with just enough time to show success or errors.
-                    if ($GLOBALS['sql_string_no_show_screen']) {
-                        echo "dlgclose();";
-                    }
-                    echo "});"; // close function.
-                    // any close will call below.
+                    })(message, 5000)
+                    .then(res => {});";
                     echo " opener.dlgSetCallBack('imdeleted', false);\n";
                 } else {
                     echo " dlgclose('imdeleted', false);\n";

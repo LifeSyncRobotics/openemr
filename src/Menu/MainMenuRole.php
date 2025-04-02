@@ -1,7 +1,7 @@
 <?php
 
 /**
- * MainMenuRole class. is fired in the main.php file to load the main menu.
+ * MainMenuRole class.
  *
  * @package   OpenEMR
  * @link      http://www.open-emr.org
@@ -62,12 +62,12 @@ class MainMenuRole extends MenuRole
         }
 
         $this->menuUpdateEntries($menu_parsed);
-        $updatedMenuEvent = $this->dispatcher->dispatch(new MenuEvent($menu_parsed), MenuEvent::MENU_UPDATE);
+        $updatedMenuEvent = $this->dispatcher->dispatch(MenuEvent::MENU_UPDATE, new MenuEvent($menu_parsed));
 
         $menu_restrictions = array();
         $tmp = $updatedMenuEvent->getMenu();
         $this->menuApplyRestrictions($tmp, $menu_restrictions);
-        $updatedRestrictions = $this->dispatcher->dispatch(new MenuEvent($menu_restrictions), MenuEvent::MENU_RESTRICT);
+        $updatedRestrictions = $this->dispatcher->dispatch(MenuEvent::MENU_RESTRICT, new MenuEvent($menu_restrictions));
 
         return $updatedRestrictions->getMenu();
     }

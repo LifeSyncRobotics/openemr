@@ -13,8 +13,8 @@
  */
 
 require_once(__DIR__ . "/../../globals.php");
-require_once("$srcdir/forms.inc.php");
-require_once("$srcdir/encounter.inc.php");
+require_once("$srcdir/forms.inc");
+require_once("$srcdir/encounter.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -22,58 +22,29 @@ use OpenEMR\Services\CodeTypesService;
 use OpenEMR\Services\EncounterService;
 use OpenEMR\Services\FacilityService;
 use OpenEMR\Services\ListService;
-use OpenEMR\Services\PatientService;
-use OpenEMR\Common\Uuid\UuidRegistry;
-use OpenEMR\Common\Database\QueryUtils;
-use OpenEMR\Services\PatientIssuesService;
 
 if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"])) {
     CsrfUtils::csrfNotVerified();
 }
 
 $facilityService = new FacilityService();
-$encounterService = new EncounterService();
-$patientService = new PatientService();
 
-// Get patient UUID
-/**
- * @global $pid
- */
-$patient = $patientService->findByPid($pid);
-if (empty($patient)) {
-    (new \OpenEMR\Common\Logging\SystemLogger())->errorLogCaller("Patient not found, this should never happen");
-    die("Patient not found");
-}
-$puuid = UuidRegistry::uuidToString($patient['uuid']);
-
-if ($_POST['mode'] == 'new' && ($GLOBALS['enc_service_date'] == 'hide_both' || $GLOBALS['enc_service_date'] == 'show_edit')) {
-    $date = (new DateTime())->format('Y-m-d H:i:s');
-} elseif ($_POST['mode'] == 'update' && ($GLOBALS['enc_service_date'] == 'hide_both' || $GLOBALS['enc_service_date'] == 'show_new')) {
-    $enc_from_id = sqlQuery("SELECT `encounter` FROM `form_encounter` WHERE `id` = ?", [intval($_POST['id'])]);
-    $enc = $encounterService->getEncounterById($enc_from_id['encounter']);
-    $enc_data = $enc->getData();
-    $date = $enc_data[0]['date'];
-} else {
-    $date = isset($_POST['form_date']) ? DateTimeToYYYYMMDDHHMMSS($_POST['form_date']) : null;
-}
-$defaultPosCode = $encounterService->getPosCode($_POST['facility_id']);
+$date = isset($_POST['form_date']) ? DateTimeToYYYYMMDDHHMMSS($_POST['form_date']) : null;
 $onset_date = isset($_POST['form_onset_date']) ? DateTimeToYYYYMMDDHHMMSS($_POST['form_onset_date']) : null;
 $sensitivity = $_POST['form_sensitivity'] ?? null;
-$pc_catid = $_POST['pc_catid'] ?? '';
+$pc_catid = $_POST['pc_catid'] ?? null;
 $facility_id = $_POST['facility_id'] ?? null;
 $billing_facility = $_POST['billing_facility'] ?? '';
 $reason = $_POST['reason'] ?? null;
 $mode = $_POST['mode'] ?? null;
 $referral_source = $_POST['form_referral_source'] ?? null;
-$class_code = $_POST['class_code'] ?? '';
-$pos_code = (empty($_POST['pos_code'])) ? $defaultPosCode : $_POST['pos_code'];
-$in_collection = $_POST['in_collection'] ?? null;
+$class_code = $_POST['class_code'] ?? null;
+$pos_code = $_POST['pos_code'] ?? null;
 $parent_enc_id = $_POST['parent_enc_id'] ?? null;
 $encounter_provider = $_POST['provider_id'] ?? null;
 $referring_provider_id = $_POST['referring_provider_id'] ?? null;
 //save therapy group if exist in external_id column
 $external_id = isset($_POST['form_gid']) ? $_POST['form_gid'] : '';
-$ordering_provider_id = $_POST['ordering_provider_id'] ?? null;
 
 $discharge_disposition = $_POST['discharge_disposition'] ?? null;
 $discharge_disposition = $discharge_disposition != '_blank' ? $discharge_disposition : null;
@@ -105,55 +76,117 @@ if (!empty($encounter_type)) {
         $encounter_type_description = $option['title'];
     }
 }
-// Prepare encounter data
-$encounterData = [
-    'date' => $date,
-    'onset_date' => $onset_date,
-    'sensitivity' => $sensitivity,
-    'pc_catid' => $pc_catid,
-    'facility_id' => $facility_id,
-    'facility' => $facility,
-    'billing_facility' => $billing_facility,
-    'reason' => $reason,
-    'referral_source' => $referral_source,
-    'class_code' => $class_code,
-    'pos_code' => $pos_code,
-    'in_collection' => $in_collection,
-    'provider_id' => $provider_id,
-    'referring_provider_id' => $referring_provider_id,
-    'ordering_provider_id' => $ordering_provider_id,
-    'discharge_disposition' => $discharge_disposition,
-    'external_id' => $external_id,
-    'encounter_type_code' => $encounter_type_code,
-    'encounter_type_description' => $encounter_type_description,
-    'pid' => $pid,
-    'parent_encounter_id' => $parent_enc_id,
-    'user' => $_SESSION['authUser'],
-    'group' => $_SESSION['authProvider'],
-];
 
 if ($mode == 'new') {
-    $result = $encounterService->insertEncounter($puuid, $encounterData);
-    if (!$result->isValid()) {
-        // Handle errors
-        die("Error creating encounter: " . var_export($result->getValidationMessages(), true));
-    }
-    $encounter = $result->getData()[0]['eid'];
+    $encounter = generate_id();
+    addForm(
+        $encounter,
+        "New Patient Encounter",
+        sqlInsert(
+            "INSERT INTO form_encounter SET
+                date = ?,
+                onset_date = ?,
+                reason = ?,
+                facility = ?,
+                pc_catid = ?,
+                facility_id = ?,
+                billing_facility = ?,
+                sensitivity = ?,
+                referral_source = ?,
+                pid = ?,
+                encounter = ?,
+                pos_code = ?,
+                class_code = ?,
+                external_id = ?,
+                parent_encounter_id = ?,
+                provider_id = ?,
+                discharge_disposition = ?,
+                referring_provider_id = ?,
+                encounter_type_code = ?,
+                encounter_type_description = ?",
+            [
+                $date,
+                $onset_date,
+                $reason,
+                $facility,
+                $pc_catid,
+                $facility_id,
+                $billing_facility,
+                $sensitivity,
+                $referral_source,
+                $pid,
+                $encounter,
+                $pos_code,
+                $class_code,
+                $external_id,
+                $parent_enc_id,
+                $provider_id,
+                $discharge_disposition,
+                $referring_provider_id,
+                $encounter_type_code,
+                $encounter_type_description
+            ]
+        ),
+        "newpatient",
+        $pid,
+        $userauthorized,
+        $date
+    );
 } elseif ($mode == 'update') {
     $id = $_POST["id"];
-    // Get encounter UUID
-    $encResult = sqlQuery("SELECT uuid FROM form_encounter WHERE id = ?", array($id));
-    if (empty($encResult)) {
-        die("Encounter not found");
+    $result = sqlQuery("SELECT encounter, sensitivity FROM form_encounter WHERE id = ?", array($id));
+    if ($result['sensitivity'] && !AclMain::aclCheckCore('sensitivities', $result['sensitivity'])) {
+        die(xlt("You are not authorized to see this encounter."));
     }
-    $euuid = UuidRegistry::uuidToString($encResult['uuid']);
 
-    $result = $encounterService->updateEncounter($puuid, $euuid, $encounterData);
-    if (!$result->isValid()) {
-        // Handle errors
-        die("Error updating encounter: " . var_export($result->getValidationMessages(), true));
+    $encounter = $result['encounter'];
+    // See view.php to allow or disallow updates of the encounter date.
+    $datepart = "";
+    $sqlBindArray = array();
+    if (AclMain::aclCheckCore('encounters', 'date_a')) {
+        $datepart = "date = ?, ";
+        $sqlBindArray[] = $date;
     }
-    $encounter = $result->getData()[0]['eid'];
+    array_push(
+        $sqlBindArray,
+        $onset_date,
+        $provider_id,
+        $reason,
+        $facility,
+        $pc_catid,
+        $facility_id,
+        $billing_facility,
+        $sensitivity,
+        $referral_source,
+        $class_code,
+        $pos_code,
+        $discharge_disposition,
+        $referring_provider_id,
+        $encounter_type_code,
+        $encounter_type_description,
+        $id
+    );
+    sqlStatement(
+        "UPDATE form_encounter SET
+            $datepart
+            onset_date = ?,
+            provider_id = ?,
+            reason = ?,
+            facility = ?,
+            pc_catid = ?,
+            facility_id = ?,
+            billing_facility = ?,
+            sensitivity = ?,
+            referral_source = ?,
+            class_code = ?,
+            pos_code = ?,
+            discharge_disposition = ?,
+            referring_provider_id = ?,
+            encounter_type_code = ?,
+            encounter_type_description = ?
+            WHERE id = ?",
+        $sqlBindArray
+    );
 } else {
     die("Unknown mode '" . text($mode) . "'");
 }
@@ -161,9 +194,14 @@ if ($mode == 'new') {
 setencounter($encounter);
 
 // Update the list of issues associated with this encounter.
-// always delete the issues for this encounter
-$patientIssueService = new PatientIssuesService();
-$patientIssueService->replaceIssuesForEncounter($pid, $encounter, $_POST['issues'] ?? []);
+if (!empty($_POST['issues']) && is_array($_POST['issues'])) {
+    sqlStatement("DELETE FROM issue_encounter WHERE " .
+        "pid = ? AND encounter = ?", array($pid, $encounter));
+    foreach ($_POST['issues'] as $issue) {
+        $query = "INSERT INTO issue_encounter ( pid, list_id, encounter ) VALUES (?,?,?)";
+        sqlStatement($query, array($pid, $issue, $encounter));
+    }
+}
 
 $result4 = sqlStatement("SELECT fe.encounter,fe.date,openemr_postcalendar_categories.pc_catname FROM form_encounter AS fe " .
     " left join openemr_postcalendar_categories on fe.pc_catid=openemr_postcalendar_categories.pc_catid  WHERE fe.pid = ? order by fe.date desc", array($pid));

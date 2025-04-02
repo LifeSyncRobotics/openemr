@@ -132,7 +132,7 @@ class FHIRAllergyIntoleranceCriticality extends FHIRElement implements \JsonSeri
     /**
      * @return mixed
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         return $this->value;
     }

@@ -12,15 +12,15 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/calendar.inc.php");
+require_once("$srcdir/calendar.inc");
 require_once("$srcdir/options.inc.php");
+require_once("$srcdir/erx_javascript.inc.php");
 
 use OpenEMR\Common\Acl\AclExtended;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Core\Header;
-use OpenEMR\Events\User\UserEditRenderEvent;
 use OpenEMR\Menu\MainMenuRole;
 use OpenEMR\Menu\PatientMenuRole;
 use OpenEMR\Services\FacilityService;
@@ -39,7 +39,7 @@ $alertmsg = '';
 <html>
 <head>
 
-<?php Header::setupHeader(['common','opener', 'erx']); ?>
+<?php Header::setupHeader(['common','opener']); ?>
 
 <script src="checkpwd_validation.js"></script>
 
@@ -116,12 +116,6 @@ function submitform() {
             }
         }
     } //secure_pwd if ends here
-
-    // Valiate Google email (if provided)
-    if(document.new_user.google_signin_email.value != "" && !isValidEmail(document.new_user.google_signin_email.value)) {
-        alert(<?php echo xlj('Google email provided is invalid/not properly formatted (e.g. first.last@gmail.com)') ?>);
-        return false;
-    }
 
     <?php if ($GLOBALS['erx_enable']) { ?>
    alertMsg='';
@@ -230,31 +224,9 @@ function authorized_clicked() {
 <span class="font-weight-bold">&nbsp;</span>
 <table class="border-0" cellpadding='0' cellspacing='0' style="width:600px;">
 <tr>
-    <td colspan="4">
-        <?php
-        // TODO: we eventually want to move to a responsive layout and not use tables here.  So we are going to give
-        // module writers the ability to inject divs, tables, or whatever inside the cell instead of having them
-        // generate additional rows / table columns which locks us into that format.
-        $preRenderEvent = new UserEditRenderEvent('usergroup_admin_add');
-        $GLOBALS['kernel']->getEventDispatcher()->dispatch($preRenderEvent, UserEditRenderEvent::EVENT_USER_EDIT_RENDER_BEFORE);
-        ?>
-    </td>
-</tr>
-<tr>
 <td style="width:150px;"><span class="text"><?php echo xlt('Username'); ?>: </span></td><td style="width:220px;"><input type="text" name="rumple" style="width:120px;" class="form-control"><span class="mandatory"></span></td>
 <?php if (empty($GLOBALS['gbl_ldap_enabled']) || empty($GLOBALS['gbl_ldap_exclusions'])) { ?>
-<td style="width:150px;">
-    <span class="text"><?php echo xlt('Password'); ?>:</span>
-</td>
-<td style="width:150px;">
-    <input type="password" style="width:120px;" name="stiltskin" id="stiltskin" class="form-control" onkeyup="checkPasswordStrength(this);">
-    <span class="mandatory"></span>
-    <!-- Password Strength Meter -->
-    <div id="password_strength_meter" class="progress mt-2">
-        <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-    </div>
-    <div id="password_strength_text"></div>
-</td>
+<td style="width:150px;"><span class="text"><?php echo xlt('Password'); ?>: </span></td><td style="width:250px;"><input type="password" style="width:120px;" name="stiltskin" class="form-control"><span class="mandatory"></span></td>
 <?php } else { ?>
         <td><input type="hidden" value="124" name="stiltskin" /></td>
 <?php } ?>
@@ -295,10 +267,6 @@ foreach ($result2 as $iter) {
 </tr>
 <tr>
 <td><span class="text"><?php echo xlt('Last Name'); ?>: </span></td><td><input type="text" name='lname' id='lname' style="width:120px;" class="form-control"><span class="mandatory"></span></td>
-<td><span class=text><?php echo xlt('Suffix'); ?>: </span></td><td><input type="text" name=suffix id=suffix style="width:150px;"  class="form-control"></td>
-</tr>
-<tr>
-<td><span class=text><?php echo xlt('Valedictory'); ?>: </span></td><td><input type="text" name=valedictory id=valedictory style="width:150px;"  class="form-control"></td>
 <td><span class="text"><?php echo xlt('Default Facility'); ?>: </span></td>
 <td>
 <select style="width:120px;" name=facility_id class="form-control">
@@ -450,7 +418,7 @@ foreach (array(1 => xl('None{{Authorization}}'), 2 => xl('Only Mine'), 3 => xl('
     if ($fres) {
         while ($frow = sqlFetchArray($fres)) {
             // Get the warehouses that are linked to this user and facility.
-            $whids = getUserFacWH($user_id, $frow['id']); // from calendar.inc.php
+            $whids = getUserFacWH($user_id, $frow['id']); // from calendar.inc
             // Generate an option for just the facility with no warehouse restriction.
             echo "    <option";
             if (empty($whids) && in_array($frow['id'], $ufid)) {
@@ -527,17 +495,6 @@ foreach ($list_acl_groups as $value) {
         </td>
         <td></td>
     </tr>
-    <tr>
-        <td colspan="4">
-            <?php
-            // TODO: we eventually want to move to a responsive layout and not use tables here.  So we are going to give
-            // module writers the ability to inject divs, tables, or whatever inside the cell instead of having them
-            // generate additional rows / table columns which locks us into that format.
-            $preRenderEvent = new UserEditRenderEvent('usergroup_admin_add.php');
-            $GLOBALS['kernel']->getEventDispatcher()->dispatch($preRenderEvent, UserEditRenderEvent::EVENT_USER_EDIT_RENDER_AFTER);
-            ?>
-        </td>
-    </tr>
   <tr height="25"><td colspan="4">&nbsp;</td></tr>
 
 </table>
@@ -581,6 +538,7 @@ foreach ($result as $iter) {
 </td>
 
 </tr>
+
 <tr<?php echo ($GLOBALS['disable_non_default_groups']) ? " style='display:none'" : ""; ?>>
 
 <td valign='top'>
@@ -662,7 +620,6 @@ $(function () {
 
 });
 </script>
-
 <table>
 
 </table>

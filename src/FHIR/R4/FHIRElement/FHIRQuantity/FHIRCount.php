@@ -106,7 +106,7 @@ class FHIRCount extends FHIRQuantity implements \JsonSerializable
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         return $json;

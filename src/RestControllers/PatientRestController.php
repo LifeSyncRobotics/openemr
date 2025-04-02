@@ -14,11 +14,10 @@ namespace OpenEMR\RestControllers;
 
 use OpenEMR\RestControllers\RestControllerHelper;
 use OpenEMR\Services\PatientService;
-use OpenEMR\Services\Search\SearchQueryConfig;
 
 class PatientRestController
 {
-    private PatientService $patientService;
+    private $patientService;
 
     /**
      * White list of patient search fields
@@ -87,7 +86,7 @@ class PatientRestController
     /**
      * Returns patient resources which match an optional search criteria.
      */
-    public function getAll($search = array(), SearchQueryConfig $config)
+    public function getAll($search = array())
     {
         $validSearchFields = array_filter(
             $search,
@@ -96,7 +95,8 @@ class PatientRestController
             },
             ARRAY_FILTER_USE_KEY
         );
-        $processingResult = $this->patientService->getAll($validSearchFields, true, null, $config);
+
+        $processingResult = $this->patientService->getAll($validSearchFields);
         return RestControllerHelper::handleProcessingResult($processingResult, 200, true);
     }
 }

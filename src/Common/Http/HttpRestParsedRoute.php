@@ -56,8 +56,6 @@ class HttpRestParsedRoute
      */
     private $requestRoute;
 
-    private $requestMethod;
-
     public function __construct($requestMethod, $requestRoute, $routeDefinition)
     {
         $this->routeDefinition = $routeDefinition;
@@ -184,7 +182,7 @@ class HttpRestParsedRoute
         // standard api allows for nesting of resources so we have to handle the other possibilities there.
         if ($apiType === 'fhir') {
             $this->resource = $parts[2] ?? null;
-        } elseif (!empty($finalArg) && !\in_array($finalArg, ['portal', 'api'])) {
+        } else if (!empty($finalArg) && !\in_array($finalArg, ['portal', 'api'])) {
             $this->resource = $finalArg;
         }
 

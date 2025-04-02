@@ -76,7 +76,6 @@ class ImmunizationService extends BaseService
                 education_date,
                 note,
                 create_date,
-                update_date,
                 amount_administered,
                 amount_administered_unit,
                 expiration_date,
@@ -93,7 +92,7 @@ class ImmunizationService extends BaseService
                 providers.provider_uuid,
                 providers.provider_npi,
                 providers.provider_username,
-
+                
                 IF(
                     IF(
                         information_source = 'new_immunization_record' AND
@@ -134,7 +133,7 @@ class ImmunizationService extends BaseService
                            notes AS refusal_reason_cdc_nip_code,
                            codes AS refusal_reason_codes,
                            title AS refusal_reason_description
-                   FROM list_options
+                   FROM list_options 
                    WHERE list_id = 'immunization_refusal_reason'
                ) refusal_reasons ON immunizations.refusal_reason = refusal_reasons.refusal_reason_id";
 
@@ -203,9 +202,9 @@ class ImmunizationService extends BaseService
 
         // override puuid, this replaces anything in search if it is already specified.
         if (isset($puuidBind)) {
-            $newSearch['puuid'] = new TokenSearchField('puuid', $puuidBind, true);
+            $search['puuid'] = new TokenSearchField('puuid', $puuidBind, true);
         }
-        return $this->search($newSearch, $isAndCondition);
+        return $this->search($search, $isAndCondition);
     }
 
     /**

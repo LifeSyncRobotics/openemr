@@ -11,7 +11,7 @@
  */
 
 require_once(dirname(__FILE__) . '/../../globals.php');
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 function prior_auth_report($pid, $encounter, $cols, $id)
 {

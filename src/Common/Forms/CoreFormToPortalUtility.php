@@ -23,10 +23,6 @@ use OpenEMR\Services\DocumentTemplates\DocumentTemplateService;
 
 class CoreFormToPortalUtility
 {
-    /**
-     * @param array|null $get
-     * @return bool
-     */
     public static function isPatientPortalSession(?array $get): bool
     {
         if (isset($get['isPortal']) && (int)$get['isPortal'] !== 0) {
@@ -46,10 +42,6 @@ class CoreFormToPortalUtility
         }
     }
 
-    /**
-     * @param array|null $get
-     * @return bool
-     */
     public static function isPatientPortalOther(?array $get): bool
     {
         // $_GET['formOrigin']; not set is from core, 0 is from portal, 1 is from portal module, 2 is from portal dashboard
@@ -60,13 +52,6 @@ class CoreFormToPortalUtility
         }
     }
 
-    /**
-     * @param bool   $patientPortalSession
-     * @param int    $formid
-     * @param string $formdir
-     * @param int    $patientId
-     * @return void
-     */
     public static function confirmFormBootstrapPatient(bool $patientPortalSession, int $formid, string $formdir, int $patientId): void
     {
         if ($patientPortalSession) {
@@ -79,16 +64,6 @@ class CoreFormToPortalUtility
         }
     }
 
-    /**
-     * Note that when submit is fired from javascript the onsubmit event doesn't fire.
-     * So if validation needs to be called, call from message event or otherwise.
-     *
-     * @param bool     $patientPortalSession
-     * @param bool     $patientPortalOther
-     * @param string   $mode
-     * @param int|null $formid
-     * @return string
-     */
     public static function javascriptSupportPortal(bool $patientPortalSession, bool $patientPortalOther, string $mode, ?int $formid): string
     {
         $ret = '';
@@ -116,10 +91,6 @@ class CoreFormToPortalUtility
         return $ret;
     }
 
-    /**
-     * @param int $formid
-     * @return string
-     */
     public static function formPatientPortalPostSave(int $formid): string
     {
         $ret = "<html><head><script>";
@@ -128,26 +99,6 @@ class CoreFormToPortalUtility
         return $ret;
     }
 
-    /**
-     * @param int $formid
-     * @return string
-     */
-    public static function formQuestionnairePortalPostSave(int $formid, $qId = '', $qrId = '', $encounter = 0): string
-    {
-        $ret = "<html><head><script>";
-        $ret .= "parent.postMessage({formid:" . js_escape($formid) .
-            ",questionnaireId:" . js_escape($qId) .
-            ",responseId:" . js_escape($qrId) .
-            ",formEncounter:" . js_escape($encounter) .
-            "}, window.location.origin);";
-        $ret .= "</script></head><body></body></html>";
-        return $ret;
-    }
-
-    /**
-     * @param int $id
-     * @return void
-     */
     public static function insertPatientPortalTemplate(int $id): void
     {
         $infoNewRegisteredForm = sqlQuery("SELECT `name`, `directory` FROM `registry` WHERE `id` = ?", [$id]);
@@ -161,9 +112,6 @@ class CoreFormToPortalUtility
         }
     }
 
-    /**
-     * @return array
-     */
     public static function getListPortalCompliantEncounterForms(): array
     {
         // first get list of form directory names that are patient portal compliant

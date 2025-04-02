@@ -8,22 +8,19 @@
  * @author    Rod Roark <rod@sunsetsystems.com>
  * @author    Terry Hill <terry@lillysystems.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
- * @author    Stephen Waite <stephen.waite@cmsvt.com>
  * @copyright Copyright (c) 2006-2016 Rod Roark <rod@sunsetsystems.com>
  * @copyright Copyright (c) 2015-2016 Terry Hill <terry@lillysystems.com>
  * @copyright Copyright (c) 2017-2018 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2025      Stephen Waite <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 require_once "$srcdir/options.inc.php";
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
-use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 
 if (!AclMain::aclCheckCore('acct', 'rep') && !AclMain::aclCheckCore('acct', 'rep_a')) {
@@ -47,6 +44,13 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_csvexport'])) {
     $form_details = (!empty($_POST['form_details'])) ? true : false;
 } else {
     $form_details = false;
+}
+
+function bucks($amount)
+{
+    if ($amount) {
+        return oeFormatMoney($amount);
+    }
 }
 
 function display_desc($desc)
@@ -93,7 +97,7 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
                     echo csvEscape(display_desc($category)) . ',';
                     echo csvEscape(display_desc($product))  . ',';
                     echo csvEscape($productqty)             . ',';
-                    echo csvEscape(FormatMoney::getBucks($producttotal));
+                    echo csvEscape(bucks($producttotal));
                     echo "\n";
                 }
             } else {
@@ -105,7 +109,7 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
   </td>
   <td class="detail" colspan="3">
                 <?php
-                if ($_POST['form_details'] ?? '') {
+                if ($_POST['form_details']) {
                     echo xlt('Total for') . ' ';
                 }
 
@@ -116,14 +120,14 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
   &nbsp;
   </td>
     <?php } ?>
-  <td class="text-right">
+  <td align="right">
    &nbsp;
   </td>
-  <td class="text-right">
+  <td align="right">
                 <?php echo text($productqty); ?>
   </td>
-  <td class="text-right">
-                <?php echo text(FormatMoney::getBucks($producttotal)); ?>
+  <td align="right">
+                <?php echo text(bucks($producttotal)); ?>
   </td>
  </tr>
                 <?php
@@ -146,7 +150,7 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
         <td class="detail">
          &nbsp;
         </td>
-        <td class="detail font-weight-bold" colspan="3">
+        <td class="detail" colspan="3">
                 <?php echo xlt('Total for category') . ' ';
                 echo text(display_desc($category)); ?>
   </td>
@@ -155,14 +159,14 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
    &nbsp;
   </td>
     <?php } ?>
-  <td class="text-right">
+  <td align="right">
    &nbsp;
   </td>
-  <td class="text-right font-weight-bold">
+  <td align="right">
                 <?php echo text($catqty); ?>
   </td>
-  <td class="text-right font-weight-bold">
-                <?php echo text(FormatMoney::getBucks($cattotal)); ?>
+  <td align="right">
+                <?php echo text(bucks($cattotal)); ?>
   </td>
  </tr>
                 <?php
@@ -194,7 +198,7 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
 
            // echo '"' . display_desc($invnumber) . '",';
             echo csvEscape(display_desc($qty)) . ',';
-            echo csvEscape(FormatMoney::getBucks($rowamount));
+            echo csvEscape(bucks($rowamount));
             echo "\n";
         } else {
             ?>
@@ -223,7 +227,7 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
         <?php } ?>
   <td class="detail">
             <?php if ($GLOBALS['sales_report_invoice'] == 0 || $GLOBALS['sales_report_invoice'] == 2) { ?>
-   <a href='../patient_file/pos_checkout.php?ptid=<?php echo attr_url($patient_id); ?>&enc=<?php echo attr_url($encounter_id); ?>' target='_blank' rel='noopener'>
+   <a href='../patient_file/pos_checkout.php?ptid=<?php echo attr_url($patient_id); ?>&enc=<?php echo attr_url($encounter_id); ?>'>
                 <?php echo text($invnumber); ?></a>
     <?php }
 
@@ -237,11 +241,11 @@ function thisLineItem($patient_id, $encounter_id, $rowcat, $description, $transd
    &nbsp;
   </td>
         <?php } ?>
-      <td class="text-right">
+      <td align="right">
             <?php echo text($qty); ?>
       </td>
-      <td class="text-right">
-            <?php echo text(FormatMoney::getBucks($rowamount)); ?>
+      <td align="right">
+            <?php echo text(bucks($rowamount)); ?>
       </td>
      </tr>
             <?php
@@ -517,10 +521,10 @@ if (!empty($_POST['form_csvexport'])) {
         }
         ?>
   </th>
-  <th scope="col" class="text-right">
+  <th align="right">
         <?php echo xlt('Qty'); ?>
   </th>
-  <th scope="col" class="text-right">
+  <th align="right">
         <?php echo xlt('Amount'); ?>
   </th>
  </thead>
@@ -575,7 +579,7 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_csvexport'])) {
             $row['title'],
             $row['code'] . ' ' . $row['code_text'],
             substr($row['date'], 0, 10),
-            $row['units'] ?? 1,
+            $row['units'],
             $row['fee'],
             $row['invoice_refno']
         );
@@ -623,7 +627,7 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_csvexport'])) {
         if (! $_POST['form_details']) {
             echo csvEscape(display_desc($product)) . ',';
             echo csvEscape($productqty)            . ',';
-            echo csvEscape(FormatMoney::getBucks($producttotal));
+            echo csvEscape(bucks($producttotal));
             echo "\n";
         }
     } else {
@@ -647,14 +651,14 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_csvexport'])) {
    &nbsp;
   </td>
     <?php } ?>
-  <td class="text-right">
+  <td align="right">
    &nbsp;
   </td>
-  <td class="text-right">
+  <td align="right">
         <?php echo text($productqty); ?>
   </td>
-  <td class="text-right">
-        <?php echo text(FormatMoney::getBucks($producttotal)); ?>
+  <td align="right">
+        <?php echo text(bucks($producttotal)); ?>
   </td>
  </tr>
 
@@ -662,44 +666,44 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_csvexport'])) {
   <td class="detail">
    &nbsp;
   </td>
-  <td class="detail font-weight-bold" colspan="3">
+  <td class="detail" colspan="3"><strong>
         <?php echo xlt('Total for category') . ' ';
         echo text(display_desc($category)); ?>
-  </td>
+  </strong></td>
         <?php if ($GLOBALS['sales_report_invoice'] == 0 || $GLOBALS['sales_report_invoice'] == 2) {?>
   <td>
    &nbsp;
   </td>
     <?php } ?>
-  <td class="text-right">
+  <td align="right">
    &nbsp;
   </td>
-  <td class="text-right font-weight-bold">
+  <td align="right"><strong>
         <?php echo text($catqty); ?>
-  </td>
-  <td class="text-right font-weight-bold">
-        <?php echo text(FormatMoney::getBucks($cattotal)); ?>
-  </td>
+  </strong></td>
+  <td align="right"><strong>
+        <?php echo text(bucks($cattotal)); ?>
+  </strong></td>
  </tr>
 
  <tr>
-  <td class="detail font-weight-bold" colspan="4">
+  <td class="detail" colspan="4"><strong>
         <?php echo xlt('Grand Total'); ?>
-  </td>
+  </strong></td>
         <?php if ($GLOBALS['sales_report_invoice'] == 0 || $GLOBALS['sales_report_invoice'] == 2) {?>
   <td>
    &nbsp;
   </td>
     <?php } ?>
-  <td class="text-right">
+  <td align="right">
    &nbsp;
   </td>
-  <td class="text-right font-weight-bold">
+  <td align="right"><strong>
         <?php echo text($grandqty); ?>
-  </td>
-  <td class="text-right font-weight-bold">
-        <?php echo text(FormatMoney::getBucks($grandtotal)); ?>
-  </td>
+  </strong></td>
+  <td align="right"><strong>
+        <?php echo text(bucks($grandtotal)); ?>
+  </strong></td>
  </tr>
         <?php $report_from_date = oeFormatShortDate($form_from_date)  ;
         $report_to_date = oeFormatShortDate($form_to_date)  ;

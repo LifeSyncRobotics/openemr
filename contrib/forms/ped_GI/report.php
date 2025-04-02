@@ -2,8 +2,8 @@
 
 //
 
-require_once(__DIR__ . "/../../globals.php");
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once("../../globals.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 function ped_GI_report($pid, $encounter, $cols, $id)
 {

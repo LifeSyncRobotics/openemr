@@ -224,26 +224,18 @@ var providers = exports.providers = {
     dataKey: "data.demographics"
 };
 
-var participants = (exports.participant = [
-    {
-        key: "participant",
-        attributes: {
-            typeCode: leafLevel.inputProperty("typeCode"),
-        },
-        // TODO: check if this middle element can be removed
-        //       if remove the middle element, then remove the comments at line 236 and
-        //       244 (since will no longer need to bypass the no-sparse-arrays lint rule)
-        /* eslint-disable no-sparse-arrays */
-        content: [
-            [fieldLevel.effectiveTime, required, key("time")],
-            ,
-            // associatedEntity
-            fieldLevel.associatedEntity,
-        ],
-        /* eslint-enable no-sparse-arrays */
-        dataKey: "meta.ccda_header.participants",
-    },
-]);
+var participants = exports.participant = [{
+    key: "participant"
+    , attributes: {
+        typeCode: leafLevel.inputProperty("typeCode")
+    }
+    , content: [
+        [fieldLevel.effectiveTime, required, key("time")],
+        // associatedEntity
+        , fieldLevel.associatedEntity
+    ]
+    , dataKey: "meta.ccda_header.participants"
+}];
 
 var attributed_provider = exports.attributed_provider = {
     key: "providerOrganization",

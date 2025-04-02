@@ -11,7 +11,7 @@
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2004 Nikolai Vitsyn
  * @copyright Copyright (c) 2008 cfapress <cfapress>
- * @copyright Copyright (c) 2017-2023 Robert Down <robertdown@live.com>
+ * @copyright Copyright (c) 2017-2022 Robert Down <robertdown@live.com>
  * @copyright Copyright (c) 2017-2019 Brady Miller <brady.g.miller@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
@@ -28,7 +28,7 @@ $returnurl = 'encounter_top.php';
 </head>
 <body class="body_top">
 <?php
-require_once("$srcdir/api.inc.php");
+include_once("$srcdir/api.inc");
 $obj = formFetch("form_bronchitis", $_GET["id"]);
 ?>
 <form method=post action="<?php echo $rootdir?>/forms/bronchitis/save.php?mode=update&id=<?php echo attr_url($_GET["id"]); ?>" name="my_form">
@@ -100,7 +100,7 @@ $obj = formFetch("form_bronchitis", $_GET["id"]);
 
 <td width="130" align="right"><?php echo xlt('Appearance:'); ?>  <span class="text"></span></td>
 <td><input type="text" name="bronchitis_ops_appearance" value="<?php echo
-attr($obj["bronchitis_ops_appearance"]);?>" size="15"></td>
+stripslashes($obj["bronchitis_ops_appearance"]);?>" size="15"></td>
 </tr>
 </table>
 
@@ -301,7 +301,7 @@ attr($obj["bronchitis_ops_appearance"]);?>" size="15"></td>
                                                                            };?>><span class=text></span><br /></td>
 <td width="130" align="right"><?php echo xlt('Appearance:'); ?>  <span class="text"></span></td>
 <td><input type="text" name="bronchitis_oropharynx_appearance" value="<?php echo
-attr($obj["bronchitis_oropharynx_appearance"]);?>" size="15"></td>
+stripslashes($obj["bronchitis_oropharynx_appearance"]);?>" size="15"></td>
 </tr>
 </table>
 

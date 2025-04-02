@@ -106,9 +106,9 @@ function writeDetailLine(
 
     $dline =
     " <tr bgcolor='" . attr($bgcolor) . "'>\n" .
-    "  <td class='" . attr($class) . "'>" . (($ptname == '&nbsp;') ? '' : text($ptname)) . "</td>\n" .
-    "  <td class='" . attr($class) . "'>" . (($invnumber == '&nbsp;') ? '' : text($invnumber)) . "</td>\n" .
-    "  <td class='" . attr($class) . "'>" . (($code == '&nbsp;') ? '' : text($code)) . "</td>\n" .
+    "  <td class='" . attr($class) . "'>" . text($ptname) . "</td>\n" .
+    "  <td class='" . attr($class) . "'>" . text($invnumber) . "</td>\n" .
+    "  <td class='" . attr($class) . "'>" . text($code) . "</td>\n" .
     "  <td class='" . attr($class) . "'>" . text(oeFormatShortDate($date)) . "</td>\n" .
     "  <td class='" . attr($class) . "'>" . text($description) . "</td>\n" .
     "  <td class='" . attr($class) . "' align='right'>" . text(oeFormatMoney($amount)) . "</td>\n" .
@@ -133,7 +133,7 @@ function writeOldDetail(&$prev, $ptname, $invnumber, $dos, $code, $bgcolor)
             $description = 'Service Item';
         }
 
-        $amount = sprintf("%.2f", (floatval($ddata['chg'] ?? '')) - (floatval($ddata['pmt'] ?? '')));
+        $amount = sprintf("%.2f", (int)($ddata['chg'] ?? '') - (int)($ddata['pmt'] ?? ''));
         $invoice_total = sprintf("%.2f", $invoice_total + $amount);
         writeDetailLine(
             $bgcolor,
@@ -345,7 +345,7 @@ function era_callback(&$out)
             writeMessageLine($bgcolor, 'infdetail', rtrim($out['warnings']), true);
         }
 
-        // Simplify some claim attributes for cleaner code.
+    // Simplify some claim attributes for cleaner code.
         $service_date = parse_date(isset($out['dos']) ? $out['dos'] : $out['claim_date']);
         $check_date      = $paydate ? $paydate : parse_date($out['check_date']);
         $production_date = $paydate ? $paydate : parse_date($out['production_date']);
@@ -359,19 +359,7 @@ function era_callback(&$out)
 
         $error = $inverror;
 
-        // create array of cpts and mods for complex matching
-        $codes_arr_keys = array_keys($codes);
-        foreach ($codes_arr_keys as $key => $value) {
-            $tmp = explode(":", $value);
-            $count = count($tmp) - 1;
-            $cpt = $tmp[0];
-            $cpts[] = $cpt;
-            for ($i = 1; $i <= $count; $i++) {
-                $mods[$cpt][] = $tmp[$i] ?? null;
-            }
-        }
-
-        // This loops once for each service item in this claim.
+    // This loops once for each service item in this claim.
         foreach ($out['svc'] as $svc) {
           // Treat a modifier in the remit data as part of the procedure key.
           // This key will then make its way into SQL-Ledger.
@@ -381,26 +369,11 @@ function era_callback(&$out)
             }
 
             $prev = $codes[$codekey] ?? '';
-            // However sometimes a secondary insurance (take USAA LIFE for instance)
-            // sometimes doesn't return the modifier that was on the service item
-            // processed by the primary payer so try to deal with that
-            if (!$prev) {
-                if (!$svc['mod']) {
-                    if (in_array($svc['code'], $cpts ?? [])) {
-                        foreach ($cpts as $k => $v) {
-                            if ($v == $codekey) {
-                                $codekey = $cpt . ':' . implode(':', $mods[$v]);
-                            }
-                        }
-                    }
-                }
-                $prev = $codes[$codekey] ?? '';
-            }
             $codetype = ''; //will hold code type, if exists
 
             // This reports detail lines already on file for this service item.
             if ($prev) {
-                $codetype = $codes[$codekey]['code_type'] ?? 'none'; //store code type
+                $codetype = $codes[$codekey]['code_type']; //store code type
                 writeOldDetail($prev, $patient_name, $invnumber, $service_date, $codekey, $bgcolor);
                 // Check for sanity in amount charged.
                 $prevchg = sprintf("%.2f", $prev['chg'] + ($prev['adj'] ?? null));
@@ -413,18 +386,25 @@ function era_callback(&$out)
                     $error = true;
                 }
 
+                // Check for already-existing primary remittance activity.
+                // Removed this check because it was not allowing for copays manually
+                // entered into the invoice under a non-copay billing code.
+                /****
+            if ((sprintf("%.2f",$prev['chg']) != sprintf("%.2f",$prev['bal']) ||
+                $prev['adj'] != 0) && $primary)
+            {
+                writeMessageLine($bgcolor, 'errdetail',
+                    "This service item already has primary payments and/or adjustments!");
+                $error = true;
+            }
+                ****/
+
                 unset($codes[$codekey]);
             } else { // If the service item is not in our database...
                 // This is not an error. If we are not in error mode and not debugging,
-                // insert the service item into billing. Then display it (in green if it
+                // insert the service item into SL.  Then display it (in green if it
                 // was inserted, or in red if we are in error mode).
-                // Check the global to see if this is preferred to be an error.
-                if ($GLOBALS['add_unmatched_code_from_ins_co_era_to_billing'] ?? '') {
-                    $description = "CPT4:$codekey Added by $inslabel $production_date";
-                } else {
-                    $error = true;
-                    $description = "CPT4:$codekey returned by $inslabel $production_date";
-                }
+                $description = "CPT4:$codekey Added by $inslabel $production_date";
                 if (!$error && !$debug) {
                     SLEOB::arPostCharge(
                         $pid,
@@ -489,9 +469,7 @@ function era_callback(&$out)
                         $out['check_number'],
                         $debug,
                         '',
-                        $codetype,
-                        $date ?? null,
-                        $out['payer_claim_id']
+                        $codetype
                     );
                     $invoice_total -= $svc['paid'];
                 }
@@ -517,7 +495,7 @@ function era_callback(&$out)
             // Post and report adjustments from this ERA.  Posted adjustment reasons
             // must be 25 characters or less in order to fit on patient statements.
             foreach ($svc['adj'] as $adj) {
-                $description = ($adj['reason_code'] ?? '') . ': ' .
+                $description = $adj['reason_code'] ?? '' . ': ' .
                     BillingUtilities::CLAIM_ADJUSTMENT_REASON_CODES[$adj['reason_code'] ?? ''];
                 if ($adj['group_code'] == 'PR' || !$primary) {
                     // Group code PR is Patient Responsibility.  Enter these as zero
@@ -559,53 +537,41 @@ function era_callback(&$out)
                             $reason,
                             $debug,
                             '',
-                            $codetype,
-                            $out['payer_claim_id']
+                            $codetype
                         );
                     }
 
                     writeMessageLine($bgcolor, $class, $description . ' ' .
                     sprintf("%.2f", $adj['amount']));
-                } elseif (
-                    $svc['paid'] == 0
-                    && !(
-                        $adj['group_code'] == "CO"
-                        && (
-                            $adj['reason_code'] == '45'
-                            || $adj['reason_code'] == '59'
-                        )
-                    )
-                ) {
-                    $class = 'errdetail';
-                    $error = true;
-                } elseif (!$error && !$debug) {
-                    SLEOB::arPostAdjustment(
-                        $pid,
-                        $encounter,
-                        $InsertionId[$out['check_number']],
-                        $adj['amount'], //$InsertionId[$out['check_number']] gives the session id
-                        $codekey,
-                        substr($inslabel, 3),
-                        "Adjust code " . $adj['reason_code'],
-                        $debug,
-                        '',
-                        $codetype ?? '',
-                        $out['payer_claim_id']
-                    );
-                    $invoice_total -= $adj['amount'];
-                }
+                } else { // Other group codes for primary insurance are real adjustments.
+                    if (!$error && !$debug) {
+                        SLEOB::arPostAdjustment(
+                            $pid,
+                            $encounter,
+                            $InsertionId[$out['check_number']],
+                            $adj['amount'], //$InsertionId[$out['check_number']] gives the session id
+                            $codekey,
+                            substr($inslabel, 3),
+                            "Adjust code " . $adj['reason_code'],
+                            $debug,
+                            '',
+                            $codetype ?? ''
+                        );
+                        $invoice_total -= $adj['amount'];
+                    }
 
-                writeDetailLine(
-                    $bgcolor,
-                    $class,
-                    $patient_name,
-                    $invnumber,
-                    $codekey,
-                    $production_date,
-                    $description,
-                    0 - $adj['amount'],
-                    ($error ? '' : $invoice_total)
-                );
+                    writeDetailLine(
+                        $bgcolor,
+                        $class,
+                        $patient_name,
+                        $invnumber,
+                        $codekey,
+                        $production_date,
+                        $description,
+                        0 - $adj['amount'],
+                        ($error ? '' : $invoice_total)
+                    );
+                }
             }
         } // End of service item
 

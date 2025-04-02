@@ -43,7 +43,7 @@ class FhirAllergyIntoleranceServiceQueryTest extends TestCase
         parent::__construct($name, $data, $dataName);
 
         $baseUrl = getenv("OPENEMR_BASE_URL_API", true) ?: "https://localhost";
-        $fhirUrl =  $baseUrl . self::FHIR_BASE_URL;
+        $fhirUrl =  $baseUrl . "/apis/default/fhir/";
         $this->apiBaseURL = $fhirUrl;
     }
 

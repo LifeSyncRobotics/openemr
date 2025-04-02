@@ -17,7 +17,7 @@ namespace OpenEMR\Events\Patient\Summary\Card;
 use DomainException;
 use LogicException;
 use OpenEMR\Events\PatientDemographics\ViewEvent;
-use Symfony\Contracts\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\Event;
 
 class SectionEvent extends Event
 {
@@ -81,11 +81,8 @@ class SectionEvent extends Event
         // if (!is_int($position) || !is_null($position)) {
         //     throw new LogicException('Position parameter must be either null or an interger');
         // }
-        if ($position == null || !is_int($position)) {
-            $this->cards[] = $card;
-        } else {
-            array_splice($this->cards, $position, 0, array($card));
-        }
+
+        array_splice($this->cards, $position ?? -1, 0, array($card));
     }
 
     /**

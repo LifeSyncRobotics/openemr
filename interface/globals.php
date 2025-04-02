@@ -21,7 +21,6 @@ if ($response !== true) {
 use Dotenv\Dotenv;
 use OpenEMR\Core\Kernel;
 use OpenEMR\Core\ModulesApplication;
-use OpenEMR\Common\Logging\EventAuditLogger;
 
 // Throw error if the php openssl module is not installed.
 if (!(extension_loaded('openssl'))) {
@@ -155,7 +154,7 @@ if (empty($_SESSION['site_id']) || !empty($_GET['site'])) {
             if ((isset($_GET['auth'])) && ($_GET['auth'] == "logout")) {
                 $GLOBALS['login_screen'] = "login_screen.php";
                 $srcdir = "../library";
-                require_once("$srcdir/auth.inc.php");
+                require_once("$srcdir/auth.inc");
             }
             die("Site ID is missing from session data!");
         }
@@ -229,6 +228,7 @@ $GLOBALS['images_static_absolute'] = "$webserver_root/public/images";
 
 //Composer vendor directory, absolute to the webserver root.
 $GLOBALS['vendor_dir'] = "$webserver_root/vendor";
+$GLOBALS['fonts_dir'] = "{$web_root}/public/fonts";
 $GLOBALS['template_dir'] = $GLOBALS['fileroot'] . "/templates/";
 $GLOBALS['incdir'] = $include_root;
 // Location of the login screen file
@@ -298,7 +298,7 @@ try {
 }
 
 // This will open the openemr mysql connection.
-require_once(__DIR__ . "/../library/sql.inc.php");
+require_once(__DIR__ . "/../library/sql.inc");
 
 // Include the version file
 require_once(__DIR__ . "/../version.php");
@@ -383,25 +383,11 @@ if (!empty($glrow)) {
             $GLOBALS['language_menu_show'][] = $gl_value;
         } elseif ($gl_name == 'css_header') {
             //Escape css file name using 'attr' for security (prevent XSS).
-            if (!file_exists($webserver_root . '/public/themes/' . attr($gl_value))) {
-                $gl_value = 'style_light.css';
-            }
             $GLOBALS[$gl_name] = $web_root . '/public/themes/' . attr($gl_value) . '?v=' . $v_js_includes;
             $GLOBALS['compact_header'] = $web_root . '/public/themes/compact_' . attr($gl_value) . '?v=' . $v_js_includes;
             $compact_header = $GLOBALS['compact_header'];
             $css_header = $GLOBALS[$gl_name];
             $temp_css_theme_name = $gl_value;
-        } elseif ($gl_name == 'portal_css_header' && $ignoreAuth_onsite_portal) {
-            // does patient have a portal theme selected?
-            $current_theme = sqlQueryNoLog(
-                "SELECT `setting_value` FROM `patient_settings` " .
-                "WHERE setting_patient = ? AND `setting_label` = ?",
-                array($_SESSION['pid'] ?? 0, 'portal_theme')
-            )['setting_value'] ?? null;
-            $gl_value = $current_theme ?? null ?: $gl_value;
-            $GLOBALS[$gl_name] = $web_root . '/public/themes/' . attr($gl_value) . '?v=' . $v_js_includes;
-            $portal_css_header = $GLOBALS[$gl_name];
-            $portal_temp_css_theme_name = $gl_value;
         } elseif ($gl_name == 'weekend_days') {
             $GLOBALS[$gl_name] = explode(',', $gl_value);
         } elseif ($gl_name == 'specific_application') {
@@ -434,29 +420,21 @@ if (!empty($glrow)) {
             $GLOBALS[$gl_name] = $gl_value;
         }
     }
-    // Set any user settings that are not also in GLOBALS.
-    // This is for modules support.
-    foreach ($gl_user as $setting) {
-        if (!array_key_exists($setting['setting_label'], $GLOBALS)) {
-            $GLOBALS[$setting['setting_label']] = $setting['setting_value'];
-        }
-    }
 
-    // Language cleanup stuff.
+  // Language cleanup stuff.
     $GLOBALS['language_menu_login'] = false;
-    if ((!empty($GLOBALS['language_menu_show']) && count($GLOBALS['language_menu_show']) > 1) || $GLOBALS['language_menu_showall']) {
+    if ((count($GLOBALS['language_menu_show']) > 1) || $GLOBALS['language_menu_showall']) {
         $GLOBALS['language_menu_login'] = true;
     }
 
-    // Added this $GLOBALS['concurrent_layout'] set to 3 in order to support legacy forms
-    // that may use this; note this global has been removed from the standard codebase.
+  // Added this $GLOBALS['concurrent_layout'] set to 3 in order to support legacy forms
+  // that may use this; note this global has been removed from the standard codebase.
     $GLOBALS['concurrent_layout'] = 3;
 
-    // Additional logic to override theme name.
-    // For RTL languages we substitute the theme name with the name of RTL-adapted CSS file.
+// Additional logic to override theme name.
+// For RTL languages we substitute the theme name with the name of RTL-adapted CSS file.
     $rtl_override = false;
-    $rtl_portal_override = false;
-    if (isset($_SESSION['language_direction']) && empty($_SESSION['patient_portal_onsite_two'])) {
+    if (isset($_SESSION['language_direction'])) {
         if (
             $_SESSION['language_direction'] == 'rtl' &&
             !strpos($GLOBALS['css_header'], 'rtl')
@@ -469,16 +447,16 @@ if (!empty($glrow)) {
         $_SESSION['language_direction'] = getLanguageDir($_SESSION['language_choice']);
         if (
             $_SESSION['language_direction'] == 'rtl' &&
-            !strpos($GLOBALS['portal_css_header'], 'rtl')
+            !strpos($GLOBALS['css_header'], 'rtl')
         ) {
             // the $css_header_value is set above
-            $rtl_portal_override = true;
+            $rtl_override = true;
         }
     } else {
         //$_SESSION['language_direction'] is not set, so will use the default language
-        $default_lang_id = sqlQueryNoLog('SELECT lang_id FROM lang_languages WHERE lang_description = ?', array($GLOBALS['language_default'] ?? ''));
+        $default_lang_id = sqlQueryNoLog('SELECT lang_id FROM lang_languages WHERE lang_description = ?', array($GLOBALS['language_default']));
 
-        if (getLanguageDir($default_lang_id['lang_id'] ?? '') === 'rtl' && !strpos($GLOBALS['css_header'], 'rtl')) {
+        if (getLanguageDir($default_lang_id['lang_id']) === 'rtl' && !strpos($GLOBALS['css_header'], 'rtl')) {
 // @todo eliminate 1 SQL query
             $rtl_override = true;
         }
@@ -503,22 +481,7 @@ if (!empty($glrow)) {
         }
     }
 
-    // change portal theme name, if the override file exists.
-    if ($rtl_portal_override) {
-        // the $css_header_value is set above
-        $new_theme = 'rtl_' . $portal_temp_css_theme_name;
-
-        // Check file existance
-        if (file_exists($webserver_root . '/public/themes/' . $new_theme)) {
-            //Escape css file name using 'attr' for security (prevent XSS).
-            $GLOBALS['portal_css_header'] = $web_root . '/public/themes/' . attr($new_theme) . '?v=' . $v_js_includes;
-            $portal_css_header = $GLOBALS['portal_css_header'];
-        } else {
-            // throw a warning if rtl'ed file does not exist.
-            error_log("Missing theme file " . errorLogEscape($webserver_root) . '/public/themes/' . errorLogEscape($new_theme));
-        }
-    }
-    unset($temp_css_theme_name, $new_theme, $rtl_override, $rtl_portal_override, $portal_temp_css_theme_name);
+    unset($temp_css_theme_name, $new_theme, $rtl_override);
     // end of RTL section
 
   //
@@ -563,7 +526,7 @@ if (empty($GLOBALS['qualified_site_addr'])) {
     $GLOBALS['qualified_site_addr'] = rtrim($GLOBALS['site_addr_oath'] . trim($GLOBALS['webroot']), "/");
 }
 
-// Need to utilize a session since library/sql.inc.php is established before there are any globals established yet.
+// Need to utilize a session since library/sql.inc is established before there are any globals established yet.
 //  This means that the first time, it will be skipped even if the global is turned on. However,
 //  after that it will then be turned on via the session.
 // Also important to note that changes to this global setting will not take effect during the same
@@ -619,30 +582,27 @@ $GLOBALS['include_de_identification'] = 0;
 // don't include the authentication module - we do this to avoid
 // include loops.
 
-// EMAIL SETTINGS
-$GLOBALS['SMTP_Auth'] = !empty($GLOBALS['SMTP_USER']);
-
 if (($ignoreAuth_onsite_portal === true) && ($GLOBALS['portal_onsite_two_enable'] == 1)) {
     $ignoreAuth = true;
 }
 
 if (!$ignoreAuth) {
-    require_once("$srcdir/auth.inc.php");
+    require_once("$srcdir/auth.inc");
 }
 
 // This is the background color to apply to form fields that are searchable.
 // Currently it is applicable only to the "Search or Add Patient" form.
 $GLOBALS['layout_search_color'] = '#ff9919';
 
+// EMAIL SETTINGS
+$SMTP_Auth = !empty($GLOBALS['SMTP_USER']);
+
 // module configurations
 // upgrade fails for versions prior to 4.2.0 since no modules table
-try {
-    $checkModulesTableExists = sqlQueryNoLog('SELECT 1 FROM `modules`', false, true);
-} catch (\Exception $ex) {
-    error_log(errorLogEscape($ex->getMessage() . $ex->getTraceAsString()));
-}
-
-if (!empty($checkModulesTableExists)) {
+// so perform this check to avoid sql error
+if (!file_exists($webserver_root . "/interface/modules/")) {
+    error_log("The modules directory does not exist thus not loading modules.");
+} else {
     $GLOBALS['baseModDir'] = "interface/modules/"; //default path of modules
     $GLOBALS['customModDir'] = "custom_modules"; //non zend modules
     $GLOBALS['zendModDir'] = "zend_modules"; //zend modules
@@ -659,10 +619,6 @@ if (!empty($checkModulesTableExists)) {
             $GLOBALS['baseModDir'],
             $GLOBALS['zendModDir']
         );
-    } catch (\OpenEMR\Common\Acl\AccessDeniedException $accessDeniedException) {
-        // this occurs when the current SCRIPT_PATH is to a module that is not currently allowed to be accessed
-        http_response_code(401);
-        error_log(errorLogEscape($accessDeniedException->getMessage() . $accessDeniedException->getTraceAsString()));
     } catch (\Exception $ex) {
         error_log(errorLogEscape($ex->getMessage() . $ex->getTraceAsString()));
         die();
@@ -722,4 +678,3 @@ if (!empty($GLOBALS['user_debug']) && ((int) $GLOBALS['user_debug'] > 1)) {
     error_reporting(error_reporting() & ~E_WARNING & ~E_NOTICE & ~E_USER_WARNING & ~E_USER_DEPRECATED);
     ini_set('display_errors', 1);
 }
-EventAuditLogger::instance()->logHttpRequest();

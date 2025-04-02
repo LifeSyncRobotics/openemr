@@ -9,15 +9,13 @@
  * @author    WMT
  * @author    Terry Hill <terry@lillysystems.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
- * @author    Stephen Waite <stephen.waite@cmsvt.com>
  * @copyright Copyright (c) 2015 Rich Genandt <rgenandt@gmail.com>
  * @copyright Copyright (c) 2017-2018 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2025 Stephen Waite <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 require_once('../globals.php');
-require_once($GLOBALS['srcdir'] . '/patient.inc.php');
+require_once($GLOBALS['srcdir'] . '/patient.inc');
 require_once($GLOBALS['srcdir'] . '/options.inc.php');
 require_once($GLOBALS['srcdir'] . '/appointments.inc.php');
 
@@ -174,7 +172,7 @@ function PrintEncFooter()
     echo "<td class='detail text-right'>" . text(oeFormatMoney($enc_bal)) . "</td>";
     echo "</tr>\n";
 }
-function PrintCreditDetail($detail, $pat, $unassigned = false, $effectiveInsurances)
+function PrintCreditDetail($detail, $pat, $unassigned = false)
 {
     global $enc_pmt, $total_pmt, $enc_adj, $total_adj, $enc_bal, $total_bal;
     global $bgcolor, $orow, $enc_units, $enc_chg;
@@ -233,12 +231,7 @@ function PrintCreditDetail($detail, $pat, $unassigned = false, $effectiveInsuran
         }
         $print .= "<td class='detail' colspan='2'>" .
                                       text($description) . "&nbsp;</td>";
-        if (empty($pmt['payer_type'])) {
-            $payer = xl('Patient');
-        } else {
-            $payerId = $effectiveInsurances[$pmt['payer_type'] - 1]['provider'];
-            $payer = sqlQuery("SELECT `name` FROM `insurance_companies` WHERE `id` = ?", [$payerId])['name'];
-        }
+        $payer = ($pmt['name'] == '') ? xl('Patient') : $pmt['name'];
         if ($unassigned) {
               $pmt_date = substr($pmt['post_to_date'], 0, 10);
         } else {
@@ -678,11 +671,10 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
         }
     } else {
         if (!$form_facility) {
-            $facility = $facilityService->getPrimaryBusinessEntity();
-        } else {
-            $facility = $facilityService->getById($form_facility);
+            $form_facility = '3';
         }
 
+        $facility = $facilityService->getById($form_facility);
         $patient = sqlQuery("SELECT * from patient_data WHERE pid=?", array($form_patient));
         $pat_dob = $patient['DOB'] ?? null;
         $pat_name = ($patient['fname'] ?? '') . ' ' . ($patient['lname'] ?? '');
@@ -691,19 +683,19 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
             <div class="table-responsive">
                 <table class="border-0 table" width="98%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td class="title"><?php echo text($facility['name'] ?? ''); ?></td>
+                        <td class="title"><?php echo text($facility['name']); ?></td>
                     </tr>
                     <tr>
-                        <td class="title"><?php echo text($facility['street'] ?? ''); ?></td>
+                        <td class="title"><?php echo text($facility['street']); ?></td>
                     </tr>
                     <tr>
-                        <td class="title"><?php echo text($facility['city'] ?? '') . ", " . text($facility['state'] ?? '') . " " . text($facility['postal_code'] ?? ''); ?></td>
+                        <td class="title"><?php echo text($facility['city']) . ", " . text($facility['state']) . " " . text($facility['postal_code']); ?></td>
                     </tr>
                     <tr>
-                        <td class="title"><?php echo xlt('Phone') . ': ' . text($facility['phone'] ?? ''); ?></td>
+                        <td class="title"><?php echo xlt('Phone') . ': ' . text($facility['phone']); ?></td>
                     </tr>
                     <tr>
-                        <td class="title"><?php echo xlt('Tax Id') . ': ' . text($facility['federal_ein'] ?? ''); ?></td>
+                        <td class="title"><?php echo xlt('Tax Id') . ': ' . text($facility['federal_ein']); ?></td>
                     </tr>
                     <tr><td>&nbsp;</td></tr>
                     <tr>
@@ -788,7 +780,6 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
     $hdr_printed = false;
     $prev_row = array();
     while ($erow = sqlFetchArray($res)) {
-        $effectiveInsurances = getEffectiveInsurances($pid, $erow['date']);
         $print = '';
         $csv = '';
         if ($erow['encounter'] != $prev_encounter_id) {
@@ -803,7 +794,7 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
                         );
                     }
 
-                    PrintCreditDetail($credits, $form_pid, false, $effectiveInsurances);
+                    PrintCreditDetail($credits, $form_pid);
                 }
 
                 if ($hdr_printed) {
@@ -840,8 +831,8 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
             }
             $print .= "</td>";
             $print .= "<td class='detail' colspan='2'>" . text($code_desc) . "</td>";
-            $who = ($erow['name'] == '') ? xl('Self') : xl('Insurance');
-            $bill = substr($erow['bill_date'] ?? '', 0, 10);
+            $who = ($erow['name'] == '') ? xl('Self') : $erow['name'];
+            $bill = substr($erow['bill_date'], 0, 10);
             if ($bill == '') {
                 $bill = 'unbilled';
             }
@@ -852,10 +843,10 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
             $print .= "<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>";
             $print .= "</tr>\n";
 
-            $total_units  += $erow['units'] ?? 1;
+            $total_units  += $erow['units'];
             $total_chg += $erow['fee'];
             $total_bal += $erow['fee'];
-            $enc_units  += $erow['units'] ?? 1;
+            $enc_units  += $erow['units'];
             $enc_chg += $erow['fee'];
             $enc_bal += $erow['fee'];
             $orow++;
@@ -882,7 +873,7 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
                 );
             }
 
-            PrintCreditDetail($credits, $form_pid, false, $effectiveInsurances);
+            PrintCreditDetail($credits, $form_pid);
         }
 
         if ($hdr_printed) {
@@ -898,7 +889,7 @@ if ($_REQUEST['form_refresh'] || $_REQUEST['form_csvexport']) {
             echo "<tr style='background-color: var(--white);'><td colspan='9'>&nbsp;</td></tr>\n";
         }
 
-        PrintCreditDetail($uac, $form_pid, true, $effectiveInsurances);
+        PrintCreditDetail($uac, $form_pid, true);
     }
 
     if (!$_REQUEST['form_csvexport'] && $orow) {

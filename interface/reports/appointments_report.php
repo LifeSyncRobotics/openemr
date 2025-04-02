@@ -4,10 +4,6 @@
  * This report shows upcoming appointments with filtering and
  * sorting by patient, practitioner, appointment type, and date.
  *
- * RM headings in csv file are the same as headings in the report
- * RM optionally display patients' address
- * RM choose a selection of providers from the drop down menu
- *
  * @package   OpenEMR
  * @link      http://www.open-emr.org
  * @author    Rod Roark <rod@sunsetsystems.com>
@@ -17,7 +13,7 @@
  * @copyright Copyright (c) 2005-2016 Rod Roark <rod@sunsetsystems.com>
  * @copyright Copyright (c) 2017-2018 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2019 Ron Pulcer <rspulcer_2k@yahoo.com>
- * @copyright Copyright (c) 2019-2022 Stephen Waite <stephen.waite@cmsvt.com>
+ * @copyright Copyright (c) 2019 Stephen Waite <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -26,19 +22,16 @@
 //         that does not require sessions
 $sessionAllowWrite = true;
 require_once("../globals.php");
-require_once("../../library/patient.inc.php");
+require_once("../../library/patient.inc");
 require_once "$srcdir/options.inc.php";
 require_once "$srcdir/appointments.inc.php";
 require_once "$srcdir/clinical_rules.php";
 
-use OpenEMR\Common\{
-    Acl\AclMain,
-    Csrf\CsrfUtils,
-    Twig\TwigContainer,
-};
+use OpenEMR\Common\Csrf\CsrfUtils;
+use OpenEMR\Common\Session\SessionUtil;
+use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Core\Header;
-use OpenEMR\Services\SpreadSheetService;
-
+use OpenEMR\Common\Acl\AclMain;
 
 if (!empty($_POST)) {
     if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"])) {
@@ -86,27 +79,7 @@ if (!empty($_POST['with_out_facility'])) {
     $chk_with_out_facility = true;
 }
 
-$chk_day_of_week = false;
-if (!empty($_POST['with_day_of_week'])) {
-    $chk_day_of_week = true;
-}
-
-$chk_with_canceled_appt = false;
-if (!empty($_POST['with_canceled_appt'])) {
-    $chk_with_canceled_appt = true;
-}
-
-$chk_show_address = false;
-if (!empty($_POST['show_address'])) {
-    $chk_show_address = true;
-}
-
 $provider  = $_POST['form_provider'] ?? null;
-//RM if 'all' selected set to null
-if ($provider[0] == '') {
-    $provider = null;
-}
-
 $facility  = $_POST['form_facility'] ?? null;  //(CHEMED) facility filter
 $form_orderby = (!empty($_REQUEST['form_orderby']) && getComparisonOrder($_REQUEST['form_orderby'])) ?  $_REQUEST['form_orderby'] : 'date';
 
@@ -150,10 +123,7 @@ function fetch_reminders($pid, $appt_date)
 
     return $rems;
 }
-
-// In the case of CSV export only, a download will be forced.
-if (empty($_POST['form_csvexport'])) {
-    ?>
+?>
 
 <html>
 
@@ -188,6 +158,10 @@ if (empty($_POST['form_csvexport'])) {
             dlgopen('../main/calendar/add_edit_event.php?eid=' + encodeURIComponent(eventid), 'blank', 775, 500);
         }
 
+        function refreshme() {
+            // location.reload();
+            document.forms[0].submit();
+        }
         </script>
 
         <style>
@@ -252,17 +226,14 @@ if (empty($_POST['form_csvexport'])) {
                   "authorized = 1 ORDER BY lname, fname"; //(CHEMED) facility filter
 
                 $ures = sqlStatement($query);
-                //RM select multiple providers - rather than one or all
-                echo "   <select name='form_provider[]' class='form-control'  multiple >\n";
-                echo "    <option value='' ";
-                if (!empty($_POST['form_provider']) && (in_array('', $_POST['form_provider']))) { //RM
-                        echo " selected";
-                }
-                echo ">  -- " . xlt('All') . " --\n";
+
+                echo "   <select name='form_provider' class='form-control'>\n";
+                echo "    <option value=''>-- " . xlt('All') . " --\n";
+
                 while ($urow = sqlFetchArray($ures)) {
                     $provid = $urow['id'];
                     echo "    <option value='" . attr($provid) . "'";
-                    if (!empty($_POST['form_provider']) && (in_array($provid, $_POST['form_provider']))) { //RM
+                    if (!empty($_POST['form_provider']) && ($provid == $_POST['form_provider'])) {
                         echo " selected";
                     }
 
@@ -321,12 +292,13 @@ if (empty($_POST['form_csvexport'])) {
                         </label>
                     </div>
                 </td>
+
             <tr>
                 <td></td>
                 <?php # these two selects will show entries that do not have a facility or a provider ?>
                 <td>
                     <div class="checkbox">
-                        <label><input type="checkbox" name="with_out_provider" id="with_out_provider" <?php echo ($chk_with_out_provider) ? "checked" : ""; ?>>&nbsp;<?php echo xlt('Without Provider'); ?>
+                        <label><input type="checkbox" name="with_out_provider" id="with_out_provider" <?php echo ($chk_with_out_provider) ? "checked" : ""; ?>><?php echo xlt('Without Provider'); ?>
                         </label>
                     </div>
                 </td>
@@ -334,35 +306,6 @@ if (empty($_POST['form_csvexport'])) {
                 <td>
                     <div class="checkbox">
                         <label><input type="checkbox" name="with_out_facility" id="with_out_facility" <?php echo ($chk_with_out_facility) ? "checked" : ""; ?>>&nbsp;<?php echo xlt('Without Facility'); ?>
-                        </label>
-                    </div>
-                </td>
-            </tr>
-
-            <tr>
-                <td></td>
-                <td>
-                    <div class="checkbox">
-                        <label><input type="checkbox" name="with_day_of_week" id="with_day_of_week"
-                        <?php echo ($chk_day_of_week ? ' checked' : ''); ?>>
-                        <?php echo xlt('Show Day of Week'); ?>
-                        </label>
-                    </div>
-                </td>
-
-                <td></td>
-                <td>
-                    <div class="checkbox">
-                        <label><input type="checkbox" name="with_canceled_appt" id="with_canceled_appt" <?php echo ($chk_with_canceled_appt) ? "checked" : ""; ?>>&nbsp;<?php echo xlt('With Canceled Appointments'); ?>
-                        </label>
-                    </div>
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                 <td>
-                    <div class="checkbox">
-                        <label><input type="checkbox" name="show_address" id="show_address" <?php echo ($chk_show_address) ? "checked" : ""; ?>>&nbsp;<?php echo xlt('Show Patient Address'); ?>
                         </label>
                     </div>
                 </td>
@@ -379,7 +322,7 @@ if (empty($_POST['form_csvexport'])) {
                 <td>
                     <div class="text-center">
                         <div class="btn-group" role="group">
-                            <a href='#' class='btn btn-secondary btn-save' onclick='$("#form_refresh").attr("value","true"); $("#form_csvexport").attr("value", null); $("#theform").submit();'>
+                            <a href='#' class='btn btn-secondary btn-save' onclick='$("#form_refresh").attr("value","true"); $("#theform").submit();'>
                                 <?php echo xlt('Submit'); ?>
                             </a>
                             <?php if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) { ?>
@@ -391,9 +334,6 @@ if (empty($_POST['form_csvexport'])) {
                                 </a>
                                 <a href='#' class='btn btn-secondary btn-transmit' onclick='window.open("../patient_file/addr_appt_label.php", "_blank").opener = null' onsubmit='return top.restoreSession()'>
                                     <?php echo xlt('Address Labels'); ?>
-                                </a>
-                                <a href='#' class='btn btn-secondary btn-transmit' onclick='$("#form_csvexport").attr("value","true"); $("#theform").submit();'>
-                                    <?php echo xlt('Export to CSV'); ?>
                                 </a>
                             <?php } ?>
                         </div>
@@ -407,46 +347,32 @@ if (empty($_POST['form_csvexport'])) {
 </table>
 
 </div>
-<!-- end of search parameters -->
-<?php } // end not form_csvexport
-
+<!-- end of search parameters --> <?php
 if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) {
     $showDate = ($from_date != $to_date) || (!$to_date);
-    if (empty($_POST['form_csvexport'])) {
-        ?>
+    ?>
 <div id="report_results">
 <table class='table'>
 
     <thead class='thead-light'>
         <th><a href="nojs.php" onclick="return dosort('doctor')"
-        <?php echo ($form_orderby == "doctor") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Provider'); ?>
+    <?php echo ($form_orderby == "doctor") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Provider'); ?>
         </a></th>
 
-        <th <?php echo $chk_day_of_week ? '' : 'style="display:none;"' ?>>
-            <?php
-                echo xlt('DOW');
-            ?>
-        </th>
-
         <th <?php echo $showDate ? '' : 'style="display:none;"' ?>><a href="nojs.php" onclick="return dosort('date')"
-        <?php echo ($form_orderby == "date") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Date'); ?></a>
+    <?php echo ($form_orderby == "date") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Date'); ?></a>
         </th>
 
         <th><a href="nojs.php" onclick="return dosort('time')"
-        <?php echo ($form_orderby == "time") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Time'); ?></a>
+    <?php echo ($form_orderby == "time") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Time'); ?></a>
         </th>
 
         <th><a href="nojs.php" onclick="return dosort('patient')"
-        <?php echo ($form_orderby == "patient") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Patient'); ?></a>
+    <?php echo ($form_orderby == "patient") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Patient'); ?></a>
         </th>
 
-        <?php if ($chk_show_address) {
-              echo "<th>";  echo xlt('Address') . "</a>
-        </th>";
-        } ?>
-
         <th><a href="nojs.php" onclick="return dosort('pubpid')"
-        <?php echo ($form_orderby == "pubpid") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('ID'); ?></a>
+    <?php echo ($form_orderby == "pubpid") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('ID'); ?></a>
         </th>
 
             <th><?php echo xlt('Home'); //Sorting by phone# not really useful ?></th>
@@ -454,20 +380,21 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) {
                 <th><?php echo xlt('Cell'); //Sorting by phone# not really useful ?></th>
 
         <th><a href="nojs.php" onclick="return dosort('type')"
-        <?php echo ($form_orderby == "type") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Type'); ?></a>
+    <?php echo ($form_orderby == "type") ? " style=\"color: var(--success)\"" : ""; ?>><?php echo xlt('Type'); ?></a>
         </th>
 
         <th><a href="nojs.php" onclick="return dosort('status')"
-        <?php echo ($form_orderby == "status") ? " style=\"color: var(--success)\"" : ""; ?>><?php  echo xlt('Status'); ?></a>
+            <?php echo ($form_orderby == "status") ? " style=\"color: var(--success)\"" : ""; ?>><?php  echo xlt('Status'); ?></a>
         </th>
     </thead>
     <tbody>
         <!-- added for better print-ability -->
-    <?php } // end not csv export
+    <?php
+
     $lastdocname = "";
     //Appointment Status Checking
-    $form_apptstatus = $_POST['form_apptstatus'];
-    $form_apptcat = null;
+        $form_apptstatus = $_POST['form_apptstatus'];
+        $form_apptcat = null;
     if (isset($_POST['form_apptcat'])) {
         if ($form_apptcat != "ALL") {
             $form_apptcat = intval($_POST['form_apptcat']);
@@ -494,177 +421,116 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) {
     }
 
     $appointments = sortAppointments($appointments, $form_orderby);
-    if (!empty($_POST['form_csvexport'])) {
-        // include provider as well
-        // RM generate csv file with same column headers row as used in the report itself
-        $fields = ['Provider','Date', 'Time', 'Patient', 'Address','DOB'];
-        for ($i = 0; $i < count($appointments); ++$i) {
-              $appointments[$i]["Provider"] = $appointments[$i]["ulname"] . ',' . $appointments[$i]["ufname"] . ' ' .  $appointments[$i]["umname"] ;
-              $csvfields[$i]["Provider"] = $appointments[$i]["Provider"] ;
-              $csvfields[$i]["Date"] = $appointments[$i]["pc_eventDate"] ;
-              $csvfields[$i]["Time"] = $appointments[$i]["pc_startTime"] ;
-              $csvfields[$i]["Patient"] = $appointments[$i]["fname"] . " " .  $appointments[$i]["lname"] ;
-            if ($chk_show_address) {
-                  $csvfields[$i]["Address"] = $appointments[$i]["address1"];
-                if ($appointments[$i]["address2"]) {
-                    $csvfields[$i]["Address"]  .=  ", "  .  $appointments[$i]["address2"]  ;
-                }
-            }
-              $csvfields[$i]["DOB"] = $appointments[$i]["DOB"] ;
-        }
-        $spreadsheet = new SpreadSheetService($csvfields, $fields, 'appts');
-        if (!empty($spreadsheet->buildSpreadsheet())) {
-            $spreadsheet->downloadSpreadsheet('Csv');
-        }
-    } else {
-        $pid_list = array();  // Initialize list of PIDs for Superbill option
-        $apptdate_list = array(); // same as above for the appt details
-        $totalAppointments = count($appointments);
-        $canceledAppointments = 0;
+    $pid_list = array();  // Initialize list of PIDs for Superbill option
+    $apptdate_list = array(); // same as above for the appt details
+    $totalAppontments = count($appointments);
 
-        $cntr = 1; // column labels above start at 1
-        foreach ($appointments as $appointment) {
-            if (
-                $appointment['pc_apptstatus'] == "x"
-                && empty($chk_with_canceled_appt)
-            ) {
-                $canceledAppointments++;
-                continue;
-            } elseif (
-                $appointment['pc_apptstatus'] == "x"
-                && !empty($chk_with_canceled_appt)
-            ) {
-                $canceledAppointments++;
-            }
-            $cntr++;
-            array_push($pid_list, $appointment['pid']);
-            array_push($apptdate_list, $appointment['pc_eventDate']);
-            $patient_id = $appointment['pid'];
-            $docname  = $appointment['ulname'] . ', ' . $appointment['ufname'] . ' ' . $appointment['umname'];
+    foreach ($appointments as $appointment) {
+        array_push($pid_list, $appointment['pid']);
+        array_push($apptdate_list, $appointment['pc_eventDate']);
+        $patient_id = $appointment['pid'];
+        $docname  = $appointment['ulname'] . ', ' . $appointment['ufname'] . ' ' . $appointment['umname'];
 
-            $errmsg  = "";
-            $pc_apptstatus = $appointment['pc_apptstatus'];
+        $errmsg  = "";
+        $pc_apptstatus = $appointment['pc_apptstatus'];
+
+        ?>
+
+        <tr valign='top' id='p1.<?php echo attr($patient_id) ?>' bgcolor='<?php echo attr($bgcolor ?? ''); ?>'>
+        <td class="detail">&nbsp;<?php echo ($docname == $lastdocname) ? "" : text($docname) ?>
+        </td>
+
+        <td class="detail" <?php echo $showDate ? '' : 'style="display:none;"' ?>><?php echo text(oeFormatShortDate($appointment['pc_eventDate'])) ?>
+        </td>
+
+        <td class="detail"><?php echo text(oeFormatTime($appointment['pc_startTime'])) ?>
+        </td>
+
+        <td class="detail">&nbsp;<?php echo text($appointment['fname'] . " " . $appointment['lname']) ?>
+        </td>
+
+        <td class="detail">&nbsp;<?php echo text($appointment['pubpid']) ?></td>
+
+        <td class="detail">&nbsp;<?php echo text($appointment['phone_home']) ?></td>
+
+        <td class="detail">&nbsp;<?php echo text($appointment['phone_cell']) ?></td>
+
+        <td class="detail">&nbsp;<?php echo text(xl_appt_category($appointment['pc_catname'])) ?></td>
+
+        <td class="detail">&nbsp;
+            <?php
+                //Appointment Status
+            if ($pc_apptstatus != "") {
+                echo text(getListItemTitle('apptstat', $pc_apptstatus));
+            }
             ?>
+        </td>
+    </tr>
 
-            <tr valign='top' id='p1.<?php echo attr($patient_id) ?>' bgcolor='<?php echo attr($bgcolor ?? ''); ?>'>
-            <td class="detail">&nbsp;<?php echo ($docname == $lastdocname) ? "" : text($docname) ?>
-            </td>
-
-            <td class="detail" <?php echo $chk_day_of_week ? '' : 'style="display:none;"' ?>>
-                <?php
-                    echo date('D', strtotime($appointment['pc_eventDate']));
-                ?>
-            </td>
-
-            <td class="detail" <?php echo $showDate ? '' : 'style="display:none;"' ?>>
-                <?php
-                    echo text(oeFormatShortDate($appointment['pc_eventDate']));
-                ?>
-            </td>
-
-            <td class="detail"><?php echo text(oeFormatTime($appointment['pc_startTime'])) ?>
-            </td>
-
-            <td class="detail">&nbsp;<?php echo text($appointment['fname'] . " " . $appointment['lname']) ?>
-            </td>
-
-                  <?php if ($chk_show_address) {
-                        echo " <td class='detail'>&nbsp;" ;
-                        echo text($appointment['address1']);
-                        if ($appointment['address2']) {
-                            echo text(", " . $appointment['address2']) ;
-                        }
-                        echo "</td>" ;
-                  } ?>
-
-            <td class="detail">&nbsp;<?php echo text($appointment['pubpid']) ?></td>
-
-            <td class="detail">&nbsp;<?php echo text($appointment['phone_home']) ?></td>
-
-            <td class="detail">&nbsp;<?php echo text($appointment['phone_cell']) ?></td>
-
-            <td class="detail">&nbsp;<?php echo text(xl_appt_category($appointment['pc_catname'])) ?></td>
-
-            <td class="detail">&nbsp;
-                <?php
-                    //Appointment Status
-                if ($pc_apptstatus != "") {
-                    echo text(getListItemTitle('apptstat', $pc_apptstatus));
-                }
-                ?>
-            </td>
-        </tr>
-
-                <?php
-                if ($patient_id && $incl_reminders) {
-                    // collect reminders first, so can skip it if empty
-                    $rems = fetch_reminders($patient_id, $appointment['pc_eventDate']);
-                }
-                ?>
-                <?php
-                if ($patient_id && (!empty($rems) || !empty($appointment['pc_hometext']))) { // Not display of available slot or not showing reminders and comments empty ?>
-        <tr valign='top' id='p2.<?php echo attr($patient_id) ?>' >
-            <td colspan='<?php echo $showDate ? '"3"' : '"2"' ?>' class="detail"></td>
-        <td colspan='<?php echo ($incl_reminders ? "3" : "6") ?>' class="detail" align='left'>
-                    <?php
-                    if (trim($appointment['pc_hometext'])) {
-                        echo '<strong>' . xlt('Comments') . '</strong>: ' . text($appointment['pc_hometext']);
-                    }
-
-                    if ($incl_reminders) {
-                        echo "<td class='detail' colspan='3' align='left'>";
-                        $new_line = '';
-                        foreach ($rems as $rem_due => $rem_items) {
-                            echo "$new_line<strong>$rem_due</strong>: " . attr($rem_items);
-                            $new_line = '<br />';
-                        }
-
-                        echo "</td>";
-                    }
-                    ?>
-            </td>
-        </tr>
-                    <?php
-                } // End of row 2 display
-
-                $lastdocname = $docname;
+        <?php
+        if ($patient_id && $incl_reminders) {
+            // collect reminders first, so can skip it if empty
+            $rems = fetch_reminders($patient_id, $appointment['pc_eventDate']);
         }
-    // assign the session key with the $pid_list array - note array might be empty -- handle on the printed_fee_sheet.php page.
-        $_SESSION['pidList'] = $pid_list;
-        $_SESSION['apptdateList'] = $apptdate_list;
-    } // end not form_csvexport
+        ?>
+        <?php
+        if ($patient_id && (!empty($rems) || !empty($appointment['pc_hometext']))) { // Not display of available slot or not showing reminders and comments empty ?>
+    <tr valign='top' id='p2.<?php echo attr($patient_id) ?>' >
+        <td colspan='<?php echo $showDate ? '"3"' : '"2"' ?>' class="detail"></td>
+       <td colspan='<?php echo ($incl_reminders ? "3" : "6") ?>' class="detail" align='left'>
+            <?php
+            if (trim($appointment['pc_hometext'])) {
+                echo '<strong>' . xlt('Comments') . '</strong>: ' . text($appointment['pc_hometext']);
+            }
 
-    if (empty($_POST['form_csvexport'])) { ?>
+            if ($incl_reminders) {
+                echo "<td class='detail' colspan='3' align='left'>";
+                $new_line = '';
+                foreach ($rems as $rem_due => $rem_items) {
+                    echo "$new_line<strong>$rem_due</strong>: " . attr($rem_items);
+                    $new_line = '<br />';
+                }
+
+                echo "</td>";
+            }
+            ?>
+        </td>
+    </tr>
+            <?php
+        } // End of row 2 display
+
+        $lastdocname = $docname;
+    }
+
+    // assign the session key with the $pid_list array - note array might be empty -- handle on the printed_fee_sheet.php page.
+    $_SESSION['pidList'] = $pid_list;
+    $_SESSION['apptdateList'] = $apptdate_list;
+
+    ?>
     <tr>
-        <td colspan="2" align="left"><?php echo xlt('Total number of appointments'); ?>:&nbsp;<?php echo text($totalAppointments);?></td>
-        <td colspan="2" align="left"><?php echo xlt('Total number of canceled appointments'); ?>:&nbsp;<?php echo text($canceledAppointments);?></td>
+        <td colspan="10" align="left"><?php echo xlt('Total number of appointments'); ?>:&nbsp;<?php echo text($totalAppontments);?></td>
     </tr>
     </tbody>
 </table>
 </div>
 <!-- end of search results -->
-    <?php }
-} else { ?>
+<?php } else { ?>
 <div class='text'><?php echo xlt('Please input search criteria above, and click Submit to view results.'); ?>
 </div>
-<?php }
-if (empty($_POST['form_csvexport'])) { ?>
+<?php } ?>
 <input type="hidden" name="form_orderby" value="<?php echo attr($form_orderby) ?>" /> <input type="hidden" name="patient" value="<?php echo attr($patient) ?>" />
-<input type='hidden' name='form_refresh' id='form_refresh' value='' />
-<input type='hidden' name='form_csvexport' id='form_csvexport' value=''/></form>
+<input type='hidden' name='form_refresh' id='form_refresh' value='' /></form>
+
 <script>
 
-<?php }
+<?php
 if ($alertmsg) {
     echo " alert(" . js_escape($alertmsg) . ");\n";
 }
+?>
 
-if (empty($_POST['form_csvexport'])) { ?>
 </script>
 
 </body>
 
 </html>
-
-    <?php
-}

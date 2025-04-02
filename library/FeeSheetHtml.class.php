@@ -14,7 +14,7 @@
  */
 
 require_once(dirname(__FILE__) . "/FeeSheet.class.php");
-require_once(dirname(__FILE__) . "/api.inc.php");
+require_once(dirname(__FILE__) . "/api.inc");
 
 class FeeSheetHtml extends FeeSheet
 {

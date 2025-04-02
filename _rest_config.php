@@ -9,7 +9,6 @@
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2018-2020 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2019 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -26,7 +25,6 @@ use OpenEMR\Common\Http\HttpRestRequest;
 use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Logging\SystemLogger;
 use OpenEMR\Common\Session\SessionUtil;
-use OpenEMR\FHIR\Config\ServerConfig;
 use OpenEMR\Services\TrustedUserService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -100,12 +98,9 @@ class RestConfig
         // The busy stuff.
         self::setPaths();
         self::setSiteFromEndpoint();
-        $serverConfig = new ServerConfig();
-        $serverConfig->setWebServerRoot(self::$webserver_root);
-        $serverConfig->setSiteId(self::$SITE);
         self::$ROOT_URL = self::$web_root . "/apis";
         self::$VENDOR_DIR = self::$webserver_root . "/vendor";
-        self::$publicKey = $serverConfig->getPublicRestKey();
+        self::$publicKey = self::$webserver_root . "/sites/" . self::$SITE . "/documents/certificates/oapublic.key";
         self::$IS_INITIALIZED = true;
     }
 
@@ -189,7 +184,7 @@ class RestConfig
                 if (strpos($_SERVER['REQUEST_URI'], '?') > 0) {
                     $resource = strstr($_SERVER['REQUEST_URI'], '?', true);
                 } else {
-                    $resource = str_replace(self::$ROOT_URL ?? '', '', $_SERVER['REQUEST_URI']);
+                    $resource = str_replace(self::$ROOT_URL, '', $_SERVER['REQUEST_URI']);
                 }
             }
         }
@@ -202,30 +197,19 @@ class RestConfig
         $logger = new SystemLogger();
         $response = self::createServerResponse();
         $request = self::createServerRequest();
+        $server = new ResourceServer(
+            new AccessTokenRepository(),
+            self::$publicKey
+        );
         try {
-            // if we there's a key problem need to catch the exception
-            $server = new ResourceServer(
-                new AccessTokenRepository(),
-                self::$publicKey
-            );
             $raw = $server->validateAuthenticatedRequest($request);
         } catch (OAuthServerException $exception) {
             $logger->error("RestConfig->verifyAccessToken() OAuthServerException", ["message" => $exception->getMessage()]);
             return $exception->generateHttpResponse($response);
         } catch (\Exception $exception) {
-            if ($exception instanceof LogicException) {
-                $logger->error(
-                    "RestConfig->verifyAccessToken() LogicException, likely oauth2 public key is missing, corrupted, or misconfigured",
-                    ["message" => $exception->getMessage()]
-                );
-                return (new OAuthServerException("Invalid access token", 0, 'invalid_token', 401))
-                    ->generateHttpResponse($response);
-            } else {
-                $logger->error("RestConfig->verifyAccessToken() Exception", ["message" => $exception->getMessage()]);
-                // do NOT reveal what happened at the server level if we have a server exception
-                return (new OAuthServerException("Server Error", 0, 'unknown_error', 500))
-                    ->generateHttpResponse($response);
-            }
+            $logger->error("RestConfig->verifyAccessToken() Exception", ["message" => $exception->getMessage()]);
+            return (new OAuthServerException($exception->getMessage(), 0, 'unknown_error', 500))
+                ->generateHttpResponse($response);
         }
 
         return $raw;
@@ -311,9 +295,9 @@ class RestConfig
         return null;
     }
 
-    public static function authorization_check($section, $value, $user = '', $aclPermission = ''): void
+    public static function authorization_check($section, $value, $user = ''): void
     {
-        $result = AclMain::aclCheckCore($section, $value, $user, $aclPermission);
+        $result = AclMain::aclCheckCore($section, $value, $user);
         if (!$result) {
             if (!self::$notRestCall) {
                 http_response_code(401);
@@ -389,15 +373,9 @@ class RestConfig
             exit();
         }
         // let the capability statement for FHIR or the SMART-on-FHIR through
-        $resource = str_replace('/' . self::$SITE, '', $resource);
         if (
-            // TODO: @adunsulag we need to centralize our auth skipping logic... as we have this duplicated in HttpRestRouteHandler
-            // however, at the point of this method we don't have the resource identified and haven't gone through our parsing
-            // routine to handle that logic...
-            $resource === ("/fhir/metadata") ||
-            $resource === ("/fhir/.well-known/smart-configuration") ||
-            // skip list and single instance routes
-            0 === strpos("/fhir/OperationDefinition", $resource)
+            $resource === ("/" . self::$SITE . "/fhir/metadata") ||
+            $resource === ("/" . self::$SITE . "/fhir/.well-known/smart-configuration")
         ) {
             return true;
         } else {
@@ -544,9 +522,6 @@ class RestConfig
             // we only set the bound patient access if the underlying user can still access the patient
             if ($this->checkUserHasAccessToPatient($restRequest->getRequestUserId(), $patientUuid)) {
                 $restRequest->setPatientUuidString($patientUuid);
-            } else {
-                (new SystemLogger())->error("OpenEMR Error: api had patient launch scope but user did not have access to patient uuid."
-                . " Resources restricted with patient scopes will not return results");
             }
         } else {
             (new SystemLogger())->error("OpenEMR Error: api had patient launch scope but no patient was set in the "
@@ -581,7 +556,7 @@ class RestConfig
     private function checkUserHasAccessToPatient($userId, $patientUuid)
     {
         // TODO: the session should never be populated with the pid from the access token unless the user had access to
-        // it.  However, if we wanted an additional check or if we wanted to fire off any kind of event that does
+        // it.  However, if we wanted an additional check or if we anted to fire off any kind of event that does
         // patient filtering by provider / clinic we would handle that here.
         return true;
     }

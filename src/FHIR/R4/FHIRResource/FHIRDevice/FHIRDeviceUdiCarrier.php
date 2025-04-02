@@ -303,7 +303,7 @@ http://hl7.org/fhir/NamingSystem/iccbba-other-di.
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->deviceIdentifier)) {

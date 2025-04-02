@@ -4,7 +4,6 @@ namespace OpenEMR\Services\FHIR;
 
 use OpenEMR\FHIR\R4\FHIRDomainResource\FHIRPractitionerRole;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRCodeableConcept;
-use OpenEMR\FHIR\R4\FHIRElement\FHIRMeta;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRReference;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRId;
 use OpenEMR\Services\PractitionerRoleService;
@@ -46,19 +45,8 @@ class FhirPractitionerRoleService extends FhirServiceBase implements IResourceUS
         return  [
             'specialty' => new FhirSearchParameterDefinition('specialty', SearchFieldType::TOKEN, ['specialty_code']),
             'practitioner' => new FhirSearchParameterDefinition('practitioner', SearchFieldType::STRING, ['user_name']),
-            '_id' => new FhirSearchParameterDefinition(
-                '_id',
-                SearchFieldType::TOKEN,
-                [new ServiceField('providers.facility_role_uuid', ServiceField::TYPE_UUID)]
-            ),
-            '_lastUpdated' => $this->getLastModifiedSearchField()
+            '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('providers.facility_role_uuid', ServiceField::TYPE_UUID)])
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        // we just go off of role as specialty gets updated at the same time
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['role_last_updated']);
     }
 
     /**
@@ -72,13 +60,7 @@ class FhirPractitionerRoleService extends FhirServiceBase implements IResourceUS
     {
         $practitionerRoleResource = new FHIRPractitionerRole();
 
-        $meta = new FHIRMeta();
-        $meta->setVersionId('1');
-        if (!empty($dataRecord['role_last_updated'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['role_last_updated']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta = array('versionId' => '1', 'lastUpdated' => gmdate('c'));
         $practitionerRoleResource->setMeta($meta);
 
         $id = new FHIRId();

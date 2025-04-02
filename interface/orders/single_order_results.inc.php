@@ -43,7 +43,7 @@ function getListItem($listid, $value)
 
 function myCellText($s)
 {
-    $s = trim($s ?? '');
+    $s = trim($s);
     if ($s === '') {
         return '&nbsp;';
     }
@@ -176,7 +176,9 @@ function generate_result_row(&$ctx, &$row, &$rrow, $priors_omitted = false)
         ++$ctx['encount'];
     }
 
-    echo " <tr class='detail'>\n";
+    $bgcolor = "#" . (($ctx['encount'] & 1) ? "ddddff" : "ffdddd");
+
+    echo " <tr class='detail' style='background: $bgcolor;'>\n";
 
     if ($ctx['lastpcid'] != $order_seq) {
         $ctx['lastprid'] = -1; // force report fields on first line of each procedure
@@ -211,7 +213,7 @@ function generate_result_row(&$ctx, &$row, &$rrow, $priors_omitted = false)
         echo "</td>\n";
 
         echo "  <td>";
-        echo !empty($specimen_num) ? myCellText($specimen_num) : myCellText($date_collected); //quest wanted the specimen date to show here
+        echo myCellText($specimen_num);
         echo "</td>\n";
 
         echo "  <td title='" . xla('Check mark indicates reviewed') . "'>";
@@ -267,7 +269,7 @@ function generate_result_row(&$ctx, &$row, &$rrow, $priors_omitted = false)
             echo "</td>\n";
             $narrative_notes = sqlQuery("select group_concat(note SEPARATOR '\n') as notes from notes where foreign_id = ?", array($result_document_id));
             if (!empty($narrative_notes)) {
-                $nnotes = explode("\n", $narrative_notes['notes'] ?? '');
+                $nnotes = explode("\n", $narrative_notes['notes']);
                 $narrative_note_list = '';
                 foreach ($nnotes as $nnote) {
                     if ($narrative_note_list == '') {
@@ -436,7 +438,7 @@ function generate_order_report($orderid, $input_form = false, $genstyles = true,
 
     <?php if (empty($GLOBALS['PATIENT_REPORT_ACTIVE'])) { ?>
 <script>
-    var mypcc = <?php echo js_escape($GLOBALS['phone_country_code']); ?>;
+    var mypcc = '<?php echo $GLOBALS['phone_country_code'] ?>';
     if (typeof top.webroot_url === "undefined") {
         if (typeof opener.top.webroot_url !== "undefined") {
             top.webroot_url = opener.top.webroot_url;
@@ -467,7 +469,7 @@ function generate_order_report($orderid, $input_form = false, $genstyles = true,
     ?>
 
     <div class='labres table-responsive'>
-        <table class="table table-sm">
+        <table class="table">
             <tr>
                 <td class="font-weight-bold text-nowrap" width='5%'><?php echo xlt('Patient ID'); ?></td>
                 <td width='45%'><?php echo myCellText($orow['pubpid']); ?></td>
@@ -519,7 +521,7 @@ function generate_order_report($orderid, $input_form = false, $genstyles = true,
             </tr>
         </table>
         <br/>
-        <table class="table table-sm">
+        <table class="table">
             <tr class='head'>
                 <td class="align-middle" style="font-size: 1rem;" width='20%'><?php echo xlt('Diagnosis'); ?></td>
                 <td class="align-middle" style="font-size: 1rem;"><?php echo xlt('Diagnosis Description'); ?></td>
@@ -532,7 +534,7 @@ function generate_order_report($orderid, $input_form = false, $genstyles = true,
             ?>
         </table>
         <br/>
-        <table class="table table-sm table-striped">
+        <table class="table">
             <tr class='head'>
                 <td class="font-weight-bold align-middle" rowspan='2'><?php echo xlt('Ordered Procedure'); ?></td>
                 <td class="font-weight-bold" colspan='5'><?php echo xlt('Report'); ?></td>
@@ -659,7 +661,7 @@ function generate_order_report($orderid, $input_form = false, $genstyles = true,
             ?>
         </table>
         <br/>
-        <table class="table table-sm border-0">
+        <table class="table border-0">
             <tr>
                 <td class="border-0">
                     <?php

@@ -25,8 +25,6 @@ use OpenEMR\Core\Header;
 use OpenEMR\Common\Auth\OpenIDConnect\Repositories\ScopeRepository;
 use OpenEMR\FHIR\Config\ServerConfig;
 use OpenEMR\RestControllers\AuthorizationController;
-use OpenEMR\Common\Auth\OpenIDConnect\Entities\ClientEntity;
-use OpenEMR\Services\DecisionSupportInterventionService;
 
 // not sure if we need the site id or not...
 $ignoreAuth = true;
@@ -75,11 +73,6 @@ $scopes = $scopeRepo->getCurrentSmartScopes();
 // TODO: adunsulag there's gotta be a better way for this url...
 $fhirRegisterURL = AuthorizationController::getAuthBaseFullURL() . AuthorizationController::getRegistrationPath();
 $audienceUrl = (new ServerConfig())->getFhirUrl();
-
-$dsiService = new DecisionSupportInterventionService();
-$evidenceService = $dsiService->getEmptyService(ClientEntity::DSI_TYPE_EVIDENCE);
-$predictiveDSI = $dsiService->getEmptyService(ClientEntity::DSI_TYPE_PREDICTIVE);
-$dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRING_NAMES;
 ?>
 <html>
 <head>
@@ -93,12 +86,9 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
         .errorResponse {
             color: red;
         }
-        .successResponse {
-            color: green;
-        }
     </style>
     <script>
-        (function(window, fhirRegistrationURL, dsiTypes) {
+        (function(window, fhirRegistrationURL) {
             function registerApp() {
                 let form = document.querySelector('form[name="app_form]');
                 let appRegister = {
@@ -112,8 +102,6 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                     ,"scope": []
                     ,"jwks_uri": ""
                     ,"jwks": ""
-                    ,"dsi_type": dsiTypes.DSI_TYPE_NONE
-                    ,"dsi_source_attributes": []
                 };
                 appRegister.client_name = document.querySelector('#appName').value;
                 let redirect_uri = document.querySelector("#redirectUri").value;
@@ -125,7 +113,6 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 appRegister.jwks_uri = document.querySelector("#jwksUri").value;
                 appRegister.jwks = document.querySelector("#jwks").value;
                 appRegister.application_type = document.querySelector("input[name='appType']:checked").value || "private";
-                appRegister.dsi_type = document.querySelector("input[name='dsiType']:checked").value || "";
 
                 if (appRegister.jwks.trim() != "") {
                     try {
@@ -143,30 +130,16 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 for (let scope of scopeInputs) {
                     if (appRegister.application_type != 'private')
                     {
-                        // if we are not a private app don't let system scopes be granted
+                        // if we are not a private app don't let offline_access or system scopes be granted
                         // NOTE: this is just a convenience as the server prevents it too.
-                        if (scope.value.match(/^system\//)) {
+                        if (scope.value == 'offline_access'
+                            || scope.value.match(/^system\//)) {
                             continue;
                         }
                     }
                     scopes.push(scope.value);
                 }
                 appRegister.scope = scopes.join(" "); // combine the scopes selected.
-                if (appRegister.dsi_type !== dsiTypes.DSI_TYPE_NONE) {
-                    let selector = "#predictiveDSIContainer input.dsi-attribute";
-                    if (appRegister.dsi_type !== dsiTypes.DSI_TYPE_PREDICTIVE) {
-                        selector = "#evidenceDSIContainer input.dsi-attribute";
-                    }
-                    let dsiAttributes = document.querySelectorAll(selector);
-                    for (let attribute of dsiAttributes) {
-                        let dsiName = attribute.getAttribute("name");
-                        let dsiValue = attribute.value;
-                        appRegister.dsi_source_attributes.push({
-                            "name": dsiName,
-                            "value": dsiValue
-                        });
-                    }
-                }
 
                 fetch(fhirRegistrationURL, {
                     method: 'POST', // *GET, POST, PUT, DELETE, etc.
@@ -185,11 +158,6 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                     document.querySelector(".errorResponse").classList.add("hidden");
                     document.querySelector("#clientID").value = resultJSON.client_id;
                     document.querySelector("#clientSecretID").value = resultJSON.client_secret;
-                    // change the order of this so that we always show the client id / secret
-                    // even if something else goes wrong here.
-                    document.querySelector(".successResponse").classList.remove("hidden");
-                    msgText = window.top.xl('Your app has been registered!');
-                    document.querySelector("#successResponseContainer").textContent = msgText;
                 })
                 .catch(error => {
                     console.error(error);
@@ -286,7 +254,7 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 if (val === 'private')
                 {
                     toggleSystemFunctionality(true);
-                    // document.querySelectorAll("input[value='offline_access']").forEach(showNodeFunction);
+                    document.querySelectorAll("input[value='offline_access']").forEach(showNodeFunction);
                     document.querySelectorAll("#clientSecretID").forEach(showNodeFunction);
                     document.querySelectorAll("#patientTypeClient").forEach(showNodeFunction);
                     document.querySelectorAll("label[for='patientTypeClient']").forEach(showNodeFunction);
@@ -295,7 +263,7 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 else if (val == 'public')
                 {
                     toggleSystemFunctionality(false);
-                    // document.querySelectorAll("input[value='offline_access']").forEach(hideNodeFunction);
+                    document.querySelectorAll("input[value='offline_access']").forEach(hideNodeFunction);
                     document.querySelectorAll("#clientSecretID").forEach(hideNodeFunction);
                     document.querySelectorAll("#patientTypeClient").forEach(hideNodeFunction);
                     document.querySelectorAll("label[for='patientTypeClient']").forEach(hideNodeFunction);
@@ -312,50 +280,27 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 }
             }
 
-            function toggleDecisionSupportTypeFields(event) {
-                if (!event.target)
-                {
-                    return;
-                }
-                let val = event.target.value || "";
-                if (val === dsiTypes.DSI_TYPE_NONE) {
-                    document.querySelectorAll("#predictiveDSIContainer,#evidenceDSIContainer").forEach(hideNodeFunction);
-                } else if (val === dsiTypes.DSI_TYPE_PREDICTIVE) {
-                    document.querySelectorAll("#evidenceDSIContainer").forEach(hideNodeFunction);
-                    document.querySelectorAll("#predictiveDSIContainer").forEach(showNodeFunction);
-                } else if (val === dsiTypes.DSI_TYPE_EVIDENCE) {
-                    document.querySelectorAll("#predictiveDSIContainer").forEach(hideNodeFunction);
-                    document.querySelectorAll("#evidenceDSIContainer").forEach(showNodeFunction);
-                }
-            }
-
             window.addEventListener('load', function() {
-                let scopeSelectAll = document.querySelectorAll('.select-all-toggle');
+                var scopeSelectAll = document.querySelectorAll('.select-all-toggle');
                 for (var element of scopeSelectAll) {
                     element.addEventListener('click', toggleSelectAll);
                 }
 
-                let appTypes = document.querySelectorAll("input[name='appType']");
-                for (let element of appTypes)
+                var appTypes = document.querySelectorAll("input[name='appType']");
+                for (var element of appTypes)
                 {
                     element.addEventListener('click', toggleAppTypeFields);
                 }
 
-                let patientTypes = document.querySelectorAll("input[name='patientType']");
-                for (let element of patientTypes)
+                var patientTypes = document.querySelectorAll("input[name='patientType']");
+                for (var element of patientTypes)
                 {
                     element.addEventListener('click', togglePatientTypeFields);
                 }
 
-                let dsiType = document.querySelectorAll("input[name='dsiType']");
-                for (let element of dsiType)
-                {
-                    element.addEventListener('click', toggleDecisionSupportTypeFields);
-                }
-
                 document.querySelector('#submit').addEventListener('click', registerApp);
             });
-        })(window, <?php echo js_escape($fhirRegisterURL); ?>, <?php echo json_encode($dsiTypesStringNames); ?>);
+        })(window, <?php echo js_escape($fhirRegisterURL); ?>);
     </script>
 </head>
 <body class="register-app">
@@ -497,53 +442,6 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                     </div>
                 </div>
 
-                <div class="row mb-3" id="dsiTypeSetup">
-                    <div class="col">
-                        <h4 class="text-center"><?php echo xlt("Does your application include any Decision Support Intervention (DSI)?"); ?></h4>
-                        <div class="alert alert-info">
-                            <p><?php echo xlt("Indicate if you use any form of evidence based DSI or predictive/AI based DSI in your application"); ?></p>
-                            <p><i class="fa fa-question-circle"></i> <?php echo xlt("Note some regulatory environments such as the USA require that we collect source attribute information on DSI if your application uses it."); ?></p>
-                        </div>
-                        <hr />
-                        <div class="form-check form-check-inline">
-                            <input type="radio" class="form-check-input" id="dsiTypeNone" name="dsiType" value="<?php echo attr($dsiTypesStringNames["DSI_TYPE_NONE"]); ?>" checked="checked"/>
-                            <label for="dsiTypeNone" class="form-check-label pr-2"><?php echo xlt('No DSI used'); ?></label>
-
-                            <input type="radio" class="form-check-input" id="dsiTypePrediction" name="dsiType" value="<?php echo attr($dsiTypesStringNames["DSI_TYPE_PREDICTIVE"]); ?>"/>
-                            <label for="dsiTypePrediction" class="form-check-label pr-2"><?php echo xlt('Predictive DSI Used'); ?></label>
-
-                            <input type="radio" class="form-check-input" id="dsiTypeEvidenceBased" name="dsiType" value="<?php echo attr($dsiTypesStringNames["DSI_TYPE_EVIDENCE"]); ?>"/>
-                            <label for="dsiTypeEvidenceBased" class="form-check-label pr-2"><?php echo xlt('Evidence Based DSI Used'); ?></label>
-                        </div>
-                    </div>
-                </div>
-                <div class="row mb-3 d-none">
-                    <div class="col-12" id="predictiveDSIContainer">
-                        <h3><?php echo xlt("Predictive DSI Source Attributes"); ?></h3>
-                        <?php foreach ($predictiveDSI->getFields() as $field) : ?>
-                            <?php if ($field['type'] == 'text') : ?>
-                                <div class="form-group">
-                                    <label for="<?php echo attr($field['name']); ?>"><?php echo text($field['label']); ?></label>
-                                    <input type="text" class="form-control dsi-attribute" id="<?php echo attr($field['name']); ?>" name="<?php echo attr($field['name']); ?>" value="<?php echo attr($field['value']); ?>">
-                                </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <div class="row mb-3 d-none">
-                    <div class="col-12" id="evidenceDSIContainer">
-                        <h3><?php echo xlt("Evidence Based DSI Source Attributes"); ?></h3>
-                        <?php foreach ($evidenceService->getFields() as $field) : ?>
-                            <?php if ($field['type'] == 'text') : ?>
-                                <div class="form-group">
-                                    <label for="<?php echo attr($field['name']); ?>"><?php echo text($field['label']); ?></label>
-                                    <input type="text" class="form-control dsi-attribute" id="<?php echo attr($field['name']); ?>" name="<?php echo attr($field['name']); ?>" value="<?php echo attr($field['value']); ?>">
-                                </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
                 <div class="form-group">
                     <input type="button" class="form-control btn btn-primary" id="submit" name="submit" value="<?php echo xla('Submit'); ?>" (onClick)="registerApp();" />
                 </div>
@@ -564,26 +462,6 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 </div>
                 <div class="form-group errorResponse hidden">
                     <div id="errorResponseContainer">
-                    </div>
-                    <div class="alert alert-danger">
-                        <p><?php xlt("An error occurred while registering your application"); ?></p>
-                        <?php
-                        // TODO: put in a link to the api documentation for the version of this system
-                        ?>
-                        <p><?php echo xlt("Verify you have addressed these common errors"); ?></p>
-                        <ul>
-                            <li><?php echo xlt("Both your client (browser) and the server are both communicating via SSL"); ?></li>
-                            <li><?php echo xlt("Verify your system is properly handling CORS requests if your domain and FHIR host server are not the same"); ?></li>
-                            <li><?php echo xlt("Verify the server administrator has properly setup the FHIR connector information in the Admin -> Config -> Connectors settings page"); ?></li>
-                            <li><?php echo xlt("If using a URI for your JWKS, verify it is reachable from the server."); ?></li>
-                        </ul>
-                    </div>
-                    <p><?php echo xlt("If you continue to have errors, have your server administrator turn on detailed API debug logs in the Admin -> Config -> Logging -> System Error Logging Options setting"); ?></p>
-                    <p><a target="_blank" href="https://community.open-emr.org/"><?php echo xlt("More support can be found on the OpenEMR community form"); ?></a></p>
-                    <p><a target="_blank" href="https://github.com/openemr/openemr/issues"><?php echo xlt("File bug report on issue tracker"); ?></a></p>
-                </div>
-                <div class="form-group successResponse hidden">
-                    <div id="successResponseContainer">
                     </div>
                 </div>
             </div>

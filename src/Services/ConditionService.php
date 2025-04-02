@@ -48,7 +48,6 @@ class ConditionService extends BaseService
         patient.puuid,
         patient.patient_uuid,
         condition_ids.condition_uuid,
-        condition_ids.last_updated_time,
         verification.title as verification_title
         ,provider.provider_id
         ,provider.provider_npi
@@ -56,7 +55,7 @@ class ConditionService extends BaseService
         ,provider.provider_username
     FROM lists
         INNER JOIN (
-            SELECT lists.uuid AS condition_uuid, lists.modifydate as last_updated_time FROM lists
+            SELECT lists.uuid AS condition_uuid FROM lists
         ) condition_ids ON lists.uuid = condition_ids.condition_uuid
         LEFT JOIN list_options as verification ON verification.option_id = lists.verification and verification.list_id = 'condition-verification'
         RIGHT JOIN (
@@ -69,7 +68,7 @@ class ConditionService extends BaseService
         LEFT JOIN issue_encounter as issue ON issue.list_id =lists.id
         LEFT JOIN form_encounter as encounter ON encounter.encounter =issue.encounter
         LEFT JOIN (
-                select
+                select 
                    id AS provider_id
                    ,uuid AS provider_uuid
                    ,npi AS provider_npi
@@ -95,7 +94,7 @@ class ConditionService extends BaseService
 
     public function getUuidFields(): array
     {
-        return ['condition_uuid', 'puuid', 'encounter_uuid', 'uuid', 'patient_uuid', 'provider_uuid'];
+        return ['condition_uuid', 'puuid', 'encounter_uuid', 'uuid', 'patient_uuid'];
     }
 
     public function createResultRecordFromDatabaseResult($row)
@@ -121,17 +120,9 @@ class ConditionService extends BaseService
     public function getAll($search = array(), $isAndCondition = true, $puuidBind = null)
     {
         $newSearch = [];
-
-        // override puuid with the token search field
-        // standard api will send a string which needs to be a token to be converted to the binary field value
-        // FHIR api will send an already populated TokenSearchField
-        if (!empty($search['puuid']) && !($search['puuid'] instanceof ISearchField)) {
-            $newSearch['puuid'] = new TokenSearchField('puuid', $search['puuid'], true);
-        }
-
         foreach ($search as $key => $value) {
             if (!$value instanceof ISearchField) {
-                $newSearch[$key] = new StringSearchField($key, [$value], SearchModifier::EXACT);
+                $newSearch[] = new StringSearchField($key, [$value], SearchModifier::EXACT);
             } else {
                 $newSearch[$key] = $value;
             }

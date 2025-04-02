@@ -16,7 +16,7 @@
 use OpenEMR\Billing\MiscBillingOptions;
 
 require_once(dirname(__FILE__) . '/../../globals.php');
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 function misc_billing_options_report($pid, $encounter, $cols, $id)
 {
@@ -69,12 +69,6 @@ function misc_billing_options_report($pid, $encounter, $cols, $id)
             if ($value == "1") {
                 $value = "Yes";
             }
-
-            if ($key == "replacement_claim" && $value == "2") {
-                $key = "void_claim";
-                $value = "Yes";
-            }
-
 
             $key = ucwords(str_replace("_", " ", $key));
             print "<td><span class=bold>" . xlt($key) . ": </span><span class=text>" . text($value) . "</span></td>";

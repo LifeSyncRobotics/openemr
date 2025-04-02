@@ -132,7 +132,7 @@ class FHIRQuestionnaireResponseStatus extends FHIRElement implements \JsonSerial
     /**
      * @return mixed
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         return $this->value;
     }

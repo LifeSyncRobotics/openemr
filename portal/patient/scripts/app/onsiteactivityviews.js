@@ -9,67 +9,65 @@
  * @copyright Copyright (c) 2016-2017 Jerry Padgett <sjpadgett@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
-const actpage = {
-    onsiteActivityViews: new model.OnsiteActivityViewCollection(),
-    collectionView: null,
-    onsiteActivityView: null,
-    modelView: null,
-    isInitialized: false,
-    isInitializing: false,
-    fetchParams: {filter: '', orderBy: 'patientId', orderDesc: 'DESC', page: 1, status: 'waiting'},
-    fetchInProgress: false,
-    dialogIsOpen: false,
+var actpage = {
 
-    init: function () {
-        // ensure initialization only occurs once
-        if (actpage.isInitialized || actpage.isInitializing) return;
-        actpage.isInitializing = true;
+	onsiteActivityViews: new model.OnsiteActivityViewCollection(),
+	collectionView: null,
+	onsiteActivityView: null,
+	modelView: null,
+	isInitialized: false,
+	isInitializing: false,
+	fetchParams: { filter: '', orderBy: 'patientId', orderDesc: 'DESC', page: 1, status: 'waiting' },
+	fetchInProgress: false,
+	dialogIsOpen: false,
 
-        if (!$.isReady && console) {
-            console.warn('page was initialized before dom is ready.  views may not render properly.');
-        }
+	init: function() {
+		// ensure initialization only occurs once
+		if (actpage.isInitialized || actpage.isInitializing) return;
+		actpage.isInitializing = true;
 
-        // make the return button clickable
-        $("#returnHome").click(function (e) {
-            e.preventDefault();
-            window.location.href = './provider';
-        });
+		if (!$.isReady && console) console.warn('page was initialized before dom is ready.  views may not render properly.');
 
-        function showPaymentModal(cpid, recid) {
-            let title = 'Patient Online Payment';
-            let params = {
+		// make the return button clickable
+		$("#returnHome").click(function(e) {
+			e.preventDefault();
+			window.location.href = './provider';
+		});
+		function showPaymentModal(cpid,recid){
+			var title = 'Patient Online Payment';
+            var params = {
                 buttons: [
                     {text: 'Help', close: false, style: 'info btn-sm', id: 'formHelp'},
+                    {text: 'Cancel', close: true, style: 'secondary btn-sm'},
                     {text: 'Done', style: 'danger btn-sm', close: true}],
                 onClosed: 'reload',
                 type: 'GET',
                 url: './../portal_payment.php?pid=' + encodeURIComponent(cpid) + '&user=' + encodeURIComponent(cuser) + '&recid=' + encodeURIComponent(recid)
             };
             dlgopen('', '', 'modal-lg', 625, '', '', params);
-        }
-
+		}
         function showProfileModal(cpid) {
-            let title = 'Profile Edits' + ' ';
-            let params = {
+            var title = 'Demographics Legend Red: Charted Values. Blue: Patient Edits' + ' ';
+            var params = {
                 buttons: [
-                    {text: 'Help', close: false, style: 'info btn-sm', id: 'formHelp'},
-                    {text: 'Cancel', close: true, style: 'default btn-sm'},
-                    {text: 'Revert Edits', close: false, style: 'success btn-sm', id: 'replaceAllButton'},
-                    {text: 'Commit to Chart', style: 'danger btn-sm', close: false, id: 'savePatientButton'}],
+                    { text: 'Help', close: false, style: 'info btn-sm',id: 'formHelp'},
+                    { text: 'Cancel', close: true, style: 'default btn-sm'},
+                    { text: 'Revert Edits', close: false, style: 'success btn-sm', id:'replaceAllButton'},
+                    { text: 'Commit to Chart', style: 'danger btn-sm', close: false, id:'savePatientButton'}],
                 onClosed: 'reload',
                 sizeHeight: 'full',
                 allowDrag: false,
                 type: 'GET',
                 url: top.webroot_url + '/portal/patient/patientdata?pid=' + encodeURIComponent(cpid) + '&user=' + encodeURIComponent(cuser)
             };
-            dlgopen('', '', 'modal-xl', '', '', title, params);
+            dlgopen('','','modal-xl', '', '', title, params);
         }
-
         function showDocumentModal(cpid, recid) {
-            let title = 'Audit Document';
-            let params = {
+            var title = 'Audit Document';
+            var params = {
                 buttons: [
                     {text: 'Help', close: false, style: 'info btn-sm', id: 'formHelp'},
+                    {text: 'Cancel', close: true, style: 'default btn-sm'},
                     {text: 'Done', style: 'danger btn-sm', close: true}],
                 sizeHeight: 'full',
                 onClosed: 'reload',
@@ -78,251 +76,201 @@ const actpage = {
             dlgopen('', '', 'modal-lg', '', '', '', params);
         }
 
-        // initialize the collection view
-        this.collectionView = new view.CollectionView({
-            el: $("#onsiteActivityViewCollectionContainer"),
-            templateEl: $("#onsiteActivityViewCollectionTemplate"),
-            collection: actpage.onsiteActivityViews
-        });
+		// initialize the collection view
+		this.collectionView = new view.CollectionView({
+			el: $("#onsiteActivityViewCollectionContainer"),
+			templateEl: $("#onsiteActivityViewCollectionTemplate"),
+			collection: actpage.onsiteActivityViews
+		});
 
-        // initialize the search filter
-        $('#filter').change(function (obj) {
-            actpage.fetchParams.filter = $('#filter').val();
-            actpage.fetchParams.page = 1;
-            actpage.fetchOnsiteActivityViews(actpage.fetchParams);
-        });
+		// initialize the search filter
+		$('#filter').change(function(obj) {
+			actpage.fetchParams.filter = $('#filter').val();
+			actpage.fetchParams.page = 1;
+			actpage.fetchOnsiteActivityViews(actpage.fetchParams);
+		});
 
-        // make the rows clickable ('rendered' is a custom event, not a standard backbone event)
-        this.collectionView.on('rendered', function () {
-            document.querySelectorAll('.delete-button').forEach(function (button) {
-                button.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    const updateId = this.getAttribute('data-update-id');
-                    const deleteId = this.getAttribute('data-delete-id');
-                    const url = '../lib/doc_lib.php';
-
-                    if (confirm(jsText('Are you sure you want to delete this audit?\nThis action cannot be undone.'))) {
-                        // Create a FormData object to hold POST data
-                        let formData = new FormData();
-                        formData.append('dispose', 'audit_delete');
-                        formData.append('update_id', updateId);
-                        formData.append('delete_id', deleteId);
-                        formData.append('csrf_token_form', csrfToken);
-
-                        fetch(url, {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                this.closest('tr').remove();
-                            } else {
-                                alert('Error deleting document: ' + jsText(data.message));
-                            }
-                        })
-                        .catch(error => {
-                            alert('An error occurred: ' + jsText(error.message));
-                        });
-
-                        return false; // Stop the event propagation
-                    }
-                    return false;
-                });
-            });
-
-            // attach click handler to the table rows for selection
-            $('table.collection tbody tr').click(function (e) {
-                e.preventDefault();
-                // ignore event on the last cell (the delete button)
-                if ($(e.target).closest('td').is($(this).find('td').last())) {
-                    return;
-                }
-
-                let m = actpage.onsiteActivityViews.get(this.id);
-                let cpid = m.get('patientId');
-                let activity = m.get('activity');
-                let eventData = {
-                    activity: activity
-                    , cpid: cpid
-                    , modelAttributes: m.attributes
-                };
-
-                // this is a custom event that will bubble up to the window
-                let node = document.createElement("tr");
-                // note this is a synchronous operation! event consumers should not do anything that takes a long time
-                // or they should fire off async work and return immediately
-                let event = new CustomEvent('openemr:portal:provider:onsiteactivityview:click',
-                    {bubbles: true, detail: eventData, cancelable: true});
-                let continueExecution = e.target.dispatchEvent(event);
-                if (!continueExecution) { // prevent default was called
-                    return;
-                }
-
-                if (activity === 'document') {
+		// make the rows clickable ('rendered' is a custom event, not a standard backbone event)
+		this.collectionView.on('rendered',function(){
+			// attach click handler to the table rows for selection
+			$('table.collection tbody tr').click(function(e) {
+				e.preventDefault();
+				var m = actpage.onsiteActivityViews.get(this.id);
+				var cpid = m.get('patientId');
+				var activity = m.get('activity');
+				if(activity == 'document') {
                     let recid = m.get('tableArgs');
                     showDocumentModal(cpid, recid);
-                } else if (activity === 'profile') {
+                }
+				else if(activity == 'profile') {
                     showProfileModal(cpid);
-                } else if (activity === 'payment') {
+                }
+				else if(activity == 'payment') {
                     let recid = m.get('id');
                     showPaymentModal(cpid, recid);
                 }
-            });
-            // make the headers clickable for sorting
-            $('table.collection thead tr th').click(function (e) {
-                e.preventDefault();
-                let prop = this.id.replace('header_', '');
-                // toggle the ascending/descending before we change the sort prop
-                actpage.fetchParams.orderDesc = (prop == actpage.fetchParams.orderBy && !actpage.fetchParams.orderDesc) ? '1' : '';
-                actpage.fetchParams.orderBy = prop;
-                actpage.fetchParams.page = 1;
-                actpage.fetchOnsiteActivityViews(actpage.fetchParams);
-            });
-            // attach click handlers to the pagination controls
-            $('.pageButton').click(function (e) {
-                e.preventDefault();
-                actpage.fetchParams.page = this.id.substr(5);
-                actpage.fetchOnsiteActivityViews(actpage.fetchParams);
-            });
+			});
 
-            actpage.isInitialized = true;
-            actpage.isInitializing = false;
-        });
+			// make the headers clickable for sorting
+ 			$('table.collection thead tr th').click(function(e) {
+ 				e.preventDefault();
+				var prop = this.id.replace('header_','');
 
-        this.fetchOnsiteActivityViews({filter: '', orderBy: 'Date', orderDesc: 'DESC', page: 1, status: 'waiting'});
+				// toggle the ascending/descending before we change the sort prop
+				actpage.fetchParams.orderDesc = (prop == actpage.fetchParams.orderBy && !actpage.fetchParams.orderDesc) ? '1' : '';
+				actpage.fetchParams.orderBy = prop;
+				actpage.fetchParams.page = 1;
+ 				actpage.fetchOnsiteActivityViews(actpage.fetchParams);
+ 			});
 
-        // initialize the model view
-        this.modelView = new view.ModelView({
-            el: $("#onsiteActivityViewModelContainer")
-        });
+			// attach click handlers to the pagination controls
+			$('.pageButton').click(function(e) {
+				e.preventDefault();
+				actpage.fetchParams.page = this.id.substr(5);
+				actpage.fetchOnsiteActivityViews(actpage.fetchParams);
+			});
 
-        this.modelView.templateEl = $("#onsiteActivityViewModelTemplate");
-        if (model.longPollDuration > 0) {
-            setInterval(function () {
+			actpage.isInitialized = true;
+			actpage.isInitializing = false;
+		});
 
-                if (!actpage.dialogIsOpen) {
-                    actpage.fetchOnsiteActivityViews(actpage.fetchParams, true);
-                }
+		this.fetchOnsiteActivityViews({ filter: '', orderBy: 'Date', orderDesc: 'DESC', page: 1, status: 'waiting' });
 
-            }, model.longPollDuration);
-        }
-    },
+		// initialize the model view
+		this.modelView = new view.ModelView({
+			el: $("#onsiteActivityViewModelContainer")
+		});
 
-    /**
-     * Fetch the collection data from the server
-     * @param object params passed through to collection.fetch
-     * @param bool true to hide the loading animation
-     */
-    fetchOnsiteActivityViews: function (params, hideLoader) {
-        // persist the params so that paging/sorting/filtering will play together nicely
-        //params.status = 'waiting';
-        actpage.fetchParams = params;
+		this.modelView.templateEl = $("#onsiteActivityViewModelTemplate");
 
-        if (actpage.fetchInProgress) {
-            if (console) console.log('supressing fetch because it is already in progress');
-        }
+		if (model.longPollDuration > 0)	{
+			setInterval(function () {
 
-        actpage.fetchInProgress = true;
+				if (!actpage.dialogIsOpen)	{
+					actpage.fetchOnsiteActivityViews(actpage.fetchParams,true);
+				}
 
-        if (!hideLoader) app.showProgress('loader');
+			}, model.longPollDuration);
+		}
+	},
 
-        actpage.onsiteActivityViews.fetch({
+	/**
+	 * Fetch the collection data from the server
+	 * @param object params passed through to collection.fetch
+	 * @param bool true to hide the loading animation
+	 */
+	fetchOnsiteActivityViews: function(params, hideLoader) {
+		// persist the params so that paging/sorting/filtering will play together nicely
+		//params.status = 'waiting';
+		actpage.fetchParams = params;
 
-            data: params,
+		if (actpage.fetchInProgress) {
+			if (console) console.log('supressing fetch because it is already in progress');
+		}
 
-            success: function () {
-                if (actpage.onsiteActivityViews.collectionHasChanged) {
-                    // TODO: add any logic necessary if the collection has changed
-                    // the sync event will trigger the view to re-render
-                }
-                app.hideProgress('loader');
-                actpage.fetchInProgress = false;
-            },
-            error: function (m, r) {
-                app.appendAlert(app.getErrorMessage(r), 'alert-error', 0, 'collectionAlert');
-                app.hideProgress('loader');
-                actpage.fetchInProgress = false;
-            }
-        });
-    },
+		actpage.fetchInProgress = true;
 
-    /**
-     * show the dialog for editing a model
-     * @param model
-     */
-    showDetailDialog: function (m) {
+		if (!hideLoader) app.showProgress('loader');
 
-        // show the modal dialog
-        $('#onsiteActivityViewDetailDialog').modal({show: true});
+		actpage.onsiteActivityViews.fetch({
 
-        // if a model was specified then that means a user is editing an existing record
-        // if not, then the user is creating a new record
-        actpage.onsiteActivityView = m ? m : new model.OnsiteActivityViewModel();
+			data: params,
 
-        actpage.modelView.model = actpage.onsiteActivityView;
+			success: function() {
+				if (actpage.onsiteActivityViews.collectionHasChanged) {
+					// TODO: add any logic necessary if the collection has changed
+					// the sync event will trigger the view to re-render
+				}
+				app.hideProgress('loader');
+				actpage.fetchInProgress = false;
+			},
+			error: function(m, r) {
+				app.appendAlert(app.getErrorMessage(r), 'alert-error',0,'collectionAlert');
+				app.hideProgress('loader');
+				actpage.fetchInProgress = false;
+			}
+		});
+	},
 
-        if (actpage.onsiteActivityView.id == null || actpage.onsiteActivityView.id == '') {
-            // this is a new record, there is no need to contact the server
-            actpage.renderModelView(false);
-        } else {
-            app.showProgress('modelLoader');
+	/**
+	 * show the dialog for editing a model
+	 * @param model
+	 */
+	showDetailDialog: function(m) {
 
-            // fetch the model from the server so we are not updating stale data
-            actpage.onsiteActivityView.fetch({
+		// show the modal dialog
+		$('#onsiteActivityViewDetailDialog').modal({ show: true });
 
-                success: function () {
-                    // data returned from the server.  render the model view
-                    actpage.renderModelView(true);
-                },
+		// if a model was specified then that means a user is editing an existing record
+		// if not, then the user is creating a new record
+		actpage.onsiteActivityView = m ? m : new model.OnsiteActivityViewModel();
 
-                error: function (m, r) {
-                    app.appendAlert(app.getErrorMessage(r), 'alert-error', 0, 'modelAlert');
-                    app.hideProgress('modelLoader');
-                }
+		actpage.modelView.model = actpage.onsiteActivityView;
 
-            });
-        }
-    },
+		if (actpage.onsiteActivityView.id == null || actpage.onsiteActivityView.id == '') {
+			// this is a new record, there is no need to contact the server
+			actpage.renderModelView(false);
+		} else {
+			app.showProgress('modelLoader');
 
-    /**
-     * Render the model template in the popup
-     * @param bool show the delete button
-     */
-    renderModelView: function (showDeleteButton) {
-        actpage.modelView.render();
+			// fetch the model from the server so we are not updating stale data
+			actpage.onsiteActivityView.fetch({
 
-        app.hideProgress('modelLoader');
-        // initialize any special controls
-        try {
-            $('.date-picker').datepicker().on('changeDate', function (ev) {
-                $('.date-picker').datepicker('hide');
-            });
-        } catch (error) {
-            // this happens if the datepicker input.value isn't a valid date
-            if (console) console.log('datepicker error: ' + error.message);
-        }
-        if (showDeleteButton) {
-            // attach click handlers to the delete buttons
-            $('#deleteOnsiteActivityViewButton').click(function (e) {
-                e.preventDefault();
-                $('#confirmDeleteOnsiteActivityViewContainer').show('fast');
-            });
+				success: function() {
+					// data returned from the server.  render the model view
+					actpage.renderModelView(true);
+				},
 
-            $('#cancelDeleteOnsiteActivityViewButton').click(function (e) {
-                e.preventDefault();
-                $('#confirmDeleteOnsiteActivityViewContainer').hide('fast');
-            });
+				error: function(m, r) {
+					app.appendAlert(app.getErrorMessage(r), 'alert-error',0,'modelAlert');
+					app.hideProgress('modelLoader');
+				}
 
-            $('#confirmDeleteOnsiteActivityViewButton').click(function (e) {
-                e.preventDefault();
-                actpage.deleteModel();
-            });
+			});
+		}
+	},
 
-        } else {
-            // no point in initializing the click handlers if we don't show the button
-            $('#deleteOnsiteActivityViewButtonContainer').hide();
-        }
-    },
+	/**
+	 * Render the model template in the popup
+	 * @param bool show the delete button
+	 */
+	renderModelView: function(showDeleteButton)	{
+		actpage.modelView.render();
+
+		app.hideProgress('modelLoader');
+		// initialize any special controls
+		try {
+			$('.date-picker')
+				.datepicker()
+				.on('changeDate', function(ev){
+					$('.date-picker').datepicker('hide');
+				});
+		} catch (error) {
+			// this happens if the datepicker input.value isn't a valid date
+			if (console) console.log('datepicker error: '+error.message);
+		}
+		if (showDeleteButton) {
+			// attach click handlers to the delete buttons
+			$('#deleteOnsiteActivityViewButton').click(function(e) {
+				e.preventDefault();
+				$('#confirmDeleteOnsiteActivityViewContainer').show('fast');
+			});
+
+			$('#cancelDeleteOnsiteActivityViewButton').click(function(e) {
+				e.preventDefault();
+				$('#confirmDeleteOnsiteActivityViewContainer').hide('fast');
+			});
+
+			$('#confirmDeleteOnsiteActivityViewButton').click(function(e) {
+				e.preventDefault();
+				actpage.deleteModel();
+			});
+
+		} else {
+			// no point in initializing the click handlers if we don't show the button
+			$('#deleteOnsiteActivityViewButtonContainer').hide();
+		}
+	},
+
 };
 

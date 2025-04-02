@@ -99,32 +99,8 @@ if (!empty($_POST['bn_upload'])) {
             die(xlt('Cannot determine a destination filename'));
         }
         $path_parts = pathinfo($form_dest_filename);
-        $extension = strtolower($path_parts['extension'] ?? '');
-
-        if (!in_array($extension, array('odt', 'txt', 'docx', 'zip'))) {
-            die(text($extension) . ' ' . xlt('filetype is not accepted'));
-        }
-
-        // Check if the uploaded file is a zip file
-        if ($extension === 'zip') {
-            $maxZipSize = 1048576; // 1 MB (adjust the size as needed)
-            if ($_FILES['form_file']['size'] > $maxZipSize) {
-                die(xlt('Zip file size exceeds the maximum allowed size'));
-            }
-
-            // Check for nested zip files
-            $zip = new ZipArchive();
-            if ($zip->open($tmp_name) === true) {
-                for ($i = 0; $i < $zip->numFiles; $i++) {
-                    $nestedFile = $zip->getNameIndex($i);
-                    if (pathinfo($nestedFile, PATHINFO_EXTENSION) === 'zip') {
-                        die(xlt('Nested zip files are not allowed'));
-                    }
-                }
-                $zip->close();
-            } else {
-                die(xlt('Failed to open the zip file'));
-            }
+        if (!in_array(strtolower($path_parts['extension']), array('odt', 'txt', 'docx', 'zip'))) {
+            die(text(strtolower($path_parts['extension'])) . ' ' . xlt('filetype is not accepted'));
         }
 
         $templatepath = "$templatedir/$form_dest_filename";

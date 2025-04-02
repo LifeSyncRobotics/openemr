@@ -402,7 +402,7 @@ class FHIRAddress extends FHIRElement implements \JsonSerializable
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->use)) {

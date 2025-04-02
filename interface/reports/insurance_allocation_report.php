@@ -13,7 +13,7 @@
  */
 
 require_once("../globals.php");
-require_once("../../library/patient.inc.php");
+require_once("../../library/patient.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -144,7 +144,7 @@ if (!empty($_POST['form_csvexport'])) {
     </div>
 
   </td>
-  <td class='h-100' valign='middle'>
+  <td class='h-100' align='left' valign='middle'>
     <table class='w-100 h-100' style='border-left:1px solid;'>
         <tr>
             <td>
@@ -177,11 +177,11 @@ if (!empty($_POST['form_csvexport'])) {
 <table class='table'>
 
  <thead class='thead-light'>
- <th> <?php echo xlt('Primary Insurance'); ?> </th>
- <th> <?php echo xlt('Charges'); ?> </th>
- <th> <?php echo xlt('Visits'); ?> </th>
- <th> <?php echo xlt('Patients'); ?> </th>
- <th> <?php echo xlt('Pt %'); ?> </th>
+  <th align='left'> <?php echo xlt('Primary Insurance'); ?> </th>
+  <th align='right'> <?php echo xlt('Charges'); ?> </th>
+  <th align='right'> <?php echo xlt('Visits'); ?> </th>
+  <th align='right'> <?php echo xlt('Patients'); ?> </th>
+  <th align='right'> <?php echo xlt('Pt %'); ?> </th>
  </thead>
  <tbody>
     <?php
@@ -238,16 +238,16 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_csvexport'])) {
       <td>
             <?php echo text($key); ?>
   </td>
-  <td>
+  <td align='right'>
             <?php echo text(oeFormatMoney($val['charges'])); ?>
   </td>
-  <td>
+  <td align='right'>
             <?php echo text($val['visits']); ?>
   </td>
-  <td>
+  <td align='right'>
             <?php echo text($val['patients']); ?>
   </td>
-  <td>
+  <td align='right'>
             <?php printf("%.1f", $val['patients'] * 100 / $patcount) ?>
   </td>
  </tr>

@@ -163,7 +163,7 @@ class FHIRSubstanceSourceMaterialAuthor extends FHIRBackboneElement implements \
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->authorType)) {

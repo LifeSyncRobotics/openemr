@@ -14,15 +14,7 @@
 
 namespace OpenEMR\Services;
 
-use OpenEMR\Common\Database\QueryUtils;
-use OpenEMR\Services\Search\FhirSearchWhereClauseBuilder;
-use OpenEMR\Services\Search\SearchFieldException;
-use OpenEMR\Services\Search\SearchModifier;
-use OpenEMR\Services\Search\StringSearchField;
-use OpenEMR\Services\Search\TokenSearchField;
-use OpenEMR\Validators\ProcessingResult;
 use Particle\Validator\Validator;
-use OpenEMR\Common\Uuid\UuidRegistry;
 
 // TODO: @adunsulag should we rename this to be ListOptions service since that is the table it corresponds to?  The lists table is a patient issues table so this could confuse new developers
 class ListService
@@ -42,8 +34,8 @@ class ListService
         $validator->required('type')->lengthBetween(2, 255);
         $validator->required('pid')->numeric();
         $validator->optional('diagnosis')->lengthBetween(2, 255);
-        $validator->optional('begdate')->datetime('Y-m-d H:i:s');
-        $validator->optional('enddate')->datetime('Y-m-d H:i:s');
+        $validator->required('begdate')->datetime('Y-m-d');
+        $validator->optional('enddate')->datetime('Y-m-d');
 
         return $validator->validate($list);
     }
@@ -56,69 +48,10 @@ class ListService
 
         $results = array();
         while ($row = sqlFetchArray($statementResults)) {
-            $row['uuid'] = UuidRegistry::uuidToString($row['uuid']);
             array_push($results, $row);
         }
 
         return $results;
-    }
-
-    public function getListOptionsForLists($lists)
-    {
-        $sql = "SELECT * FROM list_options WHERE list_id IN (" . str_repeat('?,', count($lists) - 1) . "?) "
-            . " ORDER BY list_id, seq";
-        $records = QueryUtils::fetchRecords($sql, $lists, false);
-        return $records;
-    }
-
-    /**
-     * Allows searching on the top level lists in the lists_options table.  Will return the top level lists that match
-     * the search criteria as well as the last updated date of the sublist.
-     * @param $search
-     * @param $isAndCondition
-     * @return ProcessingResult
-     */
-    public function searchLists($search, $isAndCondition = true)
-    {
-        // TODO: @adunsulag this is copy-pasta from BaseService... need to investigate if we can just have ListService extend BaseService
-        $processingResult = new ProcessingResult();
-        try {
-            $sql = "SELECT
-                        lo.*,
-                        sub_list.sublist_updated_date
-                    FROM
-                        list_options lo
-                    JOIN(
-                        SELECT lo2.list_id AS sublist_list_id,
-                            MAX(last_updated) AS sublist_updated_date
-                        FROM
-                            list_options lo2
-                        WHERE
-                            lo2.list_id != 'lists'
-                        GROUP BY
-                            list_id
-                    ) sub_list
-                    ON
-                        lo.option_id = sub_list.sublist_list_id ";
-            $whereFragment = FhirSearchWhereClauseBuilder::build($search, $isAndCondition);
-            $sql .= $whereFragment->getFragment() . " AND lo.list_id = 'lists' ORDER BY lo.seq, lo.list_id, lo.option_id ";
-            $records = QueryUtils::fetchRecords($sql, $whereFragment->getBoundValues());
-            if (!empty($records)) {
-                foreach ($records as $row) {
-                    $processingResult->addData($row);
-                }
-            }
-        } catch (SearchFieldException $exception) {
-            $processingResult->setValidationMessages([$exception->getField() => $exception->getMessage()]);
-        }
-
-        return $processingResult;
-    }
-
-    public function getListIds()
-    {
-        $sql = "SELECT DISTINCT list_id FROM list_options ORDER BY list_id";
-        return QueryUtils::fetchTableColumn($sql, 'list_id', []);
     }
 
     public function getOptionsByListName($list_name, $search = array())
@@ -158,21 +91,6 @@ class ListService
     public function getListOption($list_id, $option_id)
     {
         $records = $this->getOptionsByListName($list_id, ['option_id' => $option_id]);
-        if (!empty($records)) { // should only be one record
-            return $records[0];
-        }
-        return null;
-    }
-
-    /**
-     * Retrieves a list option for a given list by the code value
-     * @param string $list_id
-     * @param string $code The exact code(s) to match.  This must match the string precisely and fuzzy matching is not currently supported.
-     * @return array|null
-     */
-    public function getListOptionByCode(string $list_id, string $code)
-    {
-        $records = $this->getOptionsByListName($list_id, ['codes' => $code]);
         if (!empty($records)) { // should only be one record
             return $records[0];
         }

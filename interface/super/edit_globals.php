@@ -13,7 +13,7 @@
  * @copyright Copyright (c) 2010 Rod Roark <rod@sunsetsystems.com>
  * @copyright Copyright (c) 2016-2019 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2019 Ranganath Pathak <pathak@scrs1.org>
- * @copyright Copyright (c) 2020-2024 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2020 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2022 Discover and Change <snielson@discoverandchange.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
@@ -21,7 +21,7 @@
 require_once("../globals.php");
 require_once("../../custom/code_types.inc.php");
 require_once("$srcdir/globals.inc.php");
-require_once("$srcdir/user.inc.php");
+require_once("$srcdir/user.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Auth\AuthHash;
@@ -30,7 +30,6 @@ use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Core\Header;
-use OpenEMR\FHIR\Config\ServerConfig;
 use OpenEMR\OeUI\OemrUI;
 use OpenEMR\Services\Globals\GlobalSetting;
 use Ramsey\Uuid\Uuid;
@@ -45,7 +44,7 @@ if (!$userMode) {
   // Check authorization.
     $thisauth = AclMain::aclCheckCore('admin', 'super');
     if (!$thisauth) {
-        echo (new TwigContainer(null, $GLOBALS['kernel']))->getTwig()->render('core/unauthorized.html.twig', ['pageTitle' => xl("Configuration")]);
+        echo (new TwigContainer(null, $GLOBALS['kernel']))->getTwig()->render('core/unauthorized.html.twig', ['pageTitle' => xl("Global Settings")]);
         exit;
     }
 }
@@ -111,15 +110,8 @@ function updateBackgroundService($name, $active, $interval)
 function checkBackgroundServices()
 {
   //load up any necessary globals
-    $bgservices = sqlStatement(
-        "SELECT gl_name, gl_index, gl_value FROM globals WHERE gl_name IN
-        (
-            'phimail_enable',
-            'phimail_interval',
-            'auto_sftp_claims_to_x12_partner',
-            'weno_rx_enable'
-        )"
-    );
+    $bgservices = sqlStatement("SELECT gl_name, gl_index, gl_value FROM globals WHERE gl_name IN
+  ('phimail_enable','phimail_interval')");
     while ($globalsrow = sqlFetchArray($bgservices)) {
         $GLOBALS[$globalsrow['gl_name']] = $globalsrow['gl_value'];
     }
@@ -141,9 +133,8 @@ function checkBackgroundServices()
      * Setup background services for Weno when it is enabled
      * this is to sync the prescription logs
      */
-    $wenoservices = ($GLOBALS['weno_rx_enable'] ?? '') == 1 ? '1' : '0';
-    updateBackgroundService('WenoExchange', $wenoservices, 60);
-    updateBackgroundService('WenoExchangePharmacies', $wenoservices, 1440);
+    $wenoservices = $GLOBALS['weno_rx_enable'] == 1 ? '1' : '0';
+    updateBackgroundService('WenoExchange', $wenoservices, 1);
 }
 ?>
 <!DOCTYPE html>
@@ -279,7 +270,8 @@ if (array_key_exists('form_save', $_POST) && $_POST['form_save'] && !$userMode) 
                     }
                 }
 
-                // We rely on the fact that set of keys in globals.inc.php === set of keys in `globals` table!
+                // We rely on the fact that set of keys in globals.inc === set of keys in `globals`  table!
+
                 if (
                     !isset($old_globals[$fldid]) // if the key not found in database - update database
                     ||
@@ -338,9 +330,9 @@ if (array_key_exists('form_save', $_POST) && $_POST['form_save'] && !$userMode) 
     echo "</script>";
 }
 
-$title = ($userMode) ? xlt("User Settings") : xlt("Configuration");
+$title = ($userMode) ? xlt("User Settings") : xlt("Global Settings");
 ?>
-<title><?php echo $title; ?></title>
+<title><?php  echo $title; ?></title>
 <?php Header::setupHeader(['common','jscolor']); ?>
 
 <style>
@@ -360,7 +352,7 @@ $title = ($userMode) ? xlt("User Settings") : xlt("Configuration");
 }
 </style>
 <?php
-$heading_title = ($userMode) ? xl("Edit User Settings") : xl("Edit Configuration");
+$heading_title = ($userMode) ? xl("Edit User Settings") : xl("Edit Global Settings");
 
 $arrOeUiSettings = array(
     'heading_title' => $heading_title,
@@ -374,27 +366,22 @@ $arrOeUiSettings = array(
     'help_file_name' => ""
 );
 $oemr_ui = new OemrUI($arrOeUiSettings);
-$serverConfig = new ServerConfig();
-$apiUrl = $serverConfig->getInternalBaseApiUrl();
 ?>
 <script src="edit_globals.js" type="text/javascript"></script>
-<script>
-    window.oeUI.api.setApiUrlAndCsrfToken(<?php echo js_escape($apiUrl); ?>, <?php echo js_escape(CsrfUtils::collectCsrfToken('api')); ?>);
-</script>
 </head>
 
 <body <?php if ($userMode) {
     echo 'style="min-width: 700px;"';
       } ?>>
 
-    <div id="container_div" class="<?php echo $oemr_ui->oeContainer();?> mt-2">
+    <div id="container_div" class="<?php echo $oemr_ui->oeContainer();?>">
         <div class="row">
-             <div class="col-sm-12 px-0 my-2">
+             <div class="col-sm-12">
                 <?php echo $oemr_ui->pageHeading() . "\r\n"; ?>
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-12 px-0">
+            <div class="col-sm-12 pl-0">
                 <?php if ($userMode) { ?>
                 <form method='post' name='theform' id='theform' class='form-horizontal' action='edit_globals.php?mode=user' onsubmit='return top.restoreSession()'>
                 <?php } else { ?>
@@ -405,10 +392,10 @@ $apiUrl = $serverConfig->getInternalBaseApiUrl();
                         <div class="btn-group oe-margin-b-10">
                             <button type='submit' class='btn btn-primary btn-save oe-pull-toward' name='form_save' value='<?php echo xla('Save'); ?>'><?php echo xlt('Save'); ?></button>
                         </div>
-                        <div class="input-group col-sm-4 oe-pull-away p-0">
+                        <div class="input-group col-sm-4 oe-pull-away">
                         <?php // mdsupport - Optional server based searching mechanism for large number of fields on this screen.
                         if (!$userMode) {
-                            $placeholder = xla('Search configuration');
+                            $placeholder = xla('Search global settings');
                         } else {
                             $placeholder = xla('Search user settings');
                         }
@@ -495,12 +482,6 @@ $apiUrl = $serverConfig->getInternalBaseApiUrl();
                                                     $fldvalue = $userSetting;
                                                     $settingDefault = "";
                                                 }
-                                            }
-                                            if ($fldtype == GlobalSetting::DATA_TYPE_HTML_DISPLAY_SECTION) {
-                                                // if the field is an html display box we want to take over the entire real estate so we will continue from here.
-                                                include 'templates/field_html_display_section.php';
-                                                ++$i; // make sure we advance the iterator here...
-                                                continue;
                                             }
 
                                             if ($userMode) {
@@ -645,39 +626,6 @@ $apiUrl = $serverConfig->getInternalBaseApiUrl();
                                                     echo "</option>\n";
                                                 }
                                                 echo "  </select>\n";
-                                            } elseif ($fldtype == GlobalSetting::DATA_TYPE_MULTI_DASHBOARD_CARDS) {
-                                                $hiddenList = [];
-                                                $ret = sqlStatement("SELECT gl_value FROM `globals` WHERE `gl_name` = 'hide_dashboard_cards'");
-                                                while ($row = sqlFetchArray($ret)) {
-                                                    $hiddenList[] = $row['gl_value'];
-                                                }
-                                                // The list of cards to hide. For now add to array new cards.
-                                                $res = array(
-                                                    ['card_abrev' => '', 'card_name' => xlt('None or Reset')],
-                                                    ['card_abrev' => attr('card_allergies'), 'card_name' => xlt('Allergies')],
-                                                    ['card_abrev' => attr('card_amendments'), 'card_name' => xlt('Amendments')],
-                                                    ['card_abrev' => attr('card_disclosure'), 'card_name' => xlt('Disclosures')],
-                                                    ['card_abrev' => attr('card_insurance'), 'card_name' => xlt('Insurance')],
-                                                    ['card_abrev' => attr('card_lab'), 'card_name' => xlt('Labs')],
-                                                    ['card_abrev' => attr('card_medicalproblems'), 'card_name' => xlt('Medical Problems')],
-                                                    ['card_abrev' => attr('card_medication'), 'card_name' => xlt('Medications')],
-                                                    ['card_abrev' => 'card_prescriptions', 'card_name' => 'Prescriptions'], // For now don't hide because can be disabled as feature.
-                                                    ['card_abrev' => attr('card_vitals'), 'card_name' => xlt('Vitals')]
-                                                );
-                                                echo "  <select multiple class='form-control' name='form_{$i}[]' id='form_{$i}[]' size='10'>\n";
-                                                foreach ($res as $row) {
-                                                    echo "   <option value='" . attr($row['card_abrev']) . "'";
-                                                    foreach ($glarr as $glrow) {
-                                                        if ($glrow['gl_value'] == $row['card_abrev']) {
-                                                            echo " selected";
-                                                            break;
-                                                        }
-                                                    }
-                                                    echo ">";
-                                                    echo xlt($row['card_name']);
-                                                    echo "</option>\n";
-                                                }
-                                                echo "  </select>\n";
                                             } elseif ($fldtype == GlobalSetting::DATA_TYPE_COLOR_CODE) {
                                                 if ($userMode) {
                                                     $globalTitle = $globalValue;
@@ -791,10 +739,8 @@ $apiUrl = $serverConfig->getInternalBaseApiUrl();
                                                 }
 
                                                 echo "  </select>\n";
-                                            } elseif ($fldtype == GlobalSetting::DATA_TYPE_MULTI_SORTED_LIST_SELECTOR) {
+                                            } else if ($fldtype == GlobalSetting::DATA_TYPE_MULTI_SORTED_LIST_SELECTOR) {
                                                 include 'templates/field_multi_sorted_list_selector.php';
-                                            } else if ($fldtype == GlobalSetting::DATA_TYPE_ADDRESS_BOOK) {
-                                                include 'templates/globals-address-book.php';
                                             }
 
                                             if ($userMode) {

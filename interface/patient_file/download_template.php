@@ -59,15 +59,12 @@ function keyReplace(&$s, $data)
 // Do some final processing of field data before it's put into the document.
 function dataFixup($data, $title = '')
 {
-    global $groupLevel, $groupCount, $itemSeparator, $ext;
+    global $groupLevel, $groupCount, $itemSeparator;
     if ($data !== '') {
         // Replace some characters that can mess up XML without assuming XML content type.
         $data = str_replace('&', '[and]', $data);
         $data = str_replace('<', '[less]', $data);
         $data = str_replace('>', '[greater]', $data);
-        if ($ext == 'odt') {
-            $data = str_replace("\r\n", "<text:line-break />", $data);
-        }
         // If in a group, include labels and separators.
         if ($groupLevel) {
             if ($title !== '') {
@@ -110,7 +107,7 @@ function getIssues($type)
 function doSubs($s)
 {
     global $ptrow, $hisrow, $enrow, $nextLocation, $keyLocation, $keyLength;
-    global $groupLevel, $groupCount, $itemSeparator, $pid, $encounter, $ext;
+    global $groupLevel, $groupCount, $itemSeparator, $pid, $encounter;
 
     $nextLocation = 0;
     $groupLevel   = 0;

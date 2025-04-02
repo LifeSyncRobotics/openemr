@@ -31,7 +31,7 @@ function smarty_function_pc_filter($args, &$smarty)
     unset($args);
 
     if (empty($type)) {
-        trigger_error("pc_filter: missing 'type' parameter", E_USER_WARNING);
+        $smarty->trigger_error("pc_filter: missing 'type' parameter");
         return;
     }
 

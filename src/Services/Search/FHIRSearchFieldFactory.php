@@ -59,16 +59,6 @@ class FHIRSearchFieldFactory
     }
 
     /**
-     * @param $fhirSearchField
-     * @param FhirSearchParameterDefinition $definition
-     * @return void
-     */
-    public function setSearchFieldDefinition(string $fhirSearchField, FhirSearchParameterDefinition $definition)
-    {
-        $this->resourceSearchParameters[$fhirSearchField] = $definition;
-    }
-
-    /**
      * Checks whethere the factory has a search definition for the passed in search field name
      * @param $fhirSearchField
      * @return bool
@@ -79,15 +69,10 @@ class FHIRSearchFieldFactory
         return isset($this->resourceSearchParameters[$fieldName]);
     }
 
-    public function getSearchFieldDefinition($fhirSearchField): FhirSearchParameterDefinition
-    {
-        return $this->resourceSearchParameters[$fhirSearchField];
-    }
-
     /**
      * Factory method to build a search field using the factory's search field definitions.
-     * @param $fhirSearchField string The passed in parameter name for the search field the user agent sent.  Can contain search modifiers
-     * @param $fhirSearchValues array The array of search values the user agent sent for the $fhirSearchField
+     * @param $fhirSearchField The passed in parameter name for the search field the user agent sent.  Can contain search modifiers
+     * @param $fhirSearchValues The array of search values the user agent sent for the $fhirSearchField
      * @throws \InvalidArgumentException If the factory does not have a search definition for $fhirSearchField
      * @return CompositeSearchField|DateSearchField|StringSearchField|TokenSearchField
      */

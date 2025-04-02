@@ -76,17 +76,6 @@ class DateFormatterUtils
         return $dateTime;
     }
 
-    public static function getShortDateFormat($showYear = true)
-    {
-        if ($GLOBALS['date_display_format'] == 0) { // $GLOBALS['date_display_format'] == 0
-            return 'Y-m-d';
-        } elseif ($GLOBALS['date_display_format'] == 1) {
-            return 'm/d/Y';
-        } elseif ($GLOBALS['date_display_format'] == 2) { // dd/mm/yyyy, note year is added below
-            return 'd/m/Y';
-        }
-    }
-
     public static function oeFormatShortDate($date = 'today', $showYear = true)
     {
         if ($date === 'today') {
@@ -119,34 +108,5 @@ class DateFormatterUtils
 
         // this is case if the $date does not have 10 characters
         return $date;
-    }
-
-    public static function getTimeFormat($seconds = false)
-    {
-        $format = $GLOBALS['time_display_format'] ?? 0;
-
-        if ($format == 1) {
-            if ($seconds) {
-                $formatted = "g:i:s a";
-            } else {
-                $formatted = "g:i a";
-            }
-        } else { // ($format == 0)
-            if ($seconds) {
-                $formatted = "H:i:s";
-            } else {
-                $formatted = "H:i";
-            }
-        }
-        return $formatted;
-    }
-
-    public static function getFormattedISO8601DateFromDateTime(\DateTime $dateTime): string
-    {
-        // ISO8601 doesn't support fractional dates so we need to change from microseconds to milliseconds
-        // TODO: @adunsulag this is a hack to get around the fact that PHP does microseconds and ISO8601 uses milliseconds
-        //      , look at refactoring all of this so we don't have to do multiple date conversions up and down the stack.
-        $dateStr = substr($dateTime->format('Y-m-d\TH:i:s.u'), 0, -3) . $dateTime->format('P');
-        return $dateStr;
     }
 }

@@ -390,7 +390,7 @@ class FHIRClaimResponseDetail1 extends FHIRBackboneElement implements \JsonSeria
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->productOrService)) {

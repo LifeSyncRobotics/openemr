@@ -15,7 +15,6 @@
 require_once("../globals.php");
 require_once("$srcdir/options.inc.php");
 
-use OpenEMR\Common\Crypto\CryptoGen;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Core\Header;
 
@@ -62,11 +61,18 @@ if (!empty($_POST['bn_submit'])) {
             $url .= '&informationRecipient.languageCode.c=es';
         }
 
-        echo "<html><body>"
-        //."<script type=\"text/javascript\" src=\"". $webroot ."/interface/main/tabs/js/include_opener.js\"></script>"
-        . "<script>\n";
-        echo "document.location.href = " . js_escape($url) . ";\n";
-        echo "</script></body></html>\n";
+        // There are 2 different ways to get the data: have the server do it, or
+        // have the browser do it.
+        if (false) {
+            $data = file_get_contents($url);
+            echo text($data);
+        } else { // Removed opener because this is not a dialog. sjp 12/14/17
+            echo "<html><body>"
+            //."<script type=\"text/javascript\" src=\"". $webroot ."/interface/main/tabs/js/include_opener.js\"></script>"
+            . "<script>\n";
+            echo "document.location.href = " . js_escape($url) . ";\n";
+            echo "</script></body></html>\n";
+        }
 
         exit();
     } else {
@@ -74,19 +80,10 @@ if (!empty($_POST['bn_submit'])) {
         if ($language == 'es' || $language == 'spanish') {
             $lang = 'es';
         }
+
         $filename = strtolower("{$codetype}_{$codevalue}_{$lang}.pdf");
-        check_file_dir_name($filename);
         $filepath = "$educationdir/$filename";
-
         if (is_file($filepath)) {
-            $fileData = file_get_contents($filepath);
-
-            // Decrypt file, if applicable.
-            $cryptoGen = new CryptoGen();
-            if ($cryptoGen->cryptCheckStandard($fileData)) {
-                $fileData = $cryptoGen->decryptStandard($fileData, null, 'database');
-            }
-
             header('Content-Description: File Transfer');
             header('Content-Transfer-Encoding: binary');
             header('Expires: 0');
@@ -95,10 +92,10 @@ if (!empty($_POST['bn_submit'])) {
             // attachment, not inline
             header("Content-Disposition: attachment; filename=\"$filename\"");
             header("Content-Type: application/pdf");
-            header("Content-Length: " . strlen($fileData));
+            header("Content-Length: " . filesize($filepath));
             ob_clean();
             flush();
-            echo $fileData;
+            readfile($filepath);
             exit();
         } else {
             $errmsg = xl('There is no local content for this topic.');

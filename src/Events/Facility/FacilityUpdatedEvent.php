@@ -12,7 +12,7 @@
 
 namespace OpenEMR\Events\Facility;
 
-use Symfony\Contracts\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\Event;
 
 class FacilityUpdatedEvent extends Event
 {

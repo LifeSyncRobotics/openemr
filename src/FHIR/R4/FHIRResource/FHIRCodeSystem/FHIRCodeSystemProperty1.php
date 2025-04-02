@@ -316,7 +316,7 @@ class FHIRCodeSystemProperty1 extends FHIRBackboneElement implements \JsonSerial
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->code)) {

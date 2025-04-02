@@ -41,9 +41,6 @@ class Encounter_Controller extends Abstract_Controller
         $form->action = '#';
         $signable = new Encounter_Signable($form->encounterId);
         $form->showLock = false;
-        $form->displayGoogleSignin = (!empty($GLOBALS['google_signin_enabled']) && !empty($GLOBALS['google_signin_client_id'])) ? true : false;
-        $form->googleSigninClientID = $GLOBALS['google_signin_client_id'];
-
         if (
             $signable->isLocked() === false &&
             $GLOBALS['lock_esign_all'] &&
@@ -77,17 +74,6 @@ class Encounter_Controller extends Abstract_Controller
         $status = self::STATUS_FAILURE;
         $password = $this->getRequest()->getParam('password', '');
         $encounterId = $this->getRequest()->getParam('encounterId', '');
-
-        // If google sign-in enable
-        $usedGoogleSignin = $this->getRequest()->getParam('used_google_signin', '');
-        $googleSigninToken = $this->getRequest()->getParam('google_signin_token', '');
-        $force_google = (
-            !empty($GLOBALS['google_signin_enabled']) &&
-            !empty($GLOBALS['google_signin_client_id']) &&
-            !empty($usedGoogleSignin) &&
-            !empty($googleSigninToken)
-        ) ? 1 : 0;
-
         // Lock if 'Lock e-signed encounters and their forms' option is set,
         // unless esign_lock_toggle option is enable in globals, then check the request param
         $lock = false;
@@ -99,20 +85,7 @@ class Encounter_Controller extends Abstract_Controller
         }
 
         $amendment = $this->getRequest()->getParam('amendment', '');
-
-        // If google sign-in enable then valid google sign-in
-        if ($force_google ===  1) {
-            $valid = false;
-            $uPayload = AuthUtils::verifyGoogleSignIn($googleSigninToken, false);
-            if (!empty($uPayload) && isset($uPayload['id']) && $uPayload['id'] == $_SESSION['authUserID']) {
-                $valid = true;
-            }
-            $gMessage = xlt("Invalid google log in");
-        } else {
-            $valid = (new AuthUtils())->confirmPassword($_SESSION['authUser'], $password);
-        }
-
-        if ($valid) {
+        if ((new AuthUtils())->confirmPassword($_SESSION['authUser'], $password)) {
             $signable = new Encounter_Signable($encounterId);
             if ($signable->sign($_SESSION['authUserID'], $lock, $amendment)) {
                 $message = xlt("Form signed successfully");
@@ -121,7 +94,7 @@ class Encounter_Controller extends Abstract_Controller
                 $message = xlt("An error occured signing the form");
             }
         } else {
-            $message = (isset($gMessage) && !empty($gMessage)) ? $gMessage : xlt("The password you entered is invalid");
+            $message = xlt("The password you entered is invalid");
         }
 
         $response = new Response($status, $message);

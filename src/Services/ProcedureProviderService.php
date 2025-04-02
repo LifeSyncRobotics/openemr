@@ -58,8 +58,6 @@ class ProcedureProviderService extends BaseService
                         ,prov.lab_director
                         ,prov.active
                         ,prov.type
-                        ,prov.last_updated
-                        ,prov.date_created
                         FROM procedure_providers prov
                         ";
 

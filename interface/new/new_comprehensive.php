@@ -16,7 +16,7 @@
 
 require_once("../globals.php");
 require_once("$srcdir/options.inc.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 require_once("$srcdir/validation/LBF_Validation.php");
 require_once("$srcdir/patientvalidation.inc.php");
 
@@ -84,8 +84,9 @@ $fres = getLayoutRes();
 <!DOCTYPE html>
 <html>
 <head>
-<?php Header::setupHeader(['common','datetime-picker','select2', 'erx']); ?>
+<?php Header::setupHeader(['common','datetime-picker','select2']); ?>
 <title><?php echo xlt("Search or Add Patient"); ?></title>
+<?php require_once("$srcdir/erx_javascript.inc.php"); ?>
 <style>
 .form-group {
     margin-bottom: 0.25rem;
@@ -406,7 +407,7 @@ $constraints = LBF_Validation::generate_validate_constraints("DEM");
                       <td class="text-left align-top">
                     <?php
                     if ($SHORT_FORM) {
-                        echo "<div class='mx-auto'>";
+                        echo "  <div class='mx-auto'>\n";
                     } ?>
                     <?php
 
@@ -514,7 +515,7 @@ $constraints = LBF_Validation::generate_validate_constraints("DEM");
                       // Handle starting of a new row.
                         if (($titlecols > 0 && $cell_count >= $CPR) || $cell_count == 0) {
                             end_row();
-                            echo "<div class='form-group row'>";
+                            echo "  <div class='form-group row'>";
                         }
 
                         if ($item_count == 0 && $titlecols == 0) {
@@ -546,6 +547,8 @@ $constraints = LBF_Validation::generate_validate_constraints("DEM");
                         // Modified 6-09 by BM - Translate if applicable
                         if ($frow['title']) {
                             echo (text(xl_layout_label($frow['title'])) . ":");
+                        } else {
+                            echo "&nbsp;";
                         }
 
                         // Handle starting of a new data cell.
@@ -635,7 +638,7 @@ $constraints = LBF_Validation::generate_validate_constraints("DEM");
                                     ?>
                               </select>
                               <div class="input-group-append">
-                                <a class='btn btn-primary text-white medium_modal' href='../practice/ins_search.php' onclick='ins_search(<?php echo attr_js($i); ?>)'><?php echo xlt('Search/Add Insurer'); ?></a>
+                                <a class='btn btn-primary text-white medium_modal' href='../practice/ins_search.php' onclick='ins_search(<?php echo attr($i); ?>)'><?php echo xlt('Search/Add Insurer'); ?></a>
                               </div>
                             </div>
                           </div>
@@ -666,7 +669,7 @@ $constraints = LBF_Validation::generate_validate_constraints("DEM");
                           </div>
                           <label class='col-form-label col-md-1 mb-2'><?php echo xlt('D.O.B.'); ?>:</label>
                           <div class="col-md-5 mb-2">
-                            <input type='entry' size='11' class='datepicker-past form-control' name='i<?php echo attr($i); ?>subscriber_DOB' id='i<?php echo attr($i); ?>subscriber_DOB' value='<?php echo attr($result3['subscriber_DOB'] ?? ''); ?>' />
+                            <input type='entry' size='11' class='datepicker form-control' name='i<?php echo attr($i); ?>subscriber_DOB' id='i<?php echo attr($i); ?>subscriber_DOB' value='<?php echo attr($result3['subscriber_DOB'] ?? ''); ?>' />
                           </div>
                           <label class='col-form-label col-md-1 required'><?php echo xlt('Group Number'); ?>:</label>
                           <div class="col-md-5 mb-2">
@@ -808,7 +811,7 @@ $constraints = LBF_Validation::generate_validate_constraints("DEM");
         </div>
     </div> <!--end of container div -->
 <!-- include support for the list-add selectbox feature -->
-<?php require($GLOBALS['fileroot'] . "/library/options_listadd.inc.php"); ?>
+<?php include($GLOBALS['fileroot'] . "/library/options_listadd.inc"); ?>
 <script>
 
 // hard code validation for old validation, in the new validation possible to add match rules

@@ -35,7 +35,6 @@ interface SignatureIF extends VerifiableIF
     public function getUid();
     public function getFirstName();
     public function getLastName();
-    public function getValedictory();
     public function getDatetime();
     public function isLock();
     public function getAmendment();

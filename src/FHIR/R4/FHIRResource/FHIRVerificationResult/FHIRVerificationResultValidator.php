@@ -192,7 +192,7 @@ class FHIRVerificationResultValidator extends FHIRBackboneElement implements \Js
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->organization)) {

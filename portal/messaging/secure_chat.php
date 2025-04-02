@@ -8,7 +8,7 @@
  * @author    Jerry Padgett <sjpadgett@gmail.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @author    Tyler Wrenn <tyler@tylerwrenn.com>
- * @copyright Copyright (c) 2016-2023 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2016-2021 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2019 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2022 Tyler Wrenn <tyler@tylerwrenn.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
@@ -45,35 +45,6 @@ if (isset($_SESSION['pid']) && isset($_SESSION['patient_portal_onsite_two'])) {
     $_SERVER['REMOTE_ADDR'] = 'admin::' . $_SERVER['REMOTE_ADDR'];
 }
 
-// Ensure that username GET or POST parameters are not manipulated
-$usernameManipulatedFlag = false;
-if (!empty($_GET['username']) && ($_GET['username'] != 'currentol')) {
-    if (empty(IS_PORTAL)) {
-        if ($_GET['username'] != ADMIN_USERNAME) {
-            $usernameManipulatedFlag = true;
-        }
-    } else {
-        if ($_GET['username'] != $_SESSION['ptName']) {
-            $usernameManipulatedFlag = true;
-        }
-    }
-}
-if (!empty($_POST['username'])) {
-    if (empty(IS_PORTAL)) {
-        if ($_POST['username'] != ADMIN_USERNAME) {
-            $usernameManipulatedFlag = true;
-        }
-    } else {
-        if ($_POST['username'] != $_SESSION['ptName']) {
-            $usernameManipulatedFlag = true;
-        }
-    }
-}
-if ($usernameManipulatedFlag) {
-    http_response_code(401);
-    die(xlt("Something went wrong"));
-}
-
 use OpenEMR\Core\Header;
 use OpenEMR\PatientPortal\Chat\ChatController;
 
@@ -90,13 +61,8 @@ $msgApp = new ChatController();
 <head>
     <meta charset="utf-8" />
     <?php
-    if (IS_PORTAL) {
-        Header::setupHeader(['no_main-theme',  'portal-theme', 'ckeditor', 'angular', 'angular-sanitize', 'checklist-model']);
-    } else {
-        Header::setupHeader(['ckeditor', 'angular', 'angular-sanitize', 'checklist-model']);
-    }
+    Header::setupHeader(['no_main-theme', 'ckeditor', 'angular', 'angular-sanitize', 'checklist-model']);
     ?>
-
     <title><?php echo xlt('Secure Chat'); ?></title>
     <meta name="author" content="Jerry Padgett sjpadgett{{at}} gmail {{dot}} com" />
 </head>
@@ -161,7 +127,7 @@ $msgApp = new ChatController();
             $scope.lastMessageId = null;
             $scope.historyFromId = null;
             $scope.onlines = []; // all online users id and ip's
-            $scope.user = <?php echo !empty($_SESSION['ptName']) ? js_escape($_SESSION['ptName']) : js_escape(ADMIN_USERNAME); ?>;// current user - dashboard user is from session authUserID
+            $scope.user = <?php echo $_SESSION['ptName'] ? js_escape($_SESSION['ptName']) : js_escape(ADMIN_USERNAME); ?>;// current user - dashboard user is from session authUserID
             $scope.userid = <?php echo IS_PORTAL ? js_escape($_SESSION['pid']) : js_escape($_SESSION['authUser']); ?>;
             $scope.isPortal = "<?php echo IS_PORTAL;?>";
             $scope.pusers = []; // selected recipients for chat
@@ -411,7 +377,7 @@ $msgApp = new ChatController();
             };
 
             $scope.renderMessageBody = function (html) {
-                return jsAttr(html);
+                return html;
             };
             $scope.init();
         }]);

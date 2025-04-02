@@ -25,8 +25,8 @@
  * @link    http://www.open-emr.org
  */
 
-require_once(dirname(__FILE__) . "/../library/patient.inc.php");
-require_once(dirname(__FILE__) . "/../library/direct_message_check.inc.php");
+require_once(dirname(__FILE__) . "/../library/patient.inc");
+require_once(dirname(__FILE__) . "/../library/direct_message_check.inc");
 
 use OpenEMR\Common\Crypto\CryptoGen;
 use OpenEMR\Common\Logging\EventAuditLogger;
@@ -168,7 +168,7 @@ function transmitCCD($pid, $ccd_out, $recipient, $requested_by, $xml_type = "CCD
         // if we have a filename from our database, we want to send that
         $att_filename = $filename;
         $extension = ""; // no extension needed
-    } elseif (!empty($patientName2)) {
+    } else if (!empty($patientName2)) {
         //spaces are the argument delimiter for the phiMail API calls and must be removed
         // CCDA format requires patient name in last, first format
         $att_filename = str_replace(" ", "_", $xml_type . "_" . $patientData[0]['lname']
@@ -231,9 +231,9 @@ function transmitCCD($pid, $ccd_out, $recipient, $requested_by, $xml_type = "CCD
     // MU2 CareCoordination added the need to send CCDAs formatted as html,pdf, or xml
     if ($format_type == 'html') {
         $add_type = "TEXT";
-    } elseif ($format_type == 'pdf') {
+    } else if ($format_type == 'pdf') {
         $add_type = "RAW";
-    } elseif ($format_type == 'xml') {
+    } else if ($format_type == 'xml') {
         $add_type = $xml_type == "CCR" ? "CCR" : "CDA";
     } else {
         // unsupported format

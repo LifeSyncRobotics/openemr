@@ -93,7 +93,6 @@ function tabRefresh(data,evt)
     top.restoreSession();
     // To do: Consider modification if part of frame.
     try {
-        /* eslint-disable-next-line no-self-assign */
         data.window.location = data.window.location;
         activateTab(data);
     } catch(e) {
@@ -372,7 +371,7 @@ function menuActionClick(data,evt)
 
 }
 
-function clearPatient(openFinder = true)
+function clearPatient()
 {
     top.restoreSession();
     app_view_model.application_data.patient(null);
@@ -380,28 +379,30 @@ function clearPatient(openFinder = true)
     tabCloseByName('rev');
     tabCloseByName('pop');
     tabCloseByName('pat');
-    if (openFinder) {
-        navigateTab(webroot_url+'/interface/main/finder/dynamic_finder.php','fin', function () {
-            activateTabByName('fin',true);
-        });
-    }
+    navigateTab(webroot_url+'/interface/main/finder/dynamic_finder.php','fin', function () {
+        activateTabByName('fin',true);
+    });
 
-    if (WindowTitleAddPatient)
+    if (WindowTitleAddPatient) 
     {
         top.document.title = WindowTitleBase;
     }
-
+ 
     //Ajax call to clear active patient in session
     $.ajax({
         type: "POST",
         url: webroot_url+"/library/ajax/unset_session_ajax.php",
-        data: {
+	    data: {
             func: "unset_pid",
             csrf_token_form: csrf_token_js
         },
-        success:function( msg ) { }
+	    success:function( msg ) {
+
+
+	    }
 	});
 }
+
 
 function clearTherapyGroup()
 {

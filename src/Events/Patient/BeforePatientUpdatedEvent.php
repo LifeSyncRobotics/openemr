@@ -16,7 +16,7 @@
 
 namespace OpenEMR\Events\Patient;
 
-use Symfony\Contracts\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\Event;
 
 class BeforePatientUpdatedEvent extends Event
 {

@@ -13,10 +13,8 @@ use Ramsey\Uuid\Exception\InvalidUuidStringException;
  * @package   OpenEMR
  * @link      http://www.open-emr.org
  * @author    Dixon Whitmire <dixonwh@gmail.com>
- * @author    Stephen Nielson <snielson@discoverandchange.com>
  * @copyright Copyright (c) 2020 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2020 Dixon Whitmire <dixonwh@gmail.com>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 abstract class BaseValidator
@@ -41,17 +39,9 @@ abstract class BaseValidator
 
     public function __construct()
     {
-        $this->validator = $this->getInnerValidator();
+        $this->validator = new Validator();
         $this->supportedContexts = [];
         $this->configureValidator();
-    }
-
-    protected function getInnerValidator(): Validator
-    {
-        if (empty($this->validator)) {
-            $this->validator = new Validator();
-        }
-        return $this->validator;
     }
 
     /**

@@ -350,7 +350,7 @@ class FHIRMolecularSequenceRoc extends FHIRBackboneElement implements \JsonSeria
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (0 < count($this->score)) {

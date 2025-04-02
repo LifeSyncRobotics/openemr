@@ -186,7 +186,7 @@ class FHIRMedicinalProductContraindicationOtherTherapy extends FHIRBackboneEleme
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->therapyRelationshipType)) {

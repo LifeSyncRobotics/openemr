@@ -7,10 +7,10 @@
 // as published by the Free Software Foundation; either version 2
 // of the License, or (at your option) any later version.
 
-require_once(__DIR__ . "/../../globals.php");
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once("../../globals.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
-// This function is invoked from printPatientForms in report.inc.php
+// This function is invoked from printPatientForms in report.inc
 // when viewing a "comprehensive patient report".  Also from
 // interface/patient_file/encounter/forms.php.
 //

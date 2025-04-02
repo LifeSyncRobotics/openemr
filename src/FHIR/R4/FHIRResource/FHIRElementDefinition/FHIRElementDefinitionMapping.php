@@ -222,7 +222,7 @@ class FHIRElementDefinitionMapping extends FHIRBackboneElement implements \JsonS
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->identity)) {

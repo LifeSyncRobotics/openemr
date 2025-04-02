@@ -12,7 +12,7 @@
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
 */
 
-require_once(__DIR__ . '/calendar.inc.php');
+require_once(__DIR__ . '/calendar.inc');
 require_once(__DIR__ . '/patient_tracker.inc.php');
 
 //===============================================================================
@@ -78,9 +78,6 @@ function todaysEncounterCheck($patient_id, $enc_date = '', $reason = '', $fac_id
 
     $dos = $enc_date ? $enc_date : $today;
     $visit_reason = $reason ? $reason : xl('Please indicate visit reason');
-    if (!empty($GLOBALS['auto_create_prevent_reason'] ?? 0)) {
-        $visit_reason = 'Please indicate visit reason';
-    }
     $tmprow = sqlQuery("SELECT username, facility, facility_id FROM users WHERE id = ?", array($_SESSION["authUserID"]));
     $username = $tmprow['username'];
     $facility = $tmprow['facility'];

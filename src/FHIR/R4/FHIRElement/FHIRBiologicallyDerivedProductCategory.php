@@ -132,7 +132,7 @@ class FHIRBiologicallyDerivedProductCategory extends FHIRElement implements \Jso
     /**
      * @return mixed
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         return $this->value;
     }

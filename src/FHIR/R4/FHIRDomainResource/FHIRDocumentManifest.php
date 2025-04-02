@@ -484,7 +484,7 @@ class FHIRDocumentManifest extends FHIRDomainResource implements \JsonSerializab
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         $json['resourceType'] = $this->_fhirElementName;

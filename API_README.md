@@ -12,9 +12,8 @@
     - [Authorization Code Grant](API_README.md#authorization-code-grant)
     - [Refresh Token Grant](API_README.md#refresh-token-grant)
     - [Password Grant](API_README.md#password-grant)
-    - [Client Credentials Grant](API_README.md#client-credentials-grant)
+    - [Client Credentials Grant](API_README#client-credentials-grant)
     - [Logout](API_README.md#logout)
-    - [OpenID Connect](API_README.md#openid-connect)
     - [More Details](API_README.md#more-details)
 - [Standard API Documentation](API_README.md#standard-api-documentation)
 - [Patient Portal API Documentation](API_README.md#patient-portal-api-documentation)
@@ -31,7 +30,6 @@
         - [Overview Docref (in FHIR_README.md)](FHIR_README.md#overview-docref)
         - [Generate CCDA (in FHIR_README.md)](FHIR_README.md#generate-ccda)
         - [Details Docref (in FHIR_README.md)](FHIR_README.md#details-docref)
-- [Security Settings](API_README.md#security)
 - [For Developers](API_README.md#for-developers)
 
 ## Overview
@@ -40,7 +38,7 @@ Easy-to-use JSON-based REST API for OpenEMR. FHIR is also supported, see FHIR AP
 
 ## Prerequisite
 
-Enable the Standard API service (/api/ endpoints) in OpenEMR menu: Administration->Config->Connectors->"Enable OpenEMR Standard REST API"
+Enable the Standard API service (/api/ endpoints) in OpenEMR menu: Administration->Globals->Connectors->"Enable OpenEMR Standard REST API"
 
 ## Using API Internally
 
@@ -54,7 +52,7 @@ Multisite is supported by including the site in the endpoint. When not using mul
 
 ## Authorization
 
-OpenEMR uses OIDC compliant authorization for API. SSL is required and setting baseurl at Administration->Config->Connectors->'Site Address (required for OAuth2 and FHIR)' is required. The listing of scopes can be found in below Scopes section.
+OpenEMR uses OIDC compliant authorization for API. SSL is required and setting baseurl at Administration->Globals->Connectors->'Site Address (required for OAuth2 and FHIR)' is required. The listing of scopes can be found in below Scopes section.
 
 ### Scopes
 
@@ -67,14 +65,13 @@ This is a listing of scopes:
 - `launch/patient`
 - `api:fhir` (fhir which are the /fhir/ endpoints)
   - `patient/AllergyIntolerance.read`
-  - `patient/Appointment.read`
-  - `patient/Binary.read`
   - `patient/CarePlan.read`
   - `patient/CareTeam.read`
   - `patient/Condition.read`
   - `patient/Coverage.read`
   - `patient/Device.read`
   - `patient/DiagnosticReport.read`
+  - `patient/Document.read`
   - `patient/DocumentReference.read`
   - `patient/DocumentReference.$docref`
   - `patient/Encounter.read`
@@ -91,13 +88,13 @@ This is a listing of scopes:
   - `patient/Procedure.read`
   - `patient/Provenance.read`
   - `system/AllergyIntolerance.read`
-  - `system/Binary.read`
   - `system/CarePlan.read`
   - `system/CareTeam.read`
   - `system/Condition.read`
   - `system/Coverage.read`
   - `system/Device.read`
   - `system/DiagnosticReport.read`
+  - `system/Document.read`
   - `system/DocumentReference.read`
   - `system/DocumentReference.$docref`
   - `system/Encounter.read`
@@ -120,13 +117,13 @@ This is a listing of scopes:
   - `system/*.$bulkdata-status`
   - `system/*.$export`
   - `user/AllergyIntolerance.read`
-  - `user/Binary.read`
   - `user/CarePlan.read`
   - `user/CareTeam.read`
   - `user/Condition.read`
   - `user/Coverage.read`
   - `user/Device.read`
   - `user/DiagnosticReport.read`
+  - `user/Document.read`
   - `user/DocumentReference.read`
   - `user/DocumentReference.$docref`
   - `user/Encounter.read`
@@ -189,7 +186,6 @@ This is a listing of scopes:
 - `api:port` (patient api which are the /portal/ endpoints) (EXPERIMENTAL)
   - `patient/encounter.read`
   - `patient/patient.read`
-  - `patient/appointment.read`
 
 ### Registration
 
@@ -298,7 +294,7 @@ Response:
 
 ### Password Grant
 
-Recommend not using this mechanism unless you know what you are doing. It is considered far less secure than the standard authorization code method. Because of security implications, it is not turned on by default. It can be turned on at Administration->Config->Connectors->'Enable OAuth2 Password Grant (Not considered secure)'.
+Recommend not using this mechanism unless you know what you are doing. It is considered far less secure than the standard authorization code method. Because of security implications, it is not turned on by default. It can be turned on at Administration->Globals->Connectors->'Enable OAuth2 Password Grant (Not considered secure)'.
 
 Note that all scopes are included in these examples for demonstration purposes. For production purposes, should only include the necessary scopes.
 
@@ -347,40 +343,11 @@ This is an advanced grant that uses JSON Web Key Sets(JWKS) to authenticate and 
 required to be used for access to any **system/\*.$export** scopes.  API clients must register either web accessible JWKS URI that hosts
 a RSA384 compatible key, or provide their JWKS as part of the registration. Client Credentials Grant access tokens are short
 lived and valid for only 1 minute and no refresh token is issued.  Tokens are requested at `/oauth2/default/token`
-To walk you through how to do this process you can follow [this guide created by HL7](https://hl7.org/fhir/uv/bulkdata/STU1/authorization/index.html).
+To walk you through how to do this process you can follow [this guide created by HL7](https://hl7.org/fhir/uv/bulkdata/authorization/index.html).
 
 ### Logout
 
 A grant (both Authorization Code and Password grants) can be logged out (ie. removed) by url of `oauth2/<site>/logout?id_token_hint=<id_token>`; an example full path would be `https://localhost:9300/oauth2/default/logout?id_token_hint=<id_token>`. Optional: `post_logout_redirect_uri` and `state` parameters can also be sent; note that `post_logout_redirect_uris` also needs to be set during registration for it to work.
-
-## OpenID Connect
-- The OpenEMR OpenID Connect discover endpoint is `https://{openmr_host}/oauth2/{site}/.well-known/openid-configuration` as the base URI. An example on the OpenEMR easy-dev docker with the 'default' site installation would be: https://localhost:9300/oauth2/default/.well-known/openid-configuration
-- A sample response is the following:
-    ```json
-    {
-       "issuer": "https://localhost:9300/oauth2/default",
-       "authorization_endpoint": "https://localhost:9300/oauth2/default/authorize",
-       "token_endpoint": "https://localhost:9300/oauth2/default/token",
-       "jwks_uri": "https://localhost:9300/oauth2/default/jwk",
-       "userinfo_endpoint": "https://localhost:9300/oauth2/default/userinfo",
-       "registration_endpoint": "https://localhost:9300/oauth2/default/registration",
-       "end_session_endpoint": "https://localhost:9300/oauth2/default/logout",
-       "introspection_endpoint": "https://localhost:9300/oauth2/default/introspect",
-       "scopes_supported": [
-         "openid",
-         "fhirUser",
-         "online_access",
-         "offline_access",
-         "launch",
-         "launch\/patient",
-         "api:oemr",
-         "api:fhir",
-         "api:port"
-       ]
-    }
-   ```
-- The standard site used is **default**
-- OpenEMR supports token revocation.  It is recommended that clients use the OpenID Connect **introspection_endpoint** retrieved from the discovery endpoint to verify a token is active before assuming the token is active.
 
 ### More Details
 
@@ -413,7 +380,7 @@ The Patient Portal API is documented via Swagger. Can see this documentation (an
 
 This is under development and is considered EXPERIMENTAL.
 
-Enable the Patient Portal API service (/portal/ endpoints) in OpenEMR menu: Administration->Config->Connectors->"Enable OpenEMR Patient Portal REST API (EXPERIMENTAL)"
+Enable the Patient Portal API service (/portal/ endpoints) in OpenEMR menu: Administration->Globals->Connectors->"Enable OpenEMR Patient Portal REST API (EXPERIMENTAL)"
 
 OpenEMR patient portal endpoints Use `https://localhost:9300/apis/default/portal as base URI.`
 
@@ -429,12 +396,6 @@ Request:
 curl -X GET 'https://localhost:9300/apis/default/portal/patient' \
   -H 'Authorization: Bearer eyJ0b2tlbiI6IjAwNmZ4TWpsNWhsZmNPelZicXBEdEZVUlNPQUY5KzdzR1Jjejc4WGZyeGFjUjY2QlhaaEs4eThkU3cxbTd5VXFBeTVyeEZpck9mVzBQNWc5dUlidERLZ0trUElCME5wRDVtTVk5bE9WaE5DTHF5RnRnT0Q0OHVuaHRvbXZ6OTEyNmZGUmVPUllSYVJORGoyZTkzTDA5OWZSb0ZRVGViTUtWUFd4ZW5cL1piSzhIWFpJZUxsV3VNcUdjQXR5dmlLQXRXNDAiLCJzaXRlX2lkIjoiZGVmYXVsdCIsImFwaSI6Im9lbXIifQ=='
 ```
-
-## Security
-- OpenEMR adminstrators / installers should ensure that the API is protected using an end to end encryption protocol such as TLS
-- Password Grant SHOULD be turned off for any kind of production use as it has a number of security problems
-- Setting the Admin -> Config -> OAuth2 App Manual Approval Settings to be 'Manual Approval' prevents any OAuth2 application from accessing the API without manual approval from an administrator.  This is the most secure setting.  However, in the USA jurisdiction that must comply with CEHRT rules for ONC Cures Update, patient standalone apps must be approved within 48 hours of a patient requesting access in order to avoid pentalities under the Information Blocking Provisions from ONC.  EHR administrators are not allowed to vet a patient's choice of an app as long as the app complies with OpenEMR's OAuth2 security requirements.  If an app requests user/* or system/* scopes, administrators can vet an application and request additional information / security on an app by app basis.  Leaving the setting at the default will auto-approve any patient standalone app.
-- Public apps (ones that can't securely store a secret) MUST implement the PKCE standard specified in [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636).  Confidential apps are still highly encouraged to implement PKCE to mitigate forms of MITM attacks such as multiple native app devices registering for the same custom url scheme used as the OAUTH2 redirect_uri in the authorization_code grant.
 
 ## For Developers
 

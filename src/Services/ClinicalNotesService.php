@@ -74,8 +74,6 @@ class ClinicalNotesService extends BaseService
                 ,notes.clinical_notes_type
                 ,notes.note_related_to
                 ,notes.clinical_notes_category
-                ,notes.last_updated
-                ,forms.date_created
                 ,lo_category.category_code
                 ,lo_category.category_title
                 ,patients.pid
@@ -102,7 +100,6 @@ class ClinicalNotesService extends BaseService
                         ,note_related_to
                         ,clinical_notes_category
                         ,form_id
-                        ,last_updated
                         ,user
                  FROM
                     form_clinical_notes
@@ -112,7 +109,6 @@ class ClinicalNotesService extends BaseService
                     id AS form_id,
                     encounter
                     ,pid AS form_pid
-                    ,`date` AS date_created
                 FROM
                     forms
             ) forms ON forms.form_id = notes.form_id
@@ -317,10 +313,12 @@ class ClinicalNotesService extends BaseService
             throw new \InvalidArgumentException("formid, and pid must all be populated");
         }
 
-        $sql = "SELECT fcn.*, lo_category.title AS category_title, lo_category.notes AS category_code
+        $sql = "SELECT fcn.*
+                        ,lo_category.title AS category_title
+                        ,lo_category.notes AS category_code
                 FROM `form_clinical_notes` fcn
-                LEFT JOIN list_options lo_category ON lo_category.list_id = 'Clinical_Note_Category' AND lo_category.option_id = fcn.clinical_notes_category
-                LEFT JOIN list_options lo_type ON lo_type.list_id = 'Clinical_Note_Type' AND lo_type.option_id = fcn.clinical_notes_type
+                LEFT JOIN list_options lo_category ON lo_category.option_id = fcn.clinical_notes_category
+                LEFT JOIN list_options lo_type ON lo_type.option_id = fcn.clinical_notes_type
                 WHERE fcn.`form_id`=? AND fcn.`pid` = ? AND fcn.`encounter` = ?";
         return QueryUtils::fetchRecords($sql, array($formid, $pid, $encounter));
     }
@@ -348,19 +346,17 @@ class ClinicalNotesService extends BaseService
         return !empty($options);
     }
 
-    public function getClinicalNoteTypes($includeInactive = false)
+    public function getClinicalNoteTypes()
     {
         $listService = new ListService();
-        $search = ($includeInactive) ? [] :  ['activity' => '1'];
-        $options = $listService->getOptionsByListName('Clinical_Note_Type', $search);
+        $options = $listService->getOptionsByListName('Clinical_Note_Type');
         return $this->getListAsSelectList($options);
     }
 
-    public function getClinicalNoteCategories($includeInactive = false)
+    public function getClinicalNoteCategories()
     {
         $listService = new ListService();
-        $search = ($includeInactive) ? [] :  ['activity' => '1'];
-        $options = $listService->getOptionsByListName('Clinical_Note_Category', $search);
+        $options = $listService->getOptionsByListName('Clinical_Note_Category');
         return $this->getListAsSelectList($options);
     }
 
@@ -372,7 +368,7 @@ class ClinicalNotesService extends BaseService
 
         $selectList = [];
         foreach ($optionsList as $option) {
-            $selectList[] = ['value' => $option['option_id'], 'code' => $option['notes'], 'title' => $option['title'], 'xlTitle' => xl_list_label($option['title'])];
+            $selectList[] = ['value' => $option['option_id'], 'code' => $option['notes'], 'title' => $option['title']];
         }
         return $selectList;
     }

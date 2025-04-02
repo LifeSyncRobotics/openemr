@@ -2,7 +2,7 @@
  * @package   OpenEMR
  * @link      http://www.open-emr.org
  * @author    Jerry Padgett <sjpadgett@gmail.com>
- * @copyright Copyright (c) 2016-2022 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2016-2021 Jerry Padgett <sjpadgett@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -35,37 +35,23 @@ if (typeof cuser === 'undefined') {
 }
 
 function signerAlertMsg(message, timer = 5000, type = 'danger', size = '') {
-    // Remove any existing alert box
     $('#signerAlertBox').remove();
-
-    // Set width and positioning based on size lg parameter
-    const alertWidth = size === 'lg' ? '50%' : '30%';
-    const alertLeft = size === 'lg' ? '25%' : '35%';
-    const style = `position:fixed;left:${alertLeft};width:${alertWidth};z-index:5000;`;
-
-    if (type === 'alert-error') {
-        type = 'danger';
-    }
-    $("body").prepend(`
-        <div class="container text-center" id="signerAlertBox" style="${style}">
-            <div id="alertMessage" class="alert alert-${type} border border-dark alert-dismissible fade show" role="alert">
-                <div class="alert-heading bg-dark text-light text-center"><h5 class="p-0 pb-2 ">` + jsText('Alert Message!') + `</h5></div>
-                <p>${message}</p>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        </div>
-    `);
-
+    size = (size == 'lg') ? 'left:25%;width:50%;' : 'left:35%;width:30%;';
+    let style = "position:fixed;top:25%;" + size + " bottom:0;z-index:1020;z-index:5000";
+    $("body").prepend("<div class='container text-center' id='signerAlertBox' style='" + style + "'></div>");
+    let mHtml = '<div id="alertMessage" class="alert alert-' + type + ' alert-dismissable">' +
+        '<button type="button" class="close btn btn-link btn-cancel" data-dismiss="alert" aria-hidden="true">&times;</button>' +
+        '<h5 class="alert-heading text-center">Alert!</h5><hr>' +
+        '<p>' + message + '</p>' +
+        '</div>';
+    $('#signerAlertBox').append(mHtml);
     $('#alertMessage').on('closed.bs.alert', function () {
         clearTimeout(AlertMsg);
         $('#signerAlertBox').remove();
     });
-
-    const AlertMsg = setTimeout(function () {
-        $('#alertMessage').fadeOut(950, function () {
-            $('#alertMessage').alert('close');
+    let AlertMsg = setTimeout(function () {
+        $('#alertMessage').fadeOut(800, function () {
+            $('#signerAlertBox').remove();
         });
     }, timer);
 }
@@ -73,16 +59,17 @@ function signerAlertMsg(message, timer = 5000, type = 'danger', size = '') {
 function getSignature(othis, isInit = false, returnSignature = false) {
     return new Promise(resolve => {
             let signer, signerType = "";
+            let isSigned = isDataURL($(othis).attr('src'));
             let libUrl = "./";
 
             if ($(othis).attr('src') != signhere && !isInit) {
                 $(othis).attr('src', signhere);
                 return;
             }
-            if (typeof webRoot !== 'undefined' && webRoot !== null) {
-                libUrl = webRoot + '/portal';
+            if (typeof webRoot !== 'undefined' && typeof webRoot !== null) {
+                libUrl = webRoot + '/portal/';
             } else {
-                libUrl = top.webroot_url ? (top.webroot_url + '/portal') : "./";
+                libUrl = top.webroot_url ? (top.webroot_url + '/portal/') : "./";
             }
 
             if (typeof cpid === 'undefined' && typeof cuser === 'undefined') {
@@ -91,7 +78,7 @@ function getSignature(othis, isInit = false, returnSignature = false) {
             }
             let otype = $(othis).attr('data-type');
             type = otype;
-            if (typeof otype === 'undefined' || otype === null) {
+            if (typeof otype === 'undefined' || typeof otype === null) {
                 otype = $(othis).data('type');
             }
             if (otype == 'admin-signature') {
@@ -119,7 +106,7 @@ function getSignature(othis, isInit = false, returnSignature = false) {
                 type: signerType
             };
 
-            let url = libUrl + "/sign/lib/show-signature.php";
+            let url = libUrl + "sign/lib/show-signature.php";
             fetch(url, {
                 credentials: 'include',
                 method: 'POST',
@@ -173,12 +160,7 @@ function placeSignature(responseData, el) {
             $(el).attr('src', i.src)
             resolve('done'); // display image
         };
-        if (!isDataURL(responseData)) {
-            alert("Invalid Signature.");
-            resolve('Error');
-            return false;
-        }
-        i.src = responseData; // load image
+        i.src = isDataURL(responseData) ? responseData : 'data:image/png;base64,' + responseData; // load image
     })
 }
 
@@ -187,7 +169,7 @@ function archiveSignature(signImage = '', edata = '') {
     let pid = 0;
     let data = {};
 
-    if (typeof webRoot !== 'undefined' && webRoot !== null) {
+    if (typeof webRoot !== 'undefined' && typeof webRoot !== null) {
         libUrl = webRoot + '/portal/';
     } else {
         libUrl = "./";
@@ -231,21 +213,18 @@ function archiveSignature(signImage = '', edata = '') {
             'Connection': 'close'
         }
     }).then(response => response.json()).then(function (response) {
-        const backdrop = document.querySelector('.modal-backdrop');
-        $("#openSignModal").modal('hide');
-        if (backdrop) {
-            backdrop.remove();
+            $("#openSignModal").modal("hide");
         }
-    }).catch(error => signerAlertMsg(error));
+    ).catch(error => signerAlertMsg(error));
 
     return true;
 }
 
-function isDataURL(dataUrl = '') {
+function isDataURL(dataUrl) {
     return !!dataUrl.match(isDataURL.regex);
 }
 
-isDataURL.regex = /^\s*data:([a-z]+\/[a-z]+(;[a-z-]+=[a-z-]+)?)?(;base64)?,[a-z0-9!$&',()*+;=\-._~:@/?%\s]*\s*$/i;
+isDataURL.regex = /^\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*$/i;
 
 // call if need to bind pen clicks after a dynamic template load. ie templates.
 var bindFetch = '';
@@ -377,9 +356,12 @@ function initSignerApi() {
     $(function (global) {
         var wrapper = document.getElementById("openSignModal");
         var canvasOptions = {
-            minWidth: 3.00,
-            maxWidth: 5.00,
-            penColor: 'rgb(0, 0, 255)',
+            minWidth: 1.00,
+            maxWidth: 2.75,
+            penColor: 'rgb(0, 0, 0)',
+            minDistance: 4,
+            /*throttle: 0,*/
+            velocityFilterWeight: .5,
         };
         var openPatientButton = document.querySelector("[data-type=patient-signature]");
         var openAdminButton = document.querySelector("[data-type=admin-signature]");
@@ -392,14 +374,14 @@ function initSignerApi() {
 
         // this offsets signature image to center on element somewhat
         // on any form (css) box height:70px length:auto center at 20px.
-        /*$(function (e) {
+        $(function (e) {
             let els = this.querySelectorAll("img[data-action=fetch_signature]");
-            let i;
+            let i; // caution using let in for
             for (i = 0; i < els.length; i++) {
                 els[i].style.top = (els[i].offsetTop - 20) + 'px';
                 els[i].setAttribute("data-offset", true);
             }
-        });*/
+        });
 
         $("#openSignModal .close").on("click", function (e) {
             signaturePad.clear();
@@ -528,9 +510,7 @@ function initSignerApi() {
             let thisElement = $(this);
             getSignature(thisElement, true).then(r => {
                 let imgurl = thisElement.attr('src');
-                signaturePad.fromDataURL(imgurl).then(r => {
-
-                });
+                signaturePad.fromDataURL(imgurl);
             });
         });
 

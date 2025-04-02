@@ -228,7 +228,7 @@ The type is the Canonical URL of Resource Definition that is the type this refer
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->reference)) {

@@ -16,7 +16,8 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/user.inc.php");
+require_once("$srcdir/auth.inc");
+require_once("$srcdir/user.inc");
 
 use OpenEMR\Common\Auth\AuthUtils;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -127,11 +128,6 @@ $row = sqlFetchArray($res);
                         <label class='control-label col-sm-2'><?php echo xlt('New Password') . ":"; ?></label>
                         <div class='col-sm-3'>
                             <input type='password' class='form-control' name='newPass'  value="" autocomplete='off'>
-                            <!-- Password Strength Meter -->
-                            <div id="password_strength_meter" class="progress">
-                                <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%"></div>
-                            </div>
-                            <div id="password_strength_text"></div>
                         </div>
                     </div>
                     <div class="form-group">

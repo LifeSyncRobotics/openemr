@@ -11,7 +11,6 @@
  * @author    Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2015-2017 Rod Roark <rod@sunsetsystems.com>
  * @copyright Copyright (c) 2018 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2017-2023 Jerry Padgett <sjpadgett@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -263,14 +262,14 @@ if ($what == 'codes') {
     exit();
 }
 
-$skipTableCount = false;
 if ($what == 'fields' && $source == 'V') {
     $fe_array = feSearchSort($searchTerm, $fe_column, $fe_reverse);
     $iTotal = count($form_encounter_layout);
     $iFilteredTotal = count($fe_array);
-} elseif ($what != 'codes') {
-    // we don't want to do counts for codes type anymore
-
+} elseif ($what == 'codes') {
+    $iTotal = main_code_set_search($codetype, '', null, null, !$include_inactive, null, true);
+    $iFilteredTotal = main_code_set_search($codetype, $searchTerm, null, null, !$include_inactive, null, true);
+} else {
   // Get total number of rows with no filtering.
     $iTotal = sqlNumRows(sqlStatement("SELECT $sellist FROM $from $where1 $orderby"));
   // Get total number of rows after filtering.
@@ -282,8 +281,6 @@ if ($what == 'fields' && $source == 'V') {
 $out = array(
   "sEcho"                => intval($_GET['sEcho']),
   "iTotalRecords"        => ($iTotal) ? $iTotal : 0,
-  "iTotalHasMoreRecords" => false,
-  "iSearchEmptyError"    => false,
   "iTotalDisplayRecords" => ($iFilteredTotal) ? $iFilteredTotal : 0,
   "aaData"               => array()
 );
@@ -296,21 +293,8 @@ if ($what == 'fields' && $source == 'V') {
         $out['aaData'][] = $arow;
     }
 } elseif ($what == 'codes') {
-    // for an external table with tons of codes for performance reasons we need to force them to search for something
-    $externalTableId = $code_types[$codetype]['external'] ?? 0;
-    /**
-     * @global $code_external_tables
-     */
-    $stopEmptySearch = $externalTableId && $code_external_tables[$externalTableId][SKIP_TOTAL_TABLE_COUNT] ?? false;
-    if (empty(trim($searchTerm)) && $stopEmptySearch) {
-        $out['iSearchEmptyError'] = xl('Search term is required for this code type.');
-        echo json_encode($out);
-        exit;
-    }
     $start = null;
     $number = null;
-    // only go out to 500 records for performance reasons, we'll display a message if there are more
-    $maxCount = 500;
     if ($iDisplayStart >= 0 && $iDisplayLength >= 0) {
         $start  = (int) $iDisplayStart;
         $number = (int) $iDisplayLength;
@@ -324,41 +308,24 @@ if ($what == 'fields' && $source == 'V') {
         $ordermode,
         false,
         $start,
-        $maxCount + 1 // always grab one more than we need to know if there are more records
+        $number
     );
-    ;
-    $count = 0;
-    $iFilteredTotal = $start;
-    $iTotalRecords = $start;
     if (!empty($res)) {
-        while ($count < $number && $row = sqlFetchArray($res)) {// && $iFilteredTotal < $maxCount) {
+        while ($row = sqlFetchArray($res)) {
             $dynCodeType = $codetype;
             if (stripos($codetype, 'VALUESET') !== false) {
                 $dynCodeType = $row['valueset_code_type'] ?? 'VALUESET';
             }
             $arow = array('DT_RowId' => genFieldIdString(array(
-                'code' => $row['code'],
-                'description' => $row['code_text'],
-                'codetype' => $dynCodeType,
-                'modifier' => $row['modifier'],
+              'code' => $row['code'],
+              'description' => $row['code_text'],
+              'codetype' => $dynCodeType,
             )));
             $arow[] = str_replace('|', ':', rtrim($row['code'], '|'));
             $arow[] = $row['code_text'];
-            $arow[] = $row['modifier'];
             $out['aaData'][] = $arow;
-            $count += 1;
-        }
-        while ($count < $maxCount && $row = sqlFetchArray($res)) {
-            $count += 1;
-        }
-        if (sqlFetchArray($res)) {
-            $out['iTotalHasMoreRecords'] = true;
-        } else {
-            $out['iTotalHasMoreRecords'] = false;
         }
     }
-    $out['iTotalDisplayRecords'] = min($maxCount, $start + $count);
-    $out['iTotalRecords'] = min($maxCount, $start + $count);
 } else {
     $query = "SELECT $sellist FROM $from $where1 " . ($where2 ?? '') . " $orderby $limit";
     $res = sqlStatement($query);
@@ -369,8 +336,7 @@ if ($what == 'fields' && $source == 'V') {
             $arow[] = $row['title'];
         } else {
             $arow[] = str_replace('|', ':', rtrim($row['code'], '|'));
-            $arow[] = $row['description'] ?? "";
-            $arow[] = $row['modifier'] ?? "";
+            $arow[] = $row['description'];
         }
         $out['aaData'][] = $arow;
     }

@@ -1,6 +1,6 @@
 <?php
 
-require_once(__DIR__ . "/../../globals.php");
+require_once("../../globals.php");
 
 use OpenEMR\Core\Header;
 
@@ -10,7 +10,7 @@ use OpenEMR\Core\Header;
 </head>
 <body <?php echo $top_bg_line;?> topmargin=0 rightmargin=0 leftmargin=2 bottommargin=0 marginwidth=2 marginheight=0>
 <?php
-require_once("$srcdir/api.inc.php");
+require_once("$srcdir/api.inc");
 
 
 $obj = formFetch("form_individual_treatment_plan", $_GET["id"]);

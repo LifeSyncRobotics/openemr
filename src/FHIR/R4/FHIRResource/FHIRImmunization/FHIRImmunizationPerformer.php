@@ -163,7 +163,7 @@ class FHIRImmunizationPerformer extends FHIRBackboneElement implements \JsonSeri
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->function)) {

@@ -15,7 +15,7 @@
  */
 
 require_once(dirname(__file__) . "/../../globals.php");
-require_once("$srcdir/group.inc.php");
+require_once("$srcdir/group.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 

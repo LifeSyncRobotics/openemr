@@ -2,7 +2,6 @@
 
 namespace OpenEMR\Validators;
 
-use OpenEMR\Common\Utils\ValidationUtils;
 use Particle\Validator\Validator;
 use Particle\Validator\Exception\InvalidValueException;
 use OpenEMR\Common\Uuid\UuidRegistry;
@@ -53,23 +52,10 @@ class PatientValidator extends BaseValidator
         $this->validator->context(
             self::DATABASE_INSERT_CONTEXT,
             function (Validator $context) {
-                $context->required("fname", "First Name")->lengthBetween(1, 255);
+                $context->required("fname", "First Name")->lengthBetween(2, 255);
                 $context->required("lname", 'Last Name')->lengthBetween(2, 255);
                 $context->required("sex", 'Gender')->lengthBetween(4, 30);
                 $context->required("DOB", 'Date of Birth')->datetime('Y-m-d');
-                // callback functions are not called for optional parameters unless allowEmpty is false
-                $context->optional("email", "Email")
-                ->required(function ($values) {
-                    return array_key_exists('email', $values) && $values['email'] !== '' && $values['email'] !== null;
-                })
-                ->callback(function ($value) {
-                    // Validator->email() does not cover unicode characters in the local part so we use
-                    // the OpenEMR email validator for this.
-                    if (!ValidationUtils::isValidEmail($value)) {
-                        throw new InvalidValueException("Email " . $value . " is not a valid email", "email");
-                    }
-                    return true;
-                });
             }
         );
 

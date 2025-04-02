@@ -132,7 +132,7 @@ class FHIRInvoicePriceComponentType extends FHIRElement implements \JsonSerializ
     /**
      * @return mixed
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         return $this->value;
     }

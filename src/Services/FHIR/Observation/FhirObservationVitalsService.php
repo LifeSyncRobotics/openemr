@@ -105,7 +105,7 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
             'fullcode' => 'LOINC:8327-9',
             'code' => '8327-9',
             'description' => 'Temperature Location',
-            'column' => ['temp_method'],
+            'column' => 'temp_method',
             'in_vitals_panel' => true
         ]
         ,'8302-2' => [
@@ -241,13 +241,7 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
             'category' => new FhirSearchParameterDefinition('category', SearchFieldType::TOKEN, ['category']),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['date']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField()
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['last_updated']);
     }
 
 
@@ -348,7 +342,6 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
                     , "uuid" => UuidRegistry::uuidToString($uuidMappings[self::VITALS_PANEL_LOINC_CODE])
                     , "user_uuid" => $record['user_uuid']
                     , "date" => $record['date']
-                    , "last_updated" => $record['last_updated']
                 ];
                 foreach ($uuidMappings as $code => $uuid) {
                     if (!$this->isVitalSignPanelCodes($code)) {  // we will skip over our vital signs code, and any pediatric stuff
@@ -372,7 +365,6 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
                 , "user_uuid" => $record['user_uuid']
                 ,"uuid" => UuidRegistry::uuidToString($uuidMappings[$code])
                 ,"date" => $record['date']
-                , "last_updated" => $record['last_updated']
             ];
 
             $columns = $this->getColumnsForCode($code);
@@ -429,11 +421,7 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
         $observation = new FHIRObservation();
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($dataRecord['last_updated'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['last_updated']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $observation->setMeta($meta);
 
         $id = new FHIRId();
@@ -441,7 +429,7 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
         $observation->setId($id);
 
         if (!empty($dataRecord['date'])) {
-            $observation->setEffectiveDateTime(UtilsService::getLocalDateAsUTC($dataRecord['date']));
+            $observation->setEffectiveDateTime(gmdate('c', strtotime($dataRecord['date'])));
         } else {
             $observation->setEffectiveDateTime(UtilsService::createDataMissingExtension());
         }
@@ -482,7 +470,6 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
         $basic_codes = [
             "9279-1" => 'respiration', "8867-4" => 'pulse', '2708-6' => 'oxygen_saturation'
             , '3150-0' => 'inhaled_oxygen_concentration'
-            , '3151-8' => 'oxygen_flow_rate'
             , '8310-5' => 'temperature'
             ,'8302-2' => 'height', '9843-4' => 'head_circ', '29463-7' => 'weight', '39156-5' => 'BMI'
             ,'59576-9' => 'ped_bmi', '8289-1' => 'ped_head_circ', '77606-2' => 'ped_weight_height'
@@ -709,12 +696,8 @@ class FhirObservationVitalsService extends FhirServiceBase implements IPatientCo
 
     private function populateBodyTemperatureLocation(FHIRObservation $observation, $record)
     {
-        if (empty($record['temp_method'])) {
-            $observation->setDataAbsentReason(UtilsService::createDataAbsentUnknownCodeableConcept());
-        } else {
-            // no guidance on how to pass this on, so we are using the value string to pass this on.
-            $observation->setValueString($record['temp_method']);
-        }
+        // no guidance on how to pass this on, so we are using the value string to pass this on.
+        $observation->setValueString($record['temp_method']);
     }
 
     /**

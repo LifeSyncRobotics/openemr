@@ -218,7 +218,7 @@ class FHIRResource implements \JsonSerializable
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = [];
         if (isset($this->id)) {

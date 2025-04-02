@@ -13,14 +13,14 @@
  */
 
 require_once(__DIR__ . "/../../globals.php");
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Core\Header;
 
 $returnurl = 'encounter_top.php';
-if (empty($formid)) {
-    $formid = $_POST['formid'] ?? null; // call from track_anything encounter
+if (!$formid) {
+    $formid = $_POST['formid']; // call from track_anything encounter
     $fromencounter = 1;
     if (!$formid) {
         $formid = $_GET['formid']; // call from demographic-widget "track_anything_fragement.php"
@@ -28,13 +28,13 @@ if (empty($formid)) {
     }
 }
 
-if (!empty($_POST['fromencounter'])) {
+if ($_POST['fromencounter'] != '') {
     $fromencounter = $_POST['fromencounter'];
 }
 
 // get $_POSTed vars
 //----------------------
-$ASC_DESC = $_POST['ASC_DESC'] ?? null;
+$ASC_DESC = $_POST['ASC_DESC'];
 
 if (!$ASC_DESC) {
     $ASC_DESC = "DESC"; # order DESC by default
@@ -70,9 +70,6 @@ echo "<html><head>";
 <?php require $GLOBALS['srcdir'] . '/js/xl/dygraphs.js.php'; ?>
 
 <?php Header::setupHeader('dygraphs'); ?>
-
-<title><?php echo xlt('Tracker')?></title>
-
 
 <link rel="stylesheet" href="style.css">
 
@@ -308,17 +305,8 @@ while ($myrow = sqlFetchArray($query)) {
         echo "<td class='check'>";
         for ($row_b = 0; $row_b < $row_lc; $row_b++) {
             if (is_numeric($value_local[$col_i][$row_b])) {
-                if (empty($localplot_c[$col_i])) {
-                    $localplot_c[$col_i] = 1;
-                } else {
-                    $localplot_c[$col_i]++; // count more than 1 to show graph-button
-                }
-
-                if (empty($globalplot_c[$col_i])) {
-                    $globalplot_c[$col_i] = 1;
-                } else {
-                    $globalplot_c[$col_i]++;
-                }
+                $localplot_c[$col_i]++; // count more than 1 to show graph-button
+                $globalplot_c[$col_i]++;
             }
         }
 

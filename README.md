@@ -1,6 +1,6 @@
-![Syntax Status](https://github.com/openemr/openemr/workflows/Syntax/badge.svg?branch=master)
-![Styling Status](https://github.com/openemr/openemr/workflows/Styling/badge.svg?branch=master)
-![Testing Status](https://github.com/openemr/openemr/workflows/Test/badge.svg?branch=master)
+![Syntax Status](https://github.com/openemr/openemr/workflows/Syntax/badge.svg?branch=rel-700)
+![Styling Status](https://github.com/openemr/openemr/workflows/Styling/badge.svg?branch=rel-700)
+![Testing Status](https://github.com/openemr/openemr/workflows/Test/badge.svg?branch=rel-700)
 
 [![Backers on Open Collective](https://opencollective.com/openemr/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/openemr/sponsors/badge.svg)](#sponsors)
 
@@ -42,7 +42,7 @@ Check out [FHIR_README.md](FHIR_README.md)
 
 ### For Developers
 
-If using OpenEMR directly from the code repository, then the following commands will build OpenEMR (Node.js version 20.* is required) :
+If using OpenEMR directly from the code repository, then the following commands will build OpenEMR (Node.js version 16.* is required) :
 
 ```shell
 composer install --no-dev
@@ -59,7 +59,7 @@ This project exists thanks to all the people who have contributed. [[Contribute]
 
 ### Sponsors
 
-Thanks to our [ONC Certification Major Sponsors](https://www.open-emr.org/wiki/index.php/OpenEMR_Certification_Stage_III_Meaningful_Use#Major_sponsors)!
+Thanks to our [2015 Edition Major Sponsors](https://www.open-emr.org/wiki/index.php/OpenEMR_Certification_Stage_III_Meaningful_Use#Major_sponsors)!
 
 
 ### License

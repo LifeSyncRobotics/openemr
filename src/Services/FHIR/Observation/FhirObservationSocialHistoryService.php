@@ -113,13 +113,7 @@ class FhirObservationSocialHistoryService extends FhirServiceBase implements IPa
             'category' => new FhirSearchParameterDefinition('category', SearchFieldType::TOKEN, ['category']),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['date']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField()
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['date']);
     }
 
 
@@ -218,6 +212,8 @@ class FhirObservationSocialHistoryService extends FhirServiceBase implements IPa
                 ,"description" => $this->getDescriptionForCode($code)
                 ,"category" => "social-history"
                 , "puuid" => $record['puuid']
+                , "euuid" => $record['euuid']
+                , "user_uuid" => $record['user_uuid']
                 ,"uuid" => UuidRegistry::uuidToString($uuidMappings[$code])
                 ,"date" => $record['date']
             ];
@@ -275,11 +271,7 @@ class FhirObservationSocialHistoryService extends FhirServiceBase implements IPa
         $observation = new FHIRObservation();
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($dataRecord['date'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['date']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $observation->setMeta($meta);
 
         $id = new FHIRId();
@@ -287,7 +279,7 @@ class FhirObservationSocialHistoryService extends FhirServiceBase implements IPa
         $observation->setId($id);
 
         if (!empty($dataRecord['date'])) {
-            $observation->setIssued(UtilsService::getLocalDateAsUTC($dataRecord['date']));
+            $observation->setIssued(gmdate('c', strtotime($dataRecord['date'])));
         } else {
             $observation->setIssued(UtilsService::createDataMissingExtension());
         }

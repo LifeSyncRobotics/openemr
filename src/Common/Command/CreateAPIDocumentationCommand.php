@@ -11,45 +11,50 @@
 
 namespace OpenEMR\Common\Command;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputDefinition;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
+use OpenEMR\Common\Command\Runner\CommandContext;
 
-class CreateAPIDocumentationCommand extends Command
+class CreateAPIDocumentationCommand implements IOpenEMRCommand
 {
-    protected function configure()
+    /**
+     * Prints the instructions on how to use this command
+     * @param CommandContext $context All the context about the command environment.
+     */
+    public function printUsage(CommandContext $context)
     {
-        $this
-            ->setName('openemr:create-api-documentation')
-            ->setDescription("Generates an OpenAPI swagger file that documents the OpenEMR API")
-            ->addUsage('--site=default')
-            ->setDefinition(
-                new InputDefinition([
-                    new InputOption('site', null, InputOption::VALUE_REQUIRED, 'Name of site', 'default'),
-                ])
-            );
+        echo "Command Usage: " . $context->getScriptName() . " -c CreateAPIDocumentation" . "\n";
     }
-    protected function execute(InputInterface $input, OutputInterface $output): int
+
+    /**
+     * Returns a description of the command
+     * @return string
+     */
+    public function getDescription(CommandContext $context): string
     {
-        $routesLocation = $GLOBALS['fileroot'] . DIRECTORY_SEPARATOR . "_rest_routes.inc.php";
-        $fileDestinationFolder = $GLOBALS['fileroot'] . DIRECTORY_SEPARATOR . "swagger" . DIRECTORY_SEPARATOR;
+        return "Generates an OpenAPI swagger file that documents the OpenEMR API";
+    }
+
+    /**
+     * Execute the command and spit any output to STDOUT and errors to STDERR
+     * @param CommandContext $context All the context information needed for the CLI Command to execute
+     */
+    public function execute(CommandContext $context)
+    {
+        $routesLocation = $context->getRootPath() . "_rest_routes.inc.php";
+        $fileDestinationFolder = $context->getRootPath() . "swagger" . DIRECTORY_SEPARATOR;
         $fileDestinationYaml =  $fileDestinationFolder . "openemr-api.yaml";
-        $site = $input->getOption('site') ?? 'default';
 
         $openapi = \OpenApi\Generator::scan([$routesLocation]);
 
         $resultYaml = file_put_contents($fileDestinationYaml, $openapi->toYaml());
 
         if ($resultYaml === false) {
-            $output->writeln("No write access to " . $fileDestinationYaml);
-            return Command::FAILURE;
+            echo "No write access to " . $fileDestinationYaml . "\n";
+            $this->printUsage($context);
+            return;
         } else {
-            $output->writeln("API file generated at " . $fileDestinationYaml);
-            $output->writeln("Your API documentation can now be viewed by going to <webroot>/swagger/");
-            $output->writeln("For example on the easy docker installation this would be https://localhost:9300/swagger/");
-            return Command::SUCCESS;
+            echo "API file generated at " . $fileDestinationYaml . "\n";
+            echo "Your API documentation can now be viewed by going to <SITE_URL>/swagger/\n";
+            echo "For example on the easy docker installation this would be https://localhost:9300/swagger/\n";
         }
     }
 }

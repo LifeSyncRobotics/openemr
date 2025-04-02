@@ -17,23 +17,16 @@
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
-require_once(__DIR__ . "/../pnotes.inc.php");
+require_once(__DIR__ . "/../pnotes.inc");
 require_once(__DIR__ . "/../gprelations.inc.php");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Crypto\CryptoGen;
 use OpenEMR\Common\ORDataObject\ORDataObject;
 use OpenEMR\Common\Uuid\UuidRegistry;
-use OpenEMR\Events\PatientDocuments\PatientDocumentStoreOffsite;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class Document extends ORDataObject
 {
-    /**
-     * @var EventDispatcherInterface $eventDispatcher
-     */
-    private $eventDispatcher;
-
     public const TABLE_NAME = "documents";
 
     /**
@@ -68,7 +61,7 @@ class Document extends ORDataObject
     public $id;
 
     /**
-     * @var string Binary of Unique User Identifier that is for both external reference to this entity and for future offline use.
+     * @var Unique User Identifier that is for both external reference to this entity and for future offline use.
      */
     public $uuid;
 
@@ -255,8 +248,6 @@ class Document extends ORDataObject
         if ($id != "") {
             $this->populate();
         }
-
-        $this->eventDispatcher = $GLOBALS['kernel']->getEventDispatcher();
     }
 
     /**
@@ -273,7 +264,7 @@ class Document extends ORDataObject
         . "WHERE `ctd`.`document_id` = ? ";
         $resultSet = sqlStatement($categories, [$this->get_id()]);
         $categories = [];
-        while ($category = sqlFetchArray($resultSet)) {
+        while ($category = sqlGetAssoc($resultSet)) {
             $categories[] = $category;
         }
         return $categories;
@@ -288,16 +279,6 @@ class Document extends ORDataObject
         if (!empty($this->date_expires)) {
             $dateTime = DateTime::createFromFormat("Y-m-d H:i:s", $this->date_expires);
             return $dateTime->getTimestamp() >= time();
-        }
-        return false;
-    }
-
-    public function can_patient_access($pid)
-    {
-        $foreignId = $this->get_foreign_id();
-        // TODO: if any information blocking rule checks were to be applied, they can be done here
-        if (!empty($foreignId) && $foreignId == $pid) {
-            return true;
         }
         return false;
     }
@@ -854,14 +835,11 @@ class Document extends ORDataObject
         return $this->couch_revid;
     }
 
-    function set_uuid(?string $uuid)
+    function set_uuid($uuid)
     {
         $this->uuid = $uuid;
     }
 
-    /**
-     * @return string Binary representation of the uuid for this document
-     */
     function get_uuid()
     {
         return $this->uuid;
@@ -990,26 +968,6 @@ class Document extends ORDataObject
             $this->couch_docid = $docid;
             $this->couch_revid = $revid;
         } else {
-            // Store it remotely.
-            $offSiteUpload = new PatientDocumentStoreOffsite($data);
-            $offSiteUpload->setPatientId($patient_id) ?? '';
-            $offSiteUpload->setRemoteFileName($filename) ?? '';
-            $offSiteUpload->setRemoteMimeType($mimetype) ?? '';
-            $offSiteUpload->setRemoteCategory($category_id) ?? '';
-            /**
-             * There must be a return to terminate processing.
-             */
-             $this->eventDispatcher->dispatch($offSiteUpload, PatientDocumentStoreOffsite::REMOTE_STORAGE_LOCATION);
-
-            /**
-             * If the response from the listener is true then the file was uploaded to another location.
-             * Else resume the local file storage
-             */
-
-            if ($GLOBALS['documentStoredRemotely'] ?? '') {
-                return xlt("Document was uploaded to remote storage"); // terminate processing
-            }
-
             // Storing document files locally.
             $repository = $GLOBALS['oer_config']['documents']['repository'];
             $higher_level_path = preg_replace("/[^A-Za-z0-9\/]/", "_", $higher_level_path);

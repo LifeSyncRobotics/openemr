@@ -18,9 +18,8 @@
  */
 
 require_once("../../globals.php");
-require_once("$srcdir/api.inc.php");
-require_once("$srcdir/formatting.inc.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/api.inc");
+require_once("$srcdir/patient.inc");
 require_once("$srcdir/options.inc.php");
 require_once($GLOBALS['srcdir'] . '/csv_like_join.php');
 
@@ -62,7 +61,6 @@ if ($formid) {
             ,'codetext' => ''
             ,'clinical_notes_type' => ''
             ,'description' => ''
-            ,'date' => oeFormatShortDate(date('Y-m-d'))
         ]
     ];
 }
@@ -210,7 +208,7 @@ $clinical_notes_category = $clinicalNotesService->getClinicalNoteCategories();
                                                             $context = $value['title'];
                                                         }
                                                         ?>
-                                                        <option value="<?php echo attr($value['value']); ?>" <?php echo $selected; ?>><?php echo text($value['xlTitle']); ?></option>
+                                                        <option value="<?php echo attr($value['value']); ?>" <?php echo $selected; ?>><?php echo text($value['title']); ?></option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
@@ -224,7 +222,7 @@ $clinical_notes_category = $clinicalNotesService->getClinicalNoteCategories();
                                                             $context = $value['title'];
                                                         }
                                                         ?>
-                                                        <option value="<?php echo attr($value['value']); ?>" <?php echo $selected; ?>><?php echo text($value['xlTitle']); ?></option>
+                                                        <option value="<?php echo attr($value['value']); ?>" <?php echo $selected; ?>><?php echo text($value['title']); ?></option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>

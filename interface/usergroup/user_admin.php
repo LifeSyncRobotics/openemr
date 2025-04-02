@@ -17,8 +17,9 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/calendar.inc.php");
+require_once("$srcdir/calendar.inc");
 require_once("$srcdir/options.inc.php");
+require_once("$srcdir/erx_javascript.inc.php");
 
 use OpenEMR\Common\Acl\AclExtended;
 use OpenEMR\Common\Acl\AclMain;
@@ -29,7 +30,6 @@ use OpenEMR\Menu\MainMenuRole;
 use OpenEMR\Menu\PatientMenuRole;
 use OpenEMR\Services\FacilityService;
 use OpenEMR\Services\UserService;
-use OpenEMR\Events\User\UserEditRenderEvent;
 
 if (!empty($_GET)) {
     if (!CsrfUtils::verifyCsrfToken($_GET["csrf_token_form"])) {
@@ -59,7 +59,7 @@ $iter = $result[0];
 <html>
 <head>
 
-<?php Header::setupHeader(['common','opener', 'erx']); ?>
+<?php Header::setupHeader(['common','opener']); ?>
 
 <script src="checkpwd_validation.js"></script>
 
@@ -129,14 +129,6 @@ function submitform() {
         }
 
     }//If pwd null ends here
-
-    // Valiate Google email address (if provided)
-    if(document.forms[0].google_signin_email.value != "" && !isValidEmail(document.forms[0].google_signin_email.value)) {
-        flag=1;
-        alert(<?php echo xlj('Google email provided is invalid/not properly formatted (e.g. first.last@gmail.com)') ?>);
-        return false;
-    }
-
 <?php } ?>
   if (document.forms[0].access_group_id) {
     var sel = getSelected(document.forms[0].access_group_id.options);
@@ -287,17 +279,6 @@ function toggle_password() {
 <input type=hidden name="user_type" value="<?php echo attr($bg_name); ?>" >
 
 <TABLE border=0 cellpadding=0 cellspacing=0>
-<tr>
-    <td colspan="4">
-        <?php
-        // TODO: we eventually want to move to a responsive layout and not use tables here.  So we are going to give
-        // module writers the ability to inject divs, tables, or whatever inside the cell instead of having them
-        // generate additional rows / table columns which locks us into that format.
-        $preRenderEvent = new UserEditRenderEvent('user_admin.php', $_GET['id']);
-        $GLOBALS['kernel']->getEventDispatcher()->dispatch($preRenderEvent, UserEditRenderEvent::EVENT_USER_EDIT_RENDER_BEFORE);
-        ?>
-    </td>
-</tr>
 <TR>
     <TD style="width:180px;"><span class=text><?php echo xlt('Username'); ?>: </span></TD>
     <TD style="width:270px;"><input type="text" name=username style="width:150px;" class="form-control" value="<?php echo attr($iter["username"]); ?>" disabled></td>
@@ -358,10 +339,6 @@ if ($iter["portal_user"]) {
 
 <TR>
 <td><span class=text><?php echo xlt('Last Name'); ?>: </span></td><td><input type="text" name=lname id=lname style="width:150px;"  class="form-control" value="<?php echo attr($iter["lname"]); ?>"><span class="mandatory"></span></td>
-<td><span class=text><?php echo xlt('Suffix'); ?>: </span></td><td><input type="text" name=suffix id=suffix style="width:150px;"  class="form-control" value="<?php echo attr($iter["suffix"]); ?>"></td>
-</tr>
-<tr>
-<td><span class=text><?php echo xlt('Valedictory'); ?>: </span></td><td><input type="text" name=valedictory id=valedictory style="width:150px;"  class="form-control" value="<?php echo attr($iter["valedictory"]); ?>"></td>
 <td><span class=text><?php echo xlt('Default Facility'); ?>: </span></td><td><select name=facility_id style="width:150px;" class="form-control">
 <?php
 $fres = $facilityService->getAllServiceLocations();
@@ -380,7 +357,6 @@ if ($fres) {
 }
 ?>
 </select></td>
-
 </tr>
 
 <?php if ($GLOBALS['restrict_user_facility']) { ?>
@@ -474,7 +450,7 @@ foreach (array(1 => xl('None{{Authorization}}'), 2 => xl('Only Mine'), 3 => xl('
 </td>
 </tr>
 <tr>
-<td><span class="text"><?php echo xlt('Weno User ID'); ?>: </span></td><td><input type="text" name="erxprid" style="width:150px;" class="form-control" value="<?php echo attr($iter["weno_prov_id"]); ?>"></td>
+<td><span class="text"><?php echo xlt('Weno Provider ID'); ?>: </span></td><td><input type="text" name="erxprid" style="width:150px;" class="form-control" value="<?php echo attr($iter["weno_prov_id"]); ?>"></td>
 <td><span class="text"><?php echo xlt('Google Email for Login'); ?>: </span></td><td><input type="text" name="google_signin_email" style="width:150px;" class="form-control" value="<?php echo attr($iter["google_signin_email"]); ?>"></td>
 </tr>
 
@@ -553,7 +529,7 @@ foreach (array(1 => xl('None{{Authorization}}'), 2 => xl('Only Mine'), 3 => xl('
     if ($fres) {
         while ($frow = sqlFetchArray($fres)) {
             // Get the warehouses that are linked to this user and facility.
-            $whids = getUserFacWH($_GET['id'], $frow['id']); // from calendar.inc.php
+            $whids = getUserFacWH($_GET['id'], $frow['id']); // from calendar.inc
             // Generate an option for just the facility with no warehouse restriction.
             echo "    <option";
             if (empty($whids) && in_array($frow['id'], $ufid)) {
@@ -630,18 +606,6 @@ foreach ($list_acl_groups as $value) {
 
         </td>
     </tr>
-    <tr>
-        <td colspan="4">
-            <?php
-            // TODO: we eventually want to move to a responsive layout and not use tables here.  So we are going to give
-            // module writers the ability to inject divs, tables, or whatever inside the cell instead of having them
-            // generate additional rows / table columns which locks us into that format.
-            $postRenderEvent = new UserEditRenderEvent('user_admin.php', $_GET['id']);
-            $GLOBALS['kernel']->getEventDispatcher()->dispatch($postRenderEvent, UserEditRenderEvent::EVENT_USER_EDIT_RENDER_AFTER);
-            ?>
-        </td>
-    </tr>
-
   <tr height="20" valign="bottom">
   <td colspan="4" class="text">
       <p>*<?php echo xlt('You must enter your own password to change user passwords. Leave blank to keep password unchanged.'); ?></p>

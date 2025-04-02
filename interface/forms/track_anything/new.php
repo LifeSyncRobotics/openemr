@@ -13,8 +13,8 @@
  */
 
 require_once(__DIR__ . "/../../globals.php");
-require_once("$srcdir/api.inc.php");
-require_once("$srcdir/forms.inc.php");
+require_once("$srcdir/api.inc");
+require_once("$srcdir/forms.inc");
 
 use OpenEMR\Core\Header;
 
@@ -26,14 +26,14 @@ if (! $encounter) { // comes from globals.php
 }
 
 // get vars posted by FORMs
-if (empty($formid)) {
-    $formid = $_GET['id'] ?? null;
+if (!$formid) {
+    $formid = $_GET['id'];
     if (!$formid) {
-        $formid = $_POST['formid'] ?? null;
+        $formid = $_POST['formid'];
     }
 }
 
-$myprocedureid =  $_POST['procedure2track'] ?? null;
+$myprocedureid =  $_POST['procedure2track'];
 
 echo "<html><head>";
 ?>
@@ -60,7 +60,7 @@ if (!$formid) {
     // this is a new Track
 
     // check if procedure is selcted
-    if ($_POST['bn_select'] ?? null) {
+    if ($_POST['bn_select']) {
         // "save"-Button was clicked, saving Form into db
 
         // save inbto db
@@ -119,7 +119,7 @@ if ($formid) {
     // this is an existing Track
     //----------------------------------------------------
     // get submitted item-Ids
-    $mylist = $_POST['liste'] ?? null;
+    $mylist = $_POST['liste'];
     #echo $mylist;
     $length = count($mylist ?? []);
     $thedate = $_POST['datetime'] ?? null;
@@ -156,9 +156,9 @@ if ($formid) {
     // ---------------------------
 
     // getting old entries from <form>
-    $old_id     = $_POST['old_id'] ?? null;
-    $old_time   = $_POST['old_time'] ?? null;
-    $old_value  = $_POST['old_value'] ?? null;
+    $old_id     = $_POST['old_id'];
+    $old_time   = $_POST['old_time'];
+    $old_value  = $_POST['old_value'];
 
     $how_many = count($old_time ?? []);
     // do this for each data row

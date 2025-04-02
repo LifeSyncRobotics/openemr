@@ -29,14 +29,13 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 require_once("../../custom/code_types.inc.php");
 
 use OpenEMR\Billing\BillingUtilities;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
-use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 use OpenEMR\Services\FacilityService;
 
@@ -69,6 +68,13 @@ function postError($msg)
     $errmsg .= text($msg);
 }
 
+function bucks($amount)
+{
+    if ($amount) {
+        return oeFormatMoney($amount);
+    }
+}
+
 function endDoctor(&$docrow)
 {
     global $grand_total_charges, $grand_total_copays, $grand_total_encounters;
@@ -85,12 +91,12 @@ function endDoctor(&$docrow)
     echo "  </td>\n";
     echo "  <td align='right'>\n";
     echo "   &nbsp;";
-    echo text(FormatMoney::getBucks($docrow['charges']));
+    echo text(bucks($docrow['charges']));
     echo "&nbsp;\n";
     echo "  </td>\n";
     echo "  <td align='right'>\n";
     echo "   &nbsp;";
-    echo text(FormatMoney::getBucks($docrow['copays']));
+    echo text(bucks($docrow['copays']));
     echo "&nbsp;\n";
     echo "  </td>\n";
     echo "  <td colspan='2'>\n";
@@ -524,10 +530,10 @@ if (!empty($_POST['form_refresh'])) {
                 <?php echo text($encounter); ?>&nbsp;
          </td>
          <td align='right'>
-                <?php echo text(FormatMoney::getBucks($charges)); ?>&nbsp;
+                <?php echo text(bucks($charges)); ?>&nbsp;
          </td>
          <td align='right'>
-                <?php echo text(FormatMoney::getBucks($copays)); ?>&nbsp;
+                <?php echo text(bucks($copays)); ?>&nbsp;
          </td>
          <td>
                 <?php echo text($billed); ?>
@@ -553,12 +559,12 @@ if (!empty($_POST['form_refresh'])) {
         echo "  </td>\n";
         echo "  <td align='right'>\n";
         echo "   &nbsp;";
-        echo text(FormatMoney::getBucks($grand_total_charges));
+        echo text(bucks($grand_total_charges));
         echo "&nbsp;\n";
         echo "  </td>\n";
         echo "  <td align='right'>\n";
         echo "   &nbsp;";
-        echo text(FormatMoney::getBucks($grand_total_copays));
+        echo text(bucks($grand_total_copays));
         echo "&nbsp;\n";
         echo "  </td>\n";
         echo "  <td colspan='2'>\n";

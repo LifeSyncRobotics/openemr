@@ -109,13 +109,7 @@ class FhirMedicationRequestService extends FhirServiceBase implements IResourceU
             'intent' => new FhirSearchParameterDefinition('intent', SearchFieldType::TOKEN, ['intent']),
             'status' => new FhirSearchParameterDefinition('status', SearchFieldType::TOKEN, ['status']),
             '_id' => new FhirSearchParameterDefinition('uuid', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField()
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['date_modified']);
     }
 
     /**
@@ -131,11 +125,7 @@ class FhirMedicationRequestService extends FhirServiceBase implements IResourceU
 
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($dataRecord['date_modified'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['date_modified']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $medRequestResource->setMeta($meta);
 
         $id = new FHIRId();
@@ -232,7 +222,7 @@ class FhirMedicationRequestService extends FhirServiceBase implements IResourceU
         // authoredOn must support
         if (!empty($dataRecord['date_added'])) {
             $authored_on = new FHIRDateTime();
-            $authored_on->setValue(UtilsService::getLocalDateAsUTC($dataRecord['date_added']));
+            $authored_on->setValue(gmdate('c', strtotime($dataRecord['date_added'])));
             $medRequestResource->setAuthoredOn($authored_on);
         }
 

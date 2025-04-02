@@ -163,7 +163,7 @@ class FHIRCapabilityStatementSupportedMessage extends FHIRBackboneElement implem
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->mode)) {

@@ -9,7 +9,7 @@
  * @author    Vipin Kumar <vipink@zhservices.com>
  * @author    Remesh Babu S <remesh@zhservices.com>
  * @author    Jerry Padgett <sjpadgett@gmail.com>
- * @copyright Copyright (c) 2020-2024 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2020 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2013 Z&H Consultancy Services Private Limited <sam@zhservices.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
@@ -18,7 +18,6 @@ namespace Installer\Model;
 
 use Laminas\Db\Adapter\Driver\Pdo\Result;
 use Laminas\Db\TableGateway\TableGateway;
-use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Laminas\Config\Reader\Ini;
 use Laminas\Db\ResultSet\ResultSet;
 use Application\Model\ApplicationTable;
@@ -30,8 +29,6 @@ use OpenEMR\Services\Utils\SQLUpgradeService;
 class InstModuleTable
 {
     protected $tableGateway;
-    protected $adapter;
-    protected $resultSetPrototype;
 
     /**
      * @var ApplicationTable
@@ -50,13 +47,13 @@ class InstModuleTable
      */
     private $module_zend_path;
 
-    public const MODULE_TYPE_ZEND = 1;
-    public const MODULE_TYPE_CUSTOM = 0;
+    const MODULE_TYPE_ZEND = 1;
+    const MODULE_TYPE_CUSTOM = 0;
 
     public function __construct(TableGateway $tableGateway, ContainerInterface $container)
     {
         $this->tableGateway = $tableGateway;
-        $adapter = GlobalAdapterFeature::getStaticAdapter();
+        $adapter = \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter();
         $this->adapter = $adapter;
         $this->resultSetPrototype = new ResultSet();
         $this->applicationTable = new ApplicationTable();
@@ -246,6 +243,10 @@ class InstModuleTable
     /**
      * this will be used to register a module
      *
+     * @param unknown_type $directory
+     * @param unknown_type $rel_path
+     * @param unknown_type $state
+     * @param unknown_type $base
      * @return boolean
      */
     public function register($directory, $rel_path, $state = 0, $base = "custom_modules")
@@ -260,10 +261,8 @@ class InstModuleTable
             $added = "";
             $typeSet = "";
 
-            if (file_exists($GLOBALS['srcdir'] . "/../interface/modules/$base/$added$directory/info.txt")) {
-                $lines = @file($GLOBALS['srcdir'] . "/../interface/modules/$base/$added$directory/info.txt");
-            }
-            if (!empty($lines)) {
+            $lines = @file($GLOBALS['srcdir'] . "/../interface/modules/$base/$added$directory/info.txt");
+            if ($lines) {
                 $name = $lines[0];
             } else {
                 $name = $directory;
@@ -416,7 +415,9 @@ class InstModuleTable
                 $results = $this->applicationTable->zQuery($sql, $params);
             }
         } else {
-            $sql = "UPDATE modules SET sql_run=1, mod_nick_name=?, mod_enc_menu=?, date=NOW(), sql_version = ?, acl_version = ? WHERE mod_id = ?";
+            $sql = "UPDATE modules SET sql_run=1, mod_nick_name=?, mod_enc_menu=?,
+                                 date=NOW(), sql_version = ?, acl_version = ?
+                             WHERE mod_id = ?";
             $params = array(
                 $values[0],
                 $values[1],
@@ -445,7 +446,7 @@ class InstModuleTable
         }
         if ($results == false) {
             return 'failure';
-        } elseif (is_string($results) && stripos($results, 'ERROR') !== false) {
+        } else if (is_string($results) && stripos($results, 'ERROR') !== false) {
             return 'failure';
         } else {
             return 'success';
@@ -641,7 +642,7 @@ class InstModuleTable
                 $modArr = $row;
             }
 
-            if (!empty($modArr['mod_id'])) {
+            if ($modArr['mod_id'] <> "") {
                 return "1";
             } else {
                 return "0";
@@ -878,7 +879,7 @@ class InstModuleTable
             $modArr = $row;
         }
 
-        if (!empty($modArr['obj_name'])) {
+        if ($modArr['obj_name'] <> "") {
             return "1";
         } else {
             return "0";
@@ -893,9 +894,7 @@ class InstModuleTable
         if ($objHooks) {
             $hooksArr = $objHooks->getHookConfig();
         } else {
-            if (self::MODULE_TYPE_CUSTOM != 0) {
-                error_log(errorLogEscape($moduleDirectory) . " " . "does not have a controller object");
-            }
+            error_log(errorLogEscape($moduleDirectory) . "does not have a controller object");
         }
 
         return $hooksArr;
@@ -1095,7 +1094,7 @@ class InstModuleTable
     private function existsModuleConfigFile($moduleDirectory)
     {
         $filePath = $this->getModuleConfigFilePathForDirectory($moduleDirectory);
-        return file_exists($filePath ?? '');
+        return file_exists($filePath);
     }
 
     /**

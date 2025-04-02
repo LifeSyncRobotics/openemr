@@ -13,11 +13,11 @@
  */
 
 require_once(dirname(__FILE__) . '/../../globals.php');
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 
-// This function is invoked from printPatientForms in report.inc.php
+// This function is invoked from printPatientForms in report.inc
 // when viewing a "comprehensive patient report".  Also from
 // interface/patient_file/encounter/forms.php.
 

@@ -23,8 +23,6 @@ use OpenEMR\Services\FHIR\FhirGroupService;
 use OpenEMR\Services\FHIR\IFhirExportableResourceService;
 use OpenEMR\Services\FHIR\Utils\FhirServiceLocator;
 use OpenEMR\Services\FHIR\UtilsService;
-use OpenEMR\Services\Search\DateSearchField;
-use OpenEMR\Services\Search\SearchFieldComparableValue;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
@@ -106,11 +104,7 @@ class FhirOperationExportRestController
         }
 
         $outputFormat = $exportParams['_outputFormat'] ?? ExportJob::OUTPUT_FORMAT_FHIR_NDJSON;
-        if (!empty($exportParams['_since'])) {
-            $since = $this->parseFHIRInstant($exportParams['_since']);
-        } else {
-            $since = new \DateTime(date(\DateTimeInterface::ATOM, 0)); // since epoch time
-        }
+        $since = $exportParams['_since'] ?? new \DateTime(date("Y-m-d H:i:s", 0)); // since epoch time
         $type = $exportParams['type'] ?? '';
         $groupId = $exportParams['groupId'] ?? null;
         $resources = !empty($type) ? explode(",", $type) : [];
@@ -401,7 +395,7 @@ class FhirOperationExportRestController
     private function getResultForResourceDocument($resource, \Document $document)
     {
         return [
-            'url' => $this->request->getApiBaseFullUrl() . '/fhir/Binary/' . $document->get_id()
+            'url' => $this->request->getApiBaseFullUrl() . '/fhir/Document/' . $document->get_id() . '/Binary'
             , "type" => $resource
         ];
     }
@@ -629,20 +623,5 @@ class FhirOperationExportRestController
             }
         }
         return $patientUuids;
-    }
-
-    private function parseFHIRInstant(string $_since)
-    {
-        // concievably they could send us a date that is not an actual INSTANCE of a date, but we'll just convert it
-        // to a regular date anyways, if the format is invalid DateSearchField will error out.
-        $dateField = new DateSearchField("_since", [$_since], DateSearchField::DATE_TYPE_DATETIME);
-        $values = $dateField->getValues();
-        $comparable = reset($values);
-        $value = $comparable->getValue();
-        if ($value instanceof \DatePeriod) {
-            return $value->getStartDate();
-        } else {
-            throw new \InvalidArgumentException("Invalid date format for _since parameter");
-        }
     }
 }

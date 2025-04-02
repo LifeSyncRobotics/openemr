@@ -21,9 +21,9 @@
  * @link      http://www.open-emr.org
  */
 
-require_once(__DIR__ . "/../../globals.php");
-require_once("$srcdir/api.inc.php");
-require_once("$srcdir/patient.inc.php");
+require_once("../../globals.php");
+require_once("$srcdir/api.inc");
+require_once("$srcdir/patient.inc");
 
 use OpenEMR\Core\Header;
 
@@ -106,7 +106,7 @@ if ($tmpDate && $tmpDate != '0000-00-00 00:00:00') {
 
 <body class="body_top">
 <?php
-require_once("$srcdir/api.inc.php");
+include_once("$srcdir/api.inc");
 //$obj = formFetch("form_intakeverslag", (int)$_GET["id"]);
 ?>
 

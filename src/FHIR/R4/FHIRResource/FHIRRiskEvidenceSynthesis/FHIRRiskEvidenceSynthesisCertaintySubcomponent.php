@@ -204,7 +204,7 @@ class FHIRRiskEvidenceSynthesisCertaintySubcomponent extends FHIRBackboneElement
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->type)) {

@@ -13,7 +13,6 @@ require_once("RsPatient.php");
  */
 class RsPopulation implements Countable, Iterator, ArrayAccess
 {
-    private $position = 0;
     protected $_patients = array();
 
     /*
@@ -21,8 +20,6 @@ class RsPopulation implements Countable, Iterator, ArrayAccess
      */
     public function __construct(array $patientIdArray)
     {
-        $this->position = 0;
-
         foreach ($patientIdArray as $patientId) {
             $this->_patients[] = new RsPatient($patientId);
         }
@@ -42,30 +39,29 @@ class RsPopulation implements Countable, Iterator, ArrayAccess
     public function rewind(): void
     {
         reset($this->_patients);
-        $this->position = 0;
     }
 
     /**
      * @return RsPatient
      */
-    public function current(): mixed
+    public function current()
     {
-        return $this->_patients[$this->position];
+        return current($this->_patients);
     }
 
-    public function key(): mixed
+    public function key()
     {
-        return $this->position;
+        return key($this->_patients);
     }
 
-    public function next(): void
+    public function next()
     {
-        ++$this->position;
+        return next($this->_patients);
     }
 
     public function valid(): bool
     {
-        return isset($this->_patients[$this->position]);
+        return $this->current() !== false;
     }
 
 
@@ -95,8 +91,8 @@ class RsPopulation implements Countable, Iterator, ArrayAccess
         unset($this->_patients[$offset]);
     }
 
-    public function offsetGet($offset): mixed
+    public function offsetGet($offset)
     {
-        return isset($this->_patients[$offset]) ? $this->_patients[$offset] : null;
+        return isset($this->_patients[$offset]) ? $this->container[$offset] : null;
     }
 }

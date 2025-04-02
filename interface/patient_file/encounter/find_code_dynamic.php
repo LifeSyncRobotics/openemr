@@ -8,17 +8,15 @@
  * @link      http://www.open-emr.org
  * @author    Rod Roark <rod@sunsetsystems.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
- * @author    Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2015-2017 Rod Roark <rod@sunsetsystems.com>
  * @copyright Copyright (c) 2018 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2017-2023 Jerry Padgett <sjpadgett@gmail.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 // TODO: Make more intuitive
 
 require_once('../../globals.php');
-require_once($GLOBALS['srcdir'] . '/patient.inc.php');
+require_once($GLOBALS['srcdir'] . '/patient.inc');
 require_once($GLOBALS['srcdir'] . '/csv_like_join.php');
 require_once($GLOBALS['fileroot'] . '/custom/code_types.inc.php');
 
@@ -64,6 +62,7 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
     var oChosenIDs = {};
 
     $(function () {
+
         // Initializing the DataTable.
         oTable = $('#my_data_table').dataTable({
             "bProcessing": true,
@@ -73,9 +72,8 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
             // Vertical length options and their default
             "aLengthMenu": [15, 25, 50, 100],
             "iDisplayLength": 50,
-            "searchDelay": 350, // milliseconds, codes are heavy queries so we want to delay the search, default is 200ms
             // Specify a width for the first column.
-            "aoColumns": [{"sWidth": "20%"}, {"sWidth": "60%"}, {"sWidth": "10%"}],
+            "aoColumns": [{"sWidth": "10%"}, null],
             // This callback function passes some form data on each call to the ajax handler.
             "fnServerParams": function (aoData) {
                 aoData.push({"name": "what", "value": <?php echo js_escape($what); ?>});
@@ -87,16 +85,6 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
                 <?php } elseif ($what == 'groups') { ?>
                 aoData.push({"name": "layout_id", "value": <?php echo js_escape($layout_id); ?>});
                 <?php } ?>
-            },
-            fnDrawCallback: function(obj) {
-                const infoBox = $(".dataTables_wrapper p.moreResults");
-                if (infoBox.length) {
-                    infoBox.parent().remove();
-                }
-                if (obj.json && obj.json.iTotalHasMoreRecords) {
-                    $(".dataTables_wrapper .dataTables_info").parent().parent()
-                        .prepend("<div class='col-sm-12'><p class='alert alert-warning moreResults'>" + <?php echo xlj("Maximum displayable results reached. Narrow your search"); ?> + "</p></div>");
-                }
             },
             // Drawing a row, apply styling if it is previously selected.
             "fnCreatedRow": function (nRow, aData, iDataIndex) {
@@ -118,39 +106,6 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
                     "sNext": <?php echo xlj('Next'); ?>,
                     "sLast": <?php echo xlj('Last'); ?>
                 }
-            },
-            fnInfoCallback: function(settings, start, end, max, total, pre) {
-                const self = this.api();
-                let json = self.ajax ? self.ajax.json() : null;
-                if (json && json.iSearchEmptyError) {
-                    return <?php echo xlj('Please enter a search term to search for a code'); ?>;
-                } else {
-                    return pre;
-                }
-            },
-            fnDrawCallback: function(obj) {
-                const infoBox = $(".dataTables_wrapper p.moreResults");
-                if (infoBox.length) {
-                    infoBox.parent().remove();
-                }
-                if (obj.json && obj.json.iTotalHasMoreRecords) {
-                    $(".dataTables_wrapper .dataTables_info").parent().parent()
-                        .prepend("<div class='col-sm-12'><p class='alert alert-warning moreResults'>" + <?php echo xlj("Maximum displayable results reached. Narrow your search"); ?> + "</p></div>");
-                }
-            },
-            initComplete: function () {
-                // const input = $('.dataTables_filter input').unbind(),
-                const self = this.api(),
-                    $searchButton = $('<button class="btn btn-sm btn-outline-primary fa fa-search p-2">').click(function () {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        self.search(input.val()).draw();
-                    }),
-                    $clearButton = $('<button type="button" class="btn btn-sm btn-outline-warning fa-solid fa-eraser p-2">')
-                        .click(function () {
-                            input.val('');
-                        });
-                $('.dataTables_filter').append($searchButton, $clearButton);
             }
         });
 
@@ -168,7 +123,8 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
                 <?php if ($what == 'codes') { ?>
                 // this.id is of the form "CID|jsonstring".
                 var codesel = jobj['code'].split('|');
-                selcode(jobj['codetype'], codesel[0], codesel[1], jobj['description'], target_element, limit, jobj['modifier']);
+
+                selcode(jobj['codetype'], codesel[0], codesel[1], jobj['description'], target_element, limit);
                 <?php } elseif ($what == 'fields') { ?>
                 selectField(jobj);
                 <?php } elseif ($what == 'lists') { ?>
@@ -202,7 +158,7 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
 
     <?php if ($what == 'codes') { ?>
     // Pass info back to the opener and close this window. Specific to billing/product codes.
-    function selcode(codetype, code, selector, codedesc, target_element, limit = 0, modifier = '') {
+    function selcode(codetype, code, selector, codedesc, target_element, limit = 0) {
         if (opener.closed || (!opener.set_related && !opener.set_related_target)) {
             alert(<?php echo xlj('The destination form was closed; I cannot act on your selection.'); ?>);
         } else {
@@ -212,7 +168,7 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
                 opener.promiseData = JSON.stringify({codetype, code, selector, codedesc});
                 dlgclose();
             } else {
-                var msg = opener.set_related(codetype, code, selector, codedesc, modifier);
+                var msg = opener.set_related(codetype, code, selector, codedesc);
             }
             if (msg) alert(msg);
             // window.close();
@@ -272,7 +228,7 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
             opener.SetList(jobj['code']);
         dlgclose();
         return false;
-    }
+    };
 
     <?php } elseif ($what == 'groups') { ?>
     var SelectItem = function (jobj) {
@@ -345,15 +301,12 @@ $singleCodeSelection = $_GET['singleCodeSelection'] ?? null;
         echo "</div>\n";
         ?>
 
-        <!-- Exception here: Do not use table-responsive as it breaks datatables
-        note by sjp: table-responsive does not go in table but the container div!
-        !-->
-        <table id="my_data_table" class="table table-striped table-hover table-sm w-100">
+        <!-- Exception here: Do not use table-responsive as it breaks datatables !-->
+        <table id="my_data_table" class="table table-striped table-hover table-sm">
             <thead>
             <tr>
                 <th><?php echo xlt('Code'); ?></th>
                 <th><?php echo xlt('Description'); ?></th>
-                <th><?php echo xlt('Modifier'); ?></th>
             </tr>
             </thead>
             <tbody>

@@ -6,36 +6,30 @@
  * @package OpenEMR
  * @link    https://www.open-emr.org
  * @author  Jerry Padgett <sjpadgett@gmail.com>
- * @copyright Copyright (c) 2017-2024 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2017 Jerry Padgett <sjpadgett@gmail.com>
  * @license https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 namespace OpenEMR\Billing;
 
-use OpenEMR\Billing\BillingProcessor\BillingClaimBatchControlNumber;
+use OpenEMR\Billing\Claim;
 
 class X125010837I
 {
-    public static function x12Date($frmdate)
+    public function x12Date($frmdate)
     {
         return ('20' . substr($frmdate, 4, 2) . substr($frmdate, 0, 2) . substr($frmdate, 2, 2));
     }
 
     public $ub04id = array();
 
-    public static function generateX12837I($pid, $encounter, $x12_partner, &$log, $ub04id)
+    public function generateX12837I($pid, $encounter, &$log, $ub04id)
     {
         $today = time();
         $out = '';
-        $claim = new Claim($pid, $encounter, $x12_partner);
+        $claim = new Claim($pid, $encounter);
         $edicount = 0;
-        // Qualify data array
-        if (!empty($ub04id)) {
-            for ($i = 0; $i < 428; ++$i) {
-                $ub04id[$i] = $ub04id[$i] ?? '';
-            }
-        }
-        // This is the start of the 837I claim
+
         $log .= "Generating 837I claim $pid-$encounter for " .
             $claim->patientFirstName() . ' ' .
             $claim->patientMiddleName() . ' ' .
@@ -56,7 +50,7 @@ class X125010837I
             "*" . date('Hi', $today) .
             "*" . "^" .
             "*" . "00501" .
-            "*" . BillingClaimBatchControlNumber::getIsa13() .
+            "*" . "000000001" .
             "*" . $claim->x12gsisa14() .
             "*" . $claim->x12gsisa15() .
             "*:" .
@@ -67,7 +61,7 @@ class X125010837I
             "*" . trim($claim->x12gs03()) .
             "*" . date('Ymd', $today) .
             "*" . date('Hi', $today) .
-            "*" . BillingClaimBatchControlNumber::getGs06() .
+            "*1" .
             "*X" .
             // "*" . $claim->x12gsversionstring() .
             "*" . "005010X223A2" .
@@ -86,7 +80,7 @@ class X125010837I
             "*" . "0123" .                             // reference identification
             "*" . date('Ymd', $today) .           // transaction creation date
             "*" . date('Hi', $today) .            // transaction creation time
-            (($encounter_claim ?? null) ? "*RP" : "*CH") .  // RP = reporting, CH = chargeable
+            ($encounter_claim ? "*RP" : "*CH") .  // RP = reporting, CH = chargeable
             "~\n";
 
         ++$edicount;
@@ -280,7 +274,7 @@ class X125010837I
             "*" .
             "*" .
             "*" . "PI" .
-            "*" . (($encounter_claim ?? null) ? $claim->payerAltID() : $claim->payerID()) .
+            "*" . ($encounter_claim ? $claim->payerAltID() : $claim->payerID()) .
             "~\n";
         if (!$claim->payerID()) {
             $log .= "*** Payer ID is missing for payer '" . $claim->payerName() . "'.\n";
@@ -359,7 +353,7 @@ class X125010837I
             "*" .
             "*";
         // Service location this need to be bill type from ub form type_of_bill
-        if (strlen($ub04id[7] ?? '') >= 3) {
+        if (strlen($ub04id[7]) >= 3) {
             $out .= "*" . substr($ub04id[7], 1, 1) . ":" . substr($ub04id[7], 2, 1) . ":" . substr($ub04id[7], 3, 1);
         }
 
@@ -369,7 +363,7 @@ class X125010837I
             "*" . "Y" .
             "~\n";
         // discharge hour
-        if ($ub04id[29] ?? null) {
+        if ($ub04id[29]) {
             ++$edicount;
             $out .= "DTP" . // Loop 2300
                 "*" . "096" .
@@ -381,7 +375,7 @@ class X125010837I
         // Statment Dates
         // DTP 434 RD8 (Statment from OR to date)
 
-        if ($ub04id[13] ?? null) {
+        if ($ub04id[13]) {
             ++$edicount;
 
             $tmp = self::x12Date($ub04id[13]);
@@ -390,14 +384,14 @@ class X125010837I
                 "*434" . "*" . "RD8" . "*" . $tmp . '-' . $tmp1 . "~\n";
         }
 
-        if ($ub04id[13] ?? null) {
+        if ($ub04id[13]) {
             ++$edicount;
             $tmp = self::x12Date($ub04id[25]);
             $out .= "DTP" . // Loop 2300
                 "*435" . "*" . "DT" . "*" . $tmp . $ub04id[26] . "~\n";
         }
 
-        if (strlen(trim($ub04id[13] ?? '')) == 0) {
+        if (strlen(trim($ub04id[13])) == 0) {
             $log .= "*** Error: No Admission Date Entered!\n";
         }
 
@@ -407,10 +401,10 @@ class X125010837I
         // Institutional Claim Code
         // CL1 (Admission Type Code) (Admission Source Code) (Patient Status Code)
 
-        if (($ub04id[27] ?? null) != "014X") { // Type of bill
+        if ($ub04id[27] != "014X") { // Type of bill
             ++$edicount;
             $out .= "CL1" . // Loop 2300
-                "*" . ($ub04id[27] ?? '') . "*" . ($ub04id[28] ?? '') . "*" . ($ub04id[30] ?? '') . "~\n";
+                "*" . $ub04id[27] . "*" . $ub04id[28] . "*" . $ub04id[30] . "~\n";
         }
 
         // Segment PWK (Claim Supplemental Information) omitted.
@@ -506,7 +500,7 @@ class X125010837I
 
         // Segment HI*BI (Occurrence Span Information).
         // HI BI (Occurrence Span Code 1) RD8 (Occurrence Span Code Associated Date)
-        if ($ub04id[52] ?? null) {
+        if ($ub04id[52]) {
             $max_per_seg = 4;
             $diag_type_code = 'BI';
             $tmp = 0;
@@ -537,7 +531,7 @@ class X125010837I
         // Segment HI*BH (Occurrence Information).
         // HI BH (Occurrence Code 1) D8 (Occurrence Code Associated Date)
 
-        if ($ub04id[44] ?? null) {
+        if ($ub04id[44]) {
             $max_per_seg = 8;
             $diag_type_code = 'BH';
             $tmp = 0;
@@ -568,7 +562,7 @@ class X125010837I
         // Segment HI*BE (Value Information).
         // HI BE (Value Code 1) *.* (Value Code Amount)
 
-        if ($ub04id[74] ?? null) {
+        if ($ub04id[74]) {
             $max_per_seg = 12;
             $diag_type_code = 'BE';
             $os = 74;
@@ -598,7 +592,7 @@ class X125010837I
         // Segment HI*BG (Condition Information).
         // HI BG (Condition Code 1)
 
-        if ($ub04id[31] ?? null) {
+        if ($ub04id[31]) {
             $max_per_seg = 11;
             $diag_type_code = 'BG';
             $os = 31;
@@ -629,7 +623,7 @@ class X125010837I
         // Segment HI*TC (Treatment Code Information).
         // HI TC (Treatment Code 1)
         /* 63a. TREATMENT AUTHORIZATION CODES - PRIMARY PLAN */
-        if ($ub04id[319] ?? null) {
+        if ($ub04id[319]) {
             $max_per_seg = 3;
             $diag_type_code = 'TC';
             $tmp = 0;
@@ -673,7 +667,7 @@ class X125010837I
         // This needs to allow Attending Physician 2310A, Operating Physician Name 2310B, Other Operating Physician Name 2310C
         // and Rendering Provider Name (Rendering Provider Name is futher down)
 
-        if ($ub04id[388] ?? null) {
+        if ($ub04id[388]) {
             ++$edicount;
             // Loop 2310A Attending Physician
             $out .= "NM1" . "*71" . "*1" . "*" . $ub04id[388] . "*" . $ub04id[389] . "*" . "*";
@@ -694,7 +688,7 @@ class X125010837I
 
         // 2310B
 
-        if ($ub04id[400] ?? null) {
+        if ($ub04id[400]) {
             ++$edicount;
 
             $out .= "NM1" . // Loop 2310B operating Physician
@@ -716,7 +710,7 @@ class X125010837I
 
         // 2310C
 
-        if ($ub04id[413] ?? null) {
+        if ($ub04id[413]) {
             ++$edicount;
 
             $out .= "NM1" . // Loop 2310C other operating Physician
@@ -735,7 +729,7 @@ class X125010837I
                     "*" . $ub04id[407] . "*" . $ub04id[408] . "~\n";
             }
         }
-        if ($ub04id[427] ?? null) {
+        if ($ub04id[427]) {
             ++$edicount;
 
             $out .= "NM1" . // Loop 2310C other operating Physician
@@ -994,9 +988,9 @@ class X125010837I
         //
 
         for ($tlh = 0; $tlh < $proccount; ++$tlh) {
-            $tmp = $claim->procs[$tlh]['code_text'];
+            $tmp = $claim->procs[$tlh][code_text];
 
-            if ($claim->procs[$tlh]['code_type'] == 'HCPCS') {
+            if ($claim->procs[$tlh][code_type] == 'HCPCS') {
                 $tmpcode = '3';
             } else {
                 $tmpcode = '1';
@@ -1022,6 +1016,7 @@ class X125010837I
             ++$edicount;
 
             // Revenue code from form
+            //
             $tmp = $ub04id[$os]; //$revcode[$prockey][revenue_code];
             if (empty($tmp)) {
                 $log .= "*** Error: Missing Revenue Code for " . $claim->cptKey($prockey) . "!\n";

@@ -96,7 +96,7 @@ $user_full_name = $user_name['fname'] . " " . $user_name['lname'];
         <?php
     } ?>    <div class="row">
                 <div class="col-sm-12">
-                    <form method='post' class="form-horizontal" action='mfa_totp.php' onsubmit="doregister('reg2')">
+                    <form method='post' class="form-horizontal" action='mfa_totp.php' onsubmit='return top.restoreSession()'>
                         <input type="hidden" name="csrf_token_form" value="<?php echo attr(CsrfUtils::collectCsrfToken()); ?>" />
 
 
@@ -126,7 +126,7 @@ $user_full_name = $user_name['fname'] . " " . $user_name['lname'];
                                 </fieldset>
                                 <div class="form-group clearfix">
                                 <div class="col-sm-12 text-left position-override">
-                                        <button type="submit" class="btn btn-secondary btn-save" value="<?php echo xla('Submit'); ?>"><?php echo xlt('Submit'); ?></button>
+                                        <button type="button" class="btn btn-secondary btn-save" value="<?php echo xla('Submit'); ?>" onclick="doregister('reg2')"><?php echo xlt('Submit'); ?></button>
                                         <button type="button" class="btn btn-link btn-cancel" value="<?php echo xla('Cancel'); ?>" onclick="docancel()" ><?php echo xlt('Cancel'); ?></button>
                                     </div>
                                 </div>
@@ -160,13 +160,13 @@ $user_full_name = $user_name['fname'] . " " . $user_name['lname'];
                             }
 
                             // Generate a new QR code or existing QR code
-                            $mfaAuth = new Totp($secret, $_SESSION['authUser']);
-                            $qr = $mfaAuth->generateQrCode();
+                            $googleAuth = new Totp($secret, $_SESSION['authUser']);
+                            $qr = $googleAuth->generateQrCode();
 
 
                             // if secret did not exist previously, stores secret in session variable for saving
                             if (!$doesExist) {
-                                $_SESSION['totpSecret'] = $mfaAuth->getSecret();
+                                $_SESSION['totpSecret'] = $googleAuth->getSecret();
                             }
                             ?>
                             <fieldset>
@@ -185,9 +185,7 @@ $user_full_name = $user_name['fname'] . " " . $user_name['lname'];
                                             <br />
                                             <img src="<?php echo attr($qr); ?>" class="img-responsive center-block" style="height:200px !Important"/>
                                             <br />
-                                            <p><?php echo xlt("Or paste in the following code into your authenticator app"); ?></p>
-                                            <p><?php echo $mfaAuth->getSecret(); ?></p>
-                                            <p><?php echo xlt('Example authenticator apps include'); ?>:</p>
+                                            <p><?php echo xlt('Example authenticator apps include'); ?></p>:
                                             <div class="col-sm-4 offset-sm-4">
                                                 <ul>
                                                     <li><?php echo xlt('Google Auth'); ?>

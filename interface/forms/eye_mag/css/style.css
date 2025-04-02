@@ -331,8 +331,7 @@ input[type=text] {
 /* REFRACTION PANEL */
 
 #REFRACTION_sections {
-  max-width: 95%;
-  margin: auto;
+  margin: 0 auto;
 }
 
 .refraction_panel {
@@ -644,7 +643,6 @@ body {
   margin-left: auto;
   margin-right: auto;
   text-align: center;
-  font-size: 0.8rem;
 }
 
 .sections {
@@ -698,7 +696,7 @@ body {
 
 .exam_section_left {
   float: left;
-  margin: 5px;
+  margin: 5px auto;
   min-height: 415px;
   padding: 10px;
   top: 0;
@@ -719,7 +717,7 @@ body {
 
 .exam_section_right {
   float: left;
-  margin: 5px;
+  margin: 5px auto;
   min-height: 415px;
   padding: 10px;
   top: 0;
@@ -2158,13 +2156,13 @@ View.php
   float: left;
   height: 1.05in;
   padding: 0.02in;
-  width: 2.5in;
+  width: 1.9in;
 }
 
 
 #DA_EXAM_sections {
   display: inline-table;
-  max-width: 90%;
+  max-width: 93%;
   text-align: center;
 }
 
@@ -2177,7 +2175,7 @@ View.php
   float: left;
   min-height: 1.05in;
   padding: 0.02in;
-  width: 2.5in;
+  width: 2.2in;
 }
 
 #tabs {
@@ -2208,21 +2206,21 @@ View.php
 #Visions_A > span:nth-of-type(2),
 #Visions_B > span:nth-of-type(2) {
   font-size: 0.8em;
-  left: 0.4in;
+  left: 0.35in;
   position: absolute;
 }
 
 #Visions_A > span:nth-of-type(3),
 #Visions_B > span:nth-of-type(3) {
   font-size: 0.8em;
-  left: 0.95in;
+  left: 0.77in;
   position: absolute;
 }
 
 #Visions_A > span:nth-of-type(4),
 #Visions_B > span:nth-of-type(4) {
   font-size: 0.8em;
-  left: 1.5in;
+  left: 1.2in;
   position: absolute;
 }
 
@@ -2230,7 +2228,7 @@ View.php
 #Visions_B > input {
   height: 0.19in;
   margin: 2px;
-  width: 0.5in;
+  width: 0.35in;
 }
 
 #Visions_A,
@@ -2295,26 +2293,26 @@ View.php
   height: 0.18in;
   left: 0.5in;
   margin: 2px;
-  width: 0.5in;
+  width: 0.28in;
 }
 
 #Lyr42 > span:nth-of-type(1) {
   font-size: 0.8em;
-  left: 0.4in;
+  left: 0.3in;
   position: absolute;
   top: 0.5in;
 }
 
 #Lyr42 > span:nth-of-type(2) {
   font-size: 0.8em;
-  left: 0.95in;
+  left: 0.65in;
   position: absolute;
   top: 0.5in;
 }
 
 #Lyr42 > span:nth-of-type(3) {
   font-size: 0.8em;
-  left: 1.525in;
+  left: 1in;
   position: absolute;
   top: 0.5in;
 }
@@ -2395,10 +2393,8 @@ View.php
 }
 
 #Lyr70 {
-  float: left;
-  min-height: 1.05in;
-  padding: 0.02in;
-  width: 2.5in;
+  font-size: 0.8em;
+  padding: 1px 10px 5px 0;
 }
 
 #Lyr71 {
@@ -2457,7 +2453,7 @@ View.php
 #DIMOSPUPILSIZE2 {
   height: 0.2in;
   white-space: nowrap;
-  width: 0.5in;
+  width: 0.25in;
 }
 
 .pupil_input_2,
@@ -2470,7 +2466,7 @@ View.php
 
 #dim_pupils_panel {
   float: right;
-  width: 2.6in;
+  width: 2.06in;
   z-index: 99;
 }
 
@@ -2486,7 +2482,7 @@ View.php
 
 .pupil_dim_comments {
   border: 0;
-  left: 1.55in;
+  left: 1.1in;
   padding: auto;
   position: absolute;
   top: 0.2in;

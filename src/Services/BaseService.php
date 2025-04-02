@@ -6,9 +6,7 @@
  * @package   OpenEMR
  * @link      http://www.open-emr.org
  * @author    Jerry Padgett <sjpadgett@gmail.com>
- * @author    Stephen Nielson <snielson@discoverandchange.com>
  * @copyright Copyright (c) 2020 Jerry Padgett <sjpadgett@gmail.com>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -23,9 +21,7 @@ use OpenEMR\Services\Search\SearchFieldException;
 use OpenEMR\Services\Search\SearchFieldStatementResolver;
 use OpenEMR\Validators\ProcessingResult;
 use Particle\Validator\Exception\InvalidValueException;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 
 require_once(__DIR__  . '/../../custom/code_types.inc.php');
 
@@ -57,11 +53,6 @@ class BaseService
     );
 
     /**
-     * @var EventDispatcher
-     */
-    private $eventDispatcher;
-
-    /**
      * Default constructor.
      */
     public function __construct($table)
@@ -70,17 +61,6 @@ class BaseService
         $this->fields = sqlListFields($table);
         $this->autoIncrements = self::getAutoIncrements($table);
         $this->setLogger(new SystemLogger());
-        $this->eventDispatcher = $GLOBALS['kernel']->getEventDispatcher();
-    }
-
-    public function getEventDispatcher(): EventDispatcher
-    {
-        return $this->eventDispatcher;
-    }
-
-    public function setEventDispatcher(EventDispatcher $dispatcher)
-    {
-        $this->eventDispatcher = $dispatcher;
     }
 
     /**
@@ -105,26 +85,17 @@ class BaseService
 
     /**
      * Return the fields that should be used in a standard select clause.  Can be overwritten by inheriting classes
-     * @param string $alias if the field should be prefixed with a table alias
-     * @param string $columnPrefix prefix to add to each field, used if there is a possibility of column name conflicts in select statement, prefix's can only be ascii alphabetic and the underscore characters
      * @return array
      */
-    public function getSelectFields(string $tableAlias = '', string $columnPrefix = ""): array
+    public function getSelectFields(): array
     {
-        $tableAlias = trim($tableAlias);
-        if ($tableAlias == '') {
-            $tableAlias = '`' . $this->getTable() . '`';
-        }
-        // only allow ascii characters and underscore
-        $columnPrefix = preg_replace("/[^a-z_]+/i", "", $columnPrefix);
-        $tableAlias .= ".";
         // since we are often joining a bunch of fields we need to make sure we normalize our regular field array
         // by adding the table name for our own table values.
         $fields = $this->getFields();
         $normalizedFields = [];
         // processing is cheap
         foreach ($fields as $field) {
-            $normalizedFields[] = $tableAlias . '`' . $columnPrefix . $field . '`';
+            $normalizedFields[] = '`' . $this->getTable() . '`.`' . $field . '`';
         }
 
         return $normalizedFields;
@@ -217,14 +188,16 @@ class BaseService
             if ($value === null || $value === false) {
                 $value = $null_value;
             }
-            if (!empty($key)) {
-                $keyset .= ($keyset) ? ", `$key` = ? " : "`$key` = ? ";
-                // for dates which should be saved as null
-                if (empty($value) && (strpos($key, 'date') !== false)) {
-                    $bind[] = null;
-                } else {
-                    $bind[] = ($value === null || $value === false) ? $null_value : $value;
-                }
+
+            $keyset .= ($keyset) ? ", `$key` = ? " : "`$key` = ? ";
+            // for dates which should be saved as null
+            if (
+                empty($value) &&
+                (strpos($key, 'date') !== false)
+            ) {
+                $bind[] = null;
+            } else {
+                $bind[] = ($value === null || $value === false) ? $null_value : $value;
             }
         }
 
@@ -265,34 +238,25 @@ class BaseService
             }
             if (!in_array($key, $this->fields)) {
                 // placeholder. could be for where clauses
-                /*
-                 * // Patched out 11/15/22 to match buildInsertColumns()
-                 * WHERE part should be handled by calling method.
-                 * Also prevents adding a bind because of a missing column in query part.
-                 * $bind[] = ($value == 'NULL') ? $null_value : $value;
-                */
+                $bind[] = ($value == 'NULL') ? $null_value : $value;
                 continue;
             }
             if ($value == 'YYYY-MM-DD' || $value == 'MM/DD/YYYY') {
                 $value = "";
             }
-            if (
-                (
-                    $value === null
-                    || $value === false
-                )
-                && (strpos($key, 'date') === false)
-            ) {
+            if ($value === null || $value === false) {
                 // in case unwanted values passed in.
                 continue;
             }
-            if (!empty($key)) {
-                $keyset .= ($keyset) ? ", `$key` = ? " : "`$key` = ? ";
-                if (empty($value) && (strpos($key, 'date') !== false)) {
-                    $bind[] = null;
-                } else {
-                    $bind[] = $value;
-                }
+
+            $keyset .= ($keyset) ? ", `$key` = ? " : "`$key` = ? ";
+            if (
+                empty($value) &&
+                (strpos($key, 'date') !== false)
+            ) {
+                $bind[] = null;
+            } else {
+                $bind[] = ($value === null || $value === false) ? $null_value : $value;
             }
         }
 
@@ -599,16 +563,13 @@ class BaseService
             return $clause;
         }
         foreach ($joins as $tableDefinition) {
-            // if it is a temporary table that starts with a ( then we don't need to wrap it in backticks
-            $table = $tableDefinition['table'][0] === '(' ? $tableDefinition['table'] : '`' . $tableDefinition['table'] . '`';
-
-            $clause .= $tableDefinition['type'] . ' ' . $table . " `{$tableDefinition['alias']}` "
-                . ' ON ';
+            $clause .= $tableDefinition['type'] . ' `' . $tableDefinition['table'] . "` `{$tableDefinition['alias']}` "
+                . ' ON `';
             if (isset($tableDefinition['join_clause'])) {
                 $clause .= $tableDefinition['join_clause'];
             } else {
                 $table = $tableDefinition['join_table'] ?? $this->getTable();
-                $clause .= "`" . $table . '`.`' . $tableDefinition['column']
+                $clause .= $table . '`.`' . $tableDefinition['column']
                 . '` = `' . $tableDefinition['alias'] . '`.`' . $tableDefinition['join_column'] . '` ';
             }
         }

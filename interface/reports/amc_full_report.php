@@ -2,7 +2,7 @@
 
 require_once("../globals.php");
 require_once "$srcdir/options.inc.php";
-require_once "$srcdir/report_database.inc.php";
+require_once "$srcdir/report_database.inc";
 // TODO: @adunsulag we need to move ALL this AMC stuff into a namespace.  Any AMC classes should use autoloader not requires.
 require_once("../../library/classes/rulesets/library/RsReportIF.php");
 require_once("../../library/classes/rulesets/library/RsUnimplementedIF.php");
@@ -13,7 +13,7 @@ require_once("../../library/classes/rulesets/ReportTypes.php");
 require_once("../../library/classes/rulesets/library/RsReportFactoryAbstract.php");
 require_once("../../library/classes/rulesets/Amc/AmcReportFactory.php");
 
-use OpenEMR\ClinicalDecisionRules\AMC\CertificationReportTypes;
+use OpenEMR\ClinicialDecisionRules\AMC\CertificationReportTypes;
 use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Common\Logging\SystemLogger;
 
@@ -46,12 +46,12 @@ function formatPatientReportData($report_id, &$data, $type_report, $amc_report_t
                 $failed_items = $row['pass_filter'] - $row['pass_target'] - $row['excluded'];
             }
             $row['display_field_sub'] = ($displayFieldSubHeader != "") ? "($displayFieldSubHeader)" : null;
-        } elseif (isset($row['is_sub'])) {
+        } else if (isset($row['is_sub'])) {
             $row['display_field'] = generate_display_field(array('data_type' => '1', 'list_id' => 'rule_action_category'), $row['action_category'])
                 . ': ' . generate_display_field(array('data_type' => '1', 'list_id' => 'rule_action'), $row['action_item']);
             // Excluded is not part of denominator in standard rules so do not use in calculation
             $failed_items = $main_pass_filter - $row['pass_target'];
-        } elseif (isset($row['is_plan'])) {
+        } else if (isset($row['is_plan'])) {
             $row['display_field'] = generate_display_field(array('data_type' => '1', 'list_id' => 'clinical_plans'), $row['id']);
         }
 
@@ -201,7 +201,7 @@ if (!empty($report_view)) {
     $subTitle = '';
     if ($report_view['provider'] == "group_calculation") {
         $subTitle = xl("Group Calculation Method");
-    } elseif (is_numeric($report_view['provider'])) {
+    } else if (is_numeric($report_view['provider'])) {
         // grab the provider
         $userService = new \OpenEMR\Services\UserService();
         $provider = $userService->getUser($report_view['provider']);

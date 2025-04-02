@@ -39,18 +39,6 @@ if ($isPortal) {
 }
 require_once("../../../interface/globals.php");
 
-if (!$isPortal) {
-    $userManipulatedFlag = false;
-    if ($user != $_SESSION['authUserID']) {
-        $userManipulatedFlag = true;
-    }
-
-    if ($userManipulatedFlag) {
-        echo js_escape("error");
-        exit();
-    }
-}
-
 if ($type === 'witness-signature') {
     echo(js_escape('Done'));
     exit();

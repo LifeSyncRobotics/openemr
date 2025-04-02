@@ -14,7 +14,7 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Core\Header;
@@ -64,7 +64,7 @@ if (!empty($_POST['form_labels'])) {
    }
 }
 </style>
-<title><?php echo xlt('Unique Seen Patients'); ?></title>
+<title><?php echo xlt('Front Office Receipts'); ?></title>
 
     <?php Header::setupHeader('datetime-picker'); ?>
 

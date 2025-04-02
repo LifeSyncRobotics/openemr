@@ -3466,7 +3466,7 @@ class FHIRResourceContainer implements \JsonSerializable
     /**
      * @return mixed
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         if (isset($this->Account)) {
             return $this->Account;

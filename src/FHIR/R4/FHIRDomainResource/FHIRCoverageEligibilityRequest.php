@@ -565,7 +565,7 @@ class FHIRCoverageEligibilityRequest extends FHIRDomainResource implements \Json
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         $json['resourceType'] = $this->_fhirElementName;

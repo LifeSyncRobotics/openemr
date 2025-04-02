@@ -32,10 +32,9 @@ class AllergyIntoleranceValidator extends BaseValidator
             self::DATABASE_INSERT_CONTEXT,
             function (Validator $context) {
                 $context->required('title')->lengthBetween(2, 255);
-                $context->optional('begdate')->datetime('Y-m-d H:i:s');
+                $context->required('begdate')->datetime('Y-m-d');
                 $context->optional('diagnosis')->lengthBetween(2, 255);
-                $context->optional('enddate')->datetime('Y-m-d H:i:s');
-                $context->optional('comments');
+                $context->optional('enddate')->datetime('Y-m-d');
                 $context->required("puuid", "Patient UUID")->callback(
                     function ($value) {
                         return $this->validateId("uuid", "patient_data", $value, true);

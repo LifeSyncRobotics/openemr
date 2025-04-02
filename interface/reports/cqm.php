@@ -16,13 +16,13 @@
 
 
 require_once("../globals.php");
-require_once("../../library/patient.inc.php");
+require_once("../../library/patient.inc");
 require_once "$srcdir/options.inc.php";
 require_once "$srcdir/clinical_rules.php";
-require_once "$srcdir/report_database.inc.php";
+require_once "$srcdir/report_database.inc";
 
 use OpenEMR\Common\Acl\AclMain;
-use OpenEMR\ClinicalDecisionRules\AMC\CertificationReportTypes;
+use OpenEMR\ClinicialDecisionRules\AMC\CertificationReportTypes;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Services\PractitionerService;
@@ -104,13 +104,13 @@ if (!empty($report_id)) {
 $show_help = false;
 if ($type_report == "standard") {
     $heading_title = xl('Standard Measures');
-} elseif ($type_report == "cqm") {
+} else if ($type_report == "cqm") {
     $heading_title = xl('Clinical Quality Measures (CQM)');
-} elseif ($type_report == 'cqm_2011') {
+} else if ($type_report == 'cqm_2011') {
     $heading_title = 'Clinical Quality Measures (CQM) - 2011';
-} elseif ($type_report == "cqm_2014") {
+} else if ($type_report == "cqm_2014") {
     $heading_title = 'Clinical Quality Measures (CQM) - 2014';
-} elseif ($is_amc_report) {
+} else if ($is_amc_report) {
     $heading_title = $amc_report_types[$type_report]['title'];
     $show_help = true;
     $help_file_name = "cqm_amc_help.php";
@@ -179,7 +179,7 @@ if (($type_report == "cqm") || ($type_report == "cqm_2011") || ($type_report == 
         ,['value' => 'cqm_2011', 'selected' => $plan_filter == 'cqm_2011', 'label' => xl('2011 Official Clinical Quality Measures (CQM) Measure Groups')]
         ,['value' => 'cqm_2014', 'selected' => $plan_filter == 'cqm_2014', 'label' => xl('2014 Official Clinical Quality Measures (CQM) Measure Groups')]
     ];
-} elseif ($is_amc_report) {
+} else if ($is_amc_report) {
     // latest AMC doesn't have collate options
     if (empty($report_id)) {
         // truncate to just the first option
@@ -205,7 +205,7 @@ if (($type_report == "cqm") || ($type_report == "cqm_2011") || ($type_report == 
     }
     $formData['providerReportOptions'][] = ['value' => 'group_calculation', 'selected' => $provider == 'group_calculation'
         , 'label' => xl('All EP/EC Group Calculation')];
-} elseif ($type_report == 'standard') {
+} else if ($type_report == 'standard') {
     $formData['rule_filters'] = [
         ['value' => 'passive_alert', 'selected' => $type_report == 'passive_alert', 'label' => xl('Passive Alert Rules')]
         ,['value' => 'active_alert', 'selected' => $type_report == 'active_alert', 'label' => xl('Active Alert Rules')]

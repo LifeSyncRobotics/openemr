@@ -59,14 +59,8 @@ class FhirLocationService extends FhirServiceBase implements IFhirExportableReso
     protected function loadSearchParameters()
     {
         return  [
-            '_id' => new FhirSearchParameterDefinition('uuid', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField()
+            '_id' => new FhirSearchParameterDefinition('uuid', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)])
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['last_updated']);
     }
 
     /**
@@ -82,11 +76,7 @@ class FhirLocationService extends FhirServiceBase implements IFhirExportableReso
 
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($dataRecord['last_updated'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['last_updated']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $locationResource->setMeta($meta);
 
         $id = new FHIRId();
@@ -107,9 +97,6 @@ class FhirLocationService extends FhirServiceBase implements IFhirExportableReso
 
         // TODO: @brady.miller is this the right security ACL for a facilities organization?
         if ($this->shouldIncludeContactInformationForLocationType($dataRecord['type'], $dataRecord['uuid'])) {
-            // TODO: @adunsulag when we handle the contact,contact_address,and address tables we can grab those fields
-            // instead of overriding the type for the fhir.
-            $dataRecord['type'] = 'physical';
             $locationResource->setAddress(UtilsService::createAddressFromRecord($dataRecord));
 
             if (!empty($dataRecord['phone'])) {
@@ -179,33 +166,12 @@ class FhirLocationService extends FhirServiceBase implements IFhirExportableReso
         // even though its not a patient compartment issue we still don't want certain location data such as clinician home addresses
         // being returned... or other patient locations...  Wierd that its not in the patient compartment
         if (!empty($this->patientUuid)) {
-            // if there is no uuid search field this becomes
-            //      (table_uuid = ? and type = 'patient') OR (type = 'facility')
-            // if there is an uuid search field this becomes:
-            //      (table_uuid = ? and type = 'patient' and uuid = ?) OR (type = 'facility' AND uuid = ?)
-
-            $patientType = new CompositeSearchField('patient-type', [], true);
+            // when we are patient bound we only want facility data returned or return just that patient's information.
+            $patientType = new CompositeSearchField('patient-type', [], false);
             // patient id is the target_uuid, the uuid column is the mapped 'Location' resource in FHIR
             $patientType->addChild(new TokenSearchField('table_uuid', [new TokenSearchValue($this->patientUuid, null, true)]));
-            $patientType->addChild(new TokenSearchField('type', [new TokenSearchValue(LocationService::TYPE_PATIENT)]));
-
-            $facilityType = new CompositeSearchField('facility-type', [], true);
-            $facilityType->addChild(new TokenSearchField('type', [new TokenSearchValue(LocationService::TYPE_FACILITY)]));
-
-            if (!empty($openEMRSearchParameters['uuid'])) {
-                // id must match the patient type as well
-                $patientType->addChild($openEMRSearchParameters['uuid']);
-
-                // or id must match the facility location
-                $facilityType->addChild($openEMRSearchParameters['uuid']);
-                unset($openEMRSearchParameters['uuid']);
-            }
-
-            // if we are patient bound we want to make sure we grab only patient locations or facility locations
-            $patientFacilityType = new CompositeSearchField('patient-facility-type', [], false);
-            $patientFacilityType->addChild($facilityType);
-            $patientFacilityType->addChild($patientType);
-            $openEMRSearchParameters['patient-facility-type'] = $patientFacilityType;
+            $patientType->addChild(new TokenSearchField('type', [new TokenSearchValue(LocationService::TYPE_FACILITY)]));
+            $openEMRSearchParameters['patient-type'] = $patientType;
         }
         return $this->locationService->getAll($openEMRSearchParameters, false);
     }

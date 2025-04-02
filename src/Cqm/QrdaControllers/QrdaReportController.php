@@ -13,7 +13,6 @@
 namespace OpenEMR\Cqm\QrdaControllers;
 
 use DOMDocument;
-use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Services\Qrda\QrdaReportService;
 use XSLTProcessor;
 
@@ -259,7 +258,6 @@ class QrdaReportController
             file_put_contents($file, $xml);
             unset($content);
         }
-        EventAuditLogger::instance()->newEvent("qrda3-export", $_SESSION['authUser'], $_SESSION['authProvider'], 1, "QRDA3 download");
         ob_clean();
         header("Pragma: public");
         header("Expires: 0");

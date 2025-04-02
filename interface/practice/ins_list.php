@@ -10,11 +10,9 @@
  * @author    Rod Roark <rod@sunsetsystems.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @author    Stephen Waite <stephen.waite@cmsvt.com>
- * @author    Stephen Nielson <snielson@discoverandchange.com>
  * @copyright Copyright (c) 2005 Rod Roark <rod@sunsetsystems.com>
  * @copyright Copyright (c) 2018 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2021 Stephen Waite <stephen.waite@cmsvt.com>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -55,9 +53,6 @@ $where = addwhere($where, 'a.state', $_GET['form_state']);
 $where = addwhere($where, 'a.zip', $_GET['form_zip']);
 
 $phone_parts = array();
-$area_code = null;
-$prefix = null;
-$digits = null;
 
 // Search by area code if there is one.
 if (
@@ -67,8 +62,7 @@ if (
         $phone_parts
     )
 ) {
-    $area_code = $phone_parts[1];
-    $where = addwhere($where, 'p.area_code', $area_code);
+    $where = addwhere($where, 'p.area_code', $phone_parts[1]);
 }
 
 // If there is also an exchange, search for that too.
@@ -79,8 +73,7 @@ if (
         $phone_parts
     )
 ) {
-    $prefix = $phone_parts[1];
-    $where = addwhere($where, 'p.prefix', $prefix);
+    $where = addwhere($where, 'p.prefix', $phone_parts[1]);
 }
 
 // If the last 4 phone number digits are given, search for that too.
@@ -91,17 +84,27 @@ if (
         $phone_parts
     )
 ) {
-    $digits = $phone_parts[1];
-    $where = addwhere($where, 'p.number', $digits);
+    $where = addwhere($where, 'p.number', $phone_parts[1]);
 }
 
 $query = "SELECT " .
     "i.id, i.name, i.attn, " .
-    "a.line1, a.line2, a.city, a.state, a.zip, " .
-    "p.area_code, p.prefix, p.number " .
-    "FROM insurance_companies i " .
-    "LEFT JOIN addresses a ON a.foreign_id = i.id " .
-    "LEFT JOIN phone_numbers p ON p.foreign_id = i.id WHERE 1=1 ";
+    "a.line1, a.line2, a.city, a.state, a.zip ";
+
+$any_phone_numbers = sqlQuery("SELECT COUNT(*) AS count FROM phone_numbers");
+if ($any_phone_numbers['count'] > 0) {
+    $query .= ", p.area_code, p.prefix, p.number " .
+        "FROM insurance_companies as i, addresses AS a " .
+        ", phone_numbers AS p ";
+} else {
+    $query .= "FROM insurance_companies AS i, addresses AS a ";
+}
+
+$query .= "WHERE a.foreign_id = i.id ";
+
+if (!empty($phone_parts)) {
+    $query .= "AND p.foreign_id = i.id ";
+}
 
 $query .= $where . " ORDER BY i.name, a.zip";
 $res = sqlStatement($query);
@@ -121,29 +124,9 @@ td {
 
  // This is invoked when an insurance company name is clicked.
  function setins(ins_id, ins_name) {
-     if (!window.opener) {
-         return; // nothing to do here as somehow we got here without the opener
-     }
-     let postMessage = {
-         action: 'insurance-search-set-insurance'
-         ,insuranceId: ins_id
-         ,insuranceName: ins_name
-     };
-     // fire off a message so we can decouple things so we don't have to have a specific function
-     // name in the global scope of the opener
-     opener.postMessage(postMessage, window.location.origin);
-     if (opener.closed) {
-         alert('The target form was closed; I cannot apply your selection.');
-     }
-     else if (opener.set_insurance) {
-         opener.set_insurance(ins_id, ins_name);
-         dlgclose();
-     } else {
-         // if we don't have a set_insurance function then we will just close the window as the opener is
-         // using post message to receive events.
-         dlgclose();
-     }
-     return false;
+   opener.set_insurance(ins_id, ins_name);
+   dlgclose();
+   return false;
  }
 
 </script>
@@ -167,9 +150,6 @@ td {
  </tr>
 
 <?php
-if (empty($res->_numOfRows)) {
-    echo " <td>" . xlt('No matches found.') . "</td>";
-}
 while ($row = sqlFetchArray($res)) {
     $anchor = "<a href=\"\" onclick=\"return setins(" .
     attr_js($row['id']) . "," . attr_js($row['name']) . ")\">";
@@ -187,8 +167,8 @@ while ($row = sqlFetchArray($res)) {
     echo "  <td valign='top'>" . text($row['state']) . "&nbsp;</td>\n";
     echo "  <td valign='top'>" . text($row['zip']) . "&nbsp;</td>\n";
     echo "  <td valign='top'>" . $phone . "</td>\n";
+    echo " </tr>\n";
 }
-echo " </tr>\n";
 ?>
 </table>
 

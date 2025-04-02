@@ -21,7 +21,6 @@ class RestApiScopeEvent extends Event
     const EVENT_TYPE_GET_SUPPORTED_SCOPES = "api.scope.get-supported-scopes";
 
     private $scopes;
-    private $type;
     private $apiType;
 
     public function __construct()
@@ -46,11 +45,6 @@ class RestApiScopeEvent extends Event
     {
         $this->scopes = $scopes;
         return $this;
-    }
-
-    public function addScope($context, $resource, $permission)
-    {
-        $this->scopes[] = $context . '/' . $resource . '.' . $permission;
     }
 
     /**

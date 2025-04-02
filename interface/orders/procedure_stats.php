@@ -16,7 +16,7 @@
  */
 
 require_once("../globals.php");
-require_once("../../library/patient.inc.php");
+require_once("../../library/patient.inc");
 require_once("../../custom/code_types.inc.php");
 require_once "$srcdir/options.inc.php";
 
@@ -76,12 +76,7 @@ $lres = sqlStatement("SELECT field_id, title, data_type, list_id, description " 
   "ORDER BY group_id, seq, title");
 while ($lrow = sqlFetchArray($lres)) {
     $fid = $lrow['field_id'];
-    if (
-        $fid == 'fname'
-        || $fid == 'mname'
-        || $fid == 'lname'
-        || $fid == 'additional_addresses'
-    ) {
+    if ($fid == 'fname' || $fid == 'mname' || $fid == 'lname') {
         continue;
     }
 

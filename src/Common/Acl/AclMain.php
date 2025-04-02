@@ -25,7 +25,6 @@
  *   acl         ACL Administration
  *   multipledb  Multipledb
  *   menu        Menu
- *   manage_modules Manage modules
  *
  * Section "acct" (Accounting):
  *   bill        Billing (write optional)
@@ -163,7 +162,7 @@ class AclMain
     public static function aclCheckCore($section, $value, $user = '', $return_value = ''): bool
     {
         if (! $user) {
-            $user = $_SESSION['authUser'] ?? '';
+            $user = $_SESSION['authUser'];
         }
 
         // Superuser always gets access to everything.
@@ -339,7 +338,7 @@ class AclMain
     //
     public static function aclCheckForm($formdir, $user = '', $return_value = '')
     {
-        require_once(dirname(__FILE__) . '/../../../library/registry.inc.php');
+        require_once(dirname(__FILE__) . '/../../../library/registry.inc');
         $tmp = getRegistryEntryByDirectory($formdir, 'aco_spec');
         return self::aclCheckAcoSpec($tmp['aco_spec'], $user, $return_value);
     }
@@ -349,7 +348,7 @@ class AclMain
     //
     public static function aclCheckIssue($type, $user = '', $return_value = '')
     {
-        require_once(dirname(__FILE__) . '/../../../library/lists.inc.php');
+        require_once(dirname(__FILE__) . '/../../../library/lists.inc');
         global $ISSUE_TYPES;
         if (empty($ISSUE_TYPES[$type][5])) {
             return true;

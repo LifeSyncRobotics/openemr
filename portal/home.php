@@ -9,7 +9,7 @@
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @author    Shiqiang Tao <StrongTSQ@gmail.com>
  * @author    Ben Marte <benmarte@gmail.com>
- * @copyright Copyright (c) 2016-2024 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2016-2022 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2019-2021 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2020 Shiqiang Tao <StrongTSQ@gmail.com>
  * @copyright Copyright (c) 2021 Ben Marte <benmarte@gmail.com>
@@ -17,22 +17,15 @@
  */
 
 require_once('verify_session.php');
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 require_once("$srcdir/options.inc.php");
-require_once('lib/portal_mail.inc.php');
+require_once('lib/portal_mail.inc');
 require_once(__DIR__ . '/../library/appointments.inc.php');
 
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
-use OpenEMR\Common\Logging\SystemLogger;
-use OpenEMR\Events\PatientPortal\AppointmentFilterEvent;
-use OpenEMR\Events\PatientReport\PatientReportFilterEvent;
 use OpenEMR\Events\PatientPortal\RenderEvent;
-use OpenEMR\Services\LogoService;
-use OpenEMR\Services\Utils\TranslationService;
-use Twig\Error\LoaderError;
-use Twig\Error\RuntimeError;
-use Twig\Error\SyntaxError;
+use OpenEMR\Events\PatientPortal\AppointmentFilterEvent;
 
 if (isset($_SESSION['register']) && $_SESSION['register'] === true) {
     require_once(__DIR__ . '/../src/Common/Session/SessionUtil.php');
@@ -45,37 +38,18 @@ if (!isset($_SESSION['portal_init'])) {
     $_SESSION['portal_init'] = true;
 }
 
-// Example https://localhost/openemr/portal/index.php?site=default&landOn=BillingSummary
-// landOn query is used to redirect to a specific section of the portal.
-$landOnHref = [
-    'ClinicalDocuments' => '#onsitedocuments',
-    'Appointments' => '#appointmentcard',
-    'MakePayment' => '#paymentcard',
-    'SecureMessaging' => '#secure-msgs-card',
-    'HealthSnapshot' => '#lists',
-    'Profile' => '#profilecard',
-    'BillingSummary' => '#ledgercard',
-    'MedicalReports' => '#reports-list-card',
-    'PROAssessment' => '#procard',
-    'Settings' => '#settings-card',
-    'Help' => '#help-card',
-    'Logout' => '#logout.php'
-];
-// redirect using the interface query landOn or last page visited
-// TODO sjp - qualify if redirect feature is enabled!
-$whereto = $_SESSION['whereto'] ?? null;
-// set the landOn session variable to the redirected card.
-$landWhere = $_SESSION['landOn'] = $_REQUEST['landOn'] ?? null;
-// Set the landOn href query from lookup.
-$where = $landOnHref[$landWhere] ?? null;
-if (!empty($where)) {
-    $_SESSION['whereto'] = $where;
+// Get language definitions for js
+$language = $_SESSION['language_choice'] ?? '1'; // defaults english
+$sql = "SELECT c.constant_name, d.definition FROM lang_definitions as d
+        JOIN lang_constants AS c ON d.cons_id = c.cons_id
+        WHERE d.lang_id = ?";
+$tarns = sqlStatement($sql, $language);
+$language_defs = array();
+while ($row = SqlFetchArray($tarns)) {
+    $language_defs[$row['constant_name']] = $row['definition'];
 }
 
-$logoService = new LogoService();
-
-// Get language definitions for js
-$language_defs = TranslationService::getLanguageDefinitionsForSession();
+$whereto = $_SESSION['whereto'] ?? null;
 
 $user = $_SESSION['sessionUser'] ?? 'portal user';
 $result = getPatientData($pid);
@@ -88,21 +62,19 @@ foreach ($msgs as $i) {
         $newcnt += 1;
     }
 }
-
-// force to message page if new messages.
-/*if ($newcnt > 0 && $_SESSION['portal_init']) {
+if ($newcnt > 0 && $_SESSION['portal_init']) {
     $whereto = $_SESSION['whereto'] = '#secure-msgs-card';
-}*/
-$messagesURL = $GLOBALS['web_root'] . '/portal/messaging/messages.php';
+}
+$messagesURL = $GLOBALS['web_root'] . '' . '/portal/messaging/messages.php';
 
 $isEasyPro = $GLOBALS['easipro_enable'] && !empty($GLOBALS['easipro_server']) && !empty($GLOBALS['easipro_name']);
 
 $current_date2 = date('Y-m-d');
-$apptLimit = 10;
+$apptLimit = 30;
 $appts = fetchNextXAppts($current_date2, $pid, $apptLimit);
-$past_appts = fetchXPastAppts($pid, 10);
 
-$appointments = $past_appointments = array();
+$appointments = array();
+
 if ($appts) {
     $stringCM = '(' . xl('Comments field entry present') . ')';
     $stringR = '(' . xl('Recurring appointment') . ')';
@@ -128,7 +100,7 @@ if ($appts) {
         }
 
         $formattedRecord = [
-            'appointmentDate' => $dayname . ', ' . oeFormatShortDate($row['pc_eventDate']) . ' ' . $disphour . ':' . $dispmin . ' ' . $dispampm,
+            'appointmentDate' => $dayname . ', ' . $row['pc_eventDate'] . ' ' . $disphour . ':' . $dispmin . ' ' . $dispampm,
             'appointmentType' => xl('Type') . ': ' . $row['pc_catname'],
             'provider' => xl('Provider') . ': ' . $row['ufname'] . ' ' . $row['ulname'],
             'status' => xl('Status') . ': ' . $status_title,
@@ -141,162 +113,120 @@ if ($appts) {
         $appointments[] = $filteredEvent->getAppointment() ?? $formattedRecord;
     }
 }
-if ($past_appts) {
-    $stringCM = '(' . xl('Comments field entry present') . ')';
-    $stringR = '(' . xl('Recurring appointment') . ')';
-    $pastCount = 0;
-    foreach ($past_appts as $row) {
-        $status_title = getListItemTitle('apptstat', $row['pc_apptstatus']);
-        $pastCount++;
-        $dayname = xl(date('l', strtotime($row['pc_eventDate'])));
-        $dispampm = 'am';
-        $disphour = (int)substr($row['pc_startTime'], 0, 2);
-        $dispmin = substr($row['pc_startTime'], 3, 2);
-        if ($disphour >= 12) {
-            $dispampm = 'pm';
-            if ($disphour > 12) {
-                $disphour -= 12;
-            }
-        }
 
-        if ($row['pc_hometext'] != '') {
-            $etitle = xl('Comments') . ': ' . $row['pc_hometext'] . "\r\n";
-        } else {
-            $etitle = '';
-        }
-
-        $formattedRecord = [
-            'appointmentDate' => $dayname . ', ' . oeFormatShortDate($row['pc_eventDate']) . ' ' . $disphour . ':' . $dispmin . ' ' . $dispampm,
-            'appointmentType' => xl('Type') . ': ' . $row['pc_catname'],
-            'provider' => xl('Provider') . ': ' . $row['ufname'] . ' ' . $row['ulname'],
-            'status' => xl('Status') . ': ' . $status_title,
-            'mode' => (int)$row['pc_recurrtype'] > 0 ? 'recurring' : $row['pc_recurrtype'],
-            'icon_type' => (int)$row['pc_recurrtype'] > 0,
-            'etitle' => $etitle,
-            'pc_eid' => $row['pc_eid'],
-        ];
-        $filteredEvent = $GLOBALS['kernel']->getEventDispatcher()->dispatch(new AppointmentFilterEvent($row, $formattedRecord), AppointmentFilterEvent::EVENT_NAME);
-        $past_appointments[] = $filteredEvent->getAppointment() ?? $formattedRecord;
-    }
-}
-$current_theme = sqlQuery("SELECT `setting_value` FROM `patient_settings` WHERE setting_patient = ? AND `setting_label` = ?", array($pid, 'portal_theme'))['setting_value'] ?? '';
-function collectStyles(): array
+function buildNav($newcnt, $pid, $result)
 {
-    global $webserver_root;
-    $theme_dir = "$webserver_root/public/themes";
-    $dh = opendir($theme_dir);
-    $styleArray = array();
-    while (false !== ($tfname = readdir($dh))) {
-        if (
-            $tfname == 'style_blue.css' ||
-            $tfname == 'style_pdf.css' ||
-            !preg_match("/^" . 'style_' . ".*\.css$/", $tfname)
-        ) {
-            continue;
-        }
-        $styleDisplayName = str_replace("_", " ", substr($tfname, 6));
-        $styleDisplayName = ucfirst(str_replace(".css", "", $styleDisplayName));
-        $styleArray[$tfname] = $styleDisplayName;
-    }
-    asort($styleArray);
-    closedir($dh);
-    return $styleArray;
-}
-
-function buildNav($newcnt, $pid, $result): array
-{
-    $hideLedger = false;
-    $hidePayment = false;
-    if (empty($GLOBALS['portal_two_ledger'])) {
-        $hideLedger = true;
-    }
-
-    if (empty($GLOBALS['portal_two_payments'])) {
-        $hidePayment = true;
-    }
     $navItems = [
         [
             'url' => '#',
-            'label' => xl('Menu'),
+            'label' => $result['fname'] . ' ' . $result['lname'],
             'icon' => 'fa-user',
             'dropdownID' => 'account',
             'messageCount' => $newcnt ?? 0,
             'children' => [
                 [
-                    'url' => '#quickstart-card',
-                    'id' => 'quickstart_id',
-                    'label' => xl('Dashboard'),
-                    'icon' => 'fa-tasks',
+                    'url' => '#profilecard',
+                    'label' => xl('My Profile'),
+                    'icon' => 'fa-user',
                     'dataToggle' => 'collapse',
                 ],
+
                 [
                     'url' => '#secure-msgs-card',
-                    'label' => xl('Secure Messaging'),
+                    'label' => xl('My Messages'),
                     'icon' => 'fa-envelope',
                     'dataToggle' => 'collapse',
                     'messageCount' => $newcnt ?? 0,
                 ],
                 [
-                    'url' => $GLOBALS['web_root'] . '/portal/patient/onsitedocuments?pid=' . urlencode($pid),
-                    'label' => xl('Forms and Documents'),
-                    'icon' => 'fa-file',
-                ],
-                [
-                    'url' => '#profilecard',
-                    'label' => xl('Profile'),
-                    'icon' => 'fa-user',
-                    'dataToggle' => 'collapse',
+                    'url' => '#documentscard',
+                    'label' => xl('My Documents'),
+                    'icon' => 'fa-file-medical',
+                    'dataToggle' => 'collapse'
                 ],
                 [
                     'url' => '#lists',
-                    'label' => xl('Health Snapshot'),
+                    'label' => xl('My Dashboard'),
                     'icon' => 'fa-list',
                     'dataToggle' => 'collapse'
                 ],
-                /*[
-                    'url' => '#ledgercard',
-                    'label' => xl('Billing Summary'),
-                    'icon' => 'fa-folder-open',
-                    'dataToggle' => 'collapse',
-                    'hide' => $hideLedger
+                [
+                    'url' => '#openSignModal',
+                    'label' => xl('My Signature'),
+                    'icon' => 'fa-file-signature',
+                    'dataToggle' => 'modal',
+                    'dataType' => 'patient-signature'
+                ]
+            ],
+        ],
+        [
+            'url' => '#',
+            'label' => xl('Reports'),
+            'icon' => 'fa-book-medical',
+            'dropdownID' => 'reports',
+            'children' => [
+                [
+                    'url' => $GLOBALS['web_root'] . '' . '/ccdaservice/ccda_gateway.php?action=view&csrf_token_form=' . urlencode(CsrfUtils::collectCsrfToken()),
+                    'label' => xl('View CCD'),
+                    'icon' => 'fa-eye',
+                    'target_blank' => 'true',
                 ],
                 [
-                    'url' => '#paymentcard',
-                    'label' => xl('Make Payment'),
-                    'icon' => 'fa-credit-card',
-                    'dataToggle' => 'collapse',
-                    'hide' => $hidePayment
-                ],*/
-            ],
+                    'url' => $GLOBALS['web_root'] . '' . '/ccdaservice/ccda_gateway.php?action=dl&csrf_token_form=' . urlencode(CsrfUtils::collectCsrfToken()),
+                    'label' => xl('Download CCD'),
+                    'icon' => 'fa-download',
+                ]
+            ]
         ]
     ];
+    if (($GLOBALS['portal_two_ledger'] || $GLOBALS['portal_two_payments'])) {
+        if (!empty($GLOBALS['portal_two_ledger'])) {
+            $navItems[] = [
+                'url' => '#',
+                'label' => xl('Accountings'),
+                'icon' => 'fa-file-invoice-dollar',
+                'dropdownID' => 'accounting',
+                'children' => [
+                    [
+                        'url' => '#ledgercard',
+                        'label' => xl('Ledger'),
+                        'icon' => 'fa-folder-open',
+                        'dataToggle' => 'collapse'
+                    ]
+                ]
+            ];
+        }
+    }
 
     // Build sub nav items
 
+    if (!empty($GLOBALS['allow_portal_chat'])) {
+        $navItems[] = [
+            'url' => '#messagescard',
+            'label' => xl('Chat'),
+            'icon' => 'fa-comment-medical',
+            'dataToggle' => 'collapse',
+            'dataType' => 'cardgroup'
+        ];
+    }
+
     for ($i = 0, $iMax = count($navItems); $i < $iMax; $i++) {
-        if ($GLOBALS['allow_portal_appointments'] && $navItems[$i]['label'] === xl('Menu')) {
+        if ($GLOBALS['allow_portal_appointments'] && $navItems[$i]['label'] === ($result['fname'] . ' ' . $result['lname'])) {
             $navItems[$i]['children'][] = [
                 'url' => '#appointmentcard',
-                'label' => xl('Appointments'),
+                'label' => xl('My Appointments'),
                 'icon' => 'fa-calendar-check',
                 'dataToggle' => 'collapse'
             ];
         }
 
-        if ($navItems[$i]['label'] === xl('Menu')) {
+        if ($navItems[$i]['label'] === ($result['fname'] . ' ' . $result['lname'])) {
             array_push(
                 $navItems[$i]['children'],
                 [
                     'url' => 'javascript:changeCredentials(event)',
-                    'label' => xl('Manage Login Credentials'),
+                    'label' => xl('Change Credentials'),
                     'icon' => 'fa-cog fa-fw',
-                ],
-                [
-                    'url' => '#openSignModal',
-                    'label' => xl('Manage Signature'),
-                    'icon' => 'fa-file-signature',
-                    'dataToggle' => 'modal',
-                    'dataType' => 'patient-signature'
                 ],
                 [
                     'url' => 'logout.php',
@@ -305,107 +235,74 @@ function buildNav($newcnt, $pid, $result): array
                 ]
             );
         }
+
+        if (!empty($GLOBALS['portal_onsite_document_download']) && $navItems[$i]['label'] === xl('Reports')) {
+            array_push(
+                $navItems[$i]['children'],
+                [
+                    'url' => '#reportcard',
+                    'label' => xl('Report Content'),
+                    'icon' => 'fa-folder-open',
+                    'dataToggle' => 'collapse'
+                ],
+                [
+                    'url' => '#downloadcard',
+                    'label' => xl('Download Charted Documents'),
+                    'icon' => 'fa-download',
+                    'dataToggle' => 'collapse'
+                ]
+            );
+        }
+        if (!empty($GLOBALS['portal_two_payments']) && $navItems[$i]['label'] === xl('Accountings')) {
+            $navItems[$i]['children'][] = [
+                'url' => '#paymentcard',
+                'label' => xl('Make Payment'),
+                'icon' => 'fa-credit-card',
+                'dataToggle' => 'collapse'
+            ];
+        }
     }
+
     return $navItems;
 }
 
-// Build our navigation
 $navMenu = buildNav($newcnt, $pid, $result);
 
-// Fetch immunization records
-$query = "SELECT im.*, cd.code_text, DATE(administered_date) AS administered_date,
-    DATE_FORMAT(administered_date,'%m/%d/%Y') AS administered_formatted, lo.title as route_of_administration,
-    u.title, u.fname, u.mname, u.lname, u.npi, u.street, u.streetb, u.city, u.state, u.zip, u.phonew1,
-    f.name, f.phone, lo.notes as route_code
-    FROM immunizations AS im
-    LEFT JOIN codes AS cd ON cd.code = im.cvx_code
-    JOIN code_types AS ctype ON ctype.ct_key = 'CVX' AND ctype.ct_id=cd.code_type
-    LEFT JOIN list_options AS lo ON lo.list_id = 'drug_route' AND lo.option_id = im.route
-    LEFT JOIN users AS u ON u.id = im.administered_by_id
-    LEFT JOIN facility AS f ON f.id = u.facility_id
-    WHERE im.patient_id=?";
-$result = sqlStatement($query, array($pid));
-$immunRecords = array();
-while ($row = sqlFetchArray($result)) {
-    $immunRecords[] = $row;
-}
-
-// CCDA Alt Service
-$ccdaOk = ($GLOBALS['ccda_alt_service_enable'] == 2 || $GLOBALS['ccda_alt_service_enable'] == 3);
-
-// Available Themes
-$styleArray = collectStyles();
-
-// Render Home Page
 $twig = (new TwigContainer('', $GLOBALS['kernel']))->getTwig();
-try {
-    $healthSnapshot = [
-        'immunizationRecords' => $immunRecords,
-        'patientID' => $pid
-    ];
-    $patientReportEvent = new PatientReportFilterEvent();
-    $patientReportEvent->setDataElement('healthSnapshot', $healthSnapshot);
-    $filteredEvent = $GLOBALS['kernel']->getEventDispatcher()->dispatch($patientReportEvent, PatientReportFilterEvent::FILTER_PORTAL_HEALTHSNAPSHOT_TWIG_DATA);
-    $data = [
-        'user' => $user,
-        'whereto' => ($_SESSION['whereto'] ?? null) ?: ($whereto ?? '#quickstart-card'),
-        'result' => $result,
-        'msgs' => $msgs,
-        'msgcnt' => $msgcnt,
-        'newcnt' => $newcnt,
-        'menuLogo' => $logoService->getLogo('portal/menu/primary'),
-        'allow_portal_appointments' => $GLOBALS['allow_portal_appointments'],
-        'web_root' => $GLOBALS['web_root'],
-        'payment_gateway' => $GLOBALS['payment_gateway'],
-        'gateway_mode_production' => $GLOBALS['gateway_mode_production'],
-        'portal_two_payments' => $GLOBALS['portal_two_payments'],
-        'allow_portal_chat' => $GLOBALS['allow_portal_chat'],
-        'portal_onsite_document_download' => $GLOBALS['portal_onsite_document_download'],
-        'portal_two_ledger' => $GLOBALS['portal_two_ledger'],
-        'images_static_relative' => $GLOBALS['images_static_relative'],
-        'youHave' => xl('You have'),
-        'navMenu' => $navMenu,
-        'primaryMenuLogoHeight' => $GLOBALS['portal_primary_menu_logo_height'] ?? '30',
-        'pagetitle' => $GLOBALS['openemr_name'] . ' ' . xl('Portal'),
-        'messagesURL' => $messagesURL,
-        'patientID' => $pid,
-        'patientName' => $_SESSION['ptName'] ?? null,
-        'csrfUtils' => CsrfUtils::collectCsrfToken(),
-        'isEasyPro' => $isEasyPro,
-        'appointments' => $appointments,
-        'pastAppointments' => $past_appointments,
-        'appts' => $appts,
-        'appointmentLimit' => $apptLimit,
-        'appointmentCount' => $count ?? null,
-        'pastAppointmentCount' => $pastCount ?? null,
-        'displayLimitLabel' => xl('Display limit reached'),
-        'site_id' => $_SESSION['site_id'] ?? ($_GET['site'] ?? 'default'), // one way or another, we will have a site_id.
-        'portal_timeout' => $GLOBALS['portal_timeout'] ?? 1800, // timeout is in seconds
-        'language_defs' => $language_defs,
-        'current_theme' => $current_theme,
-        'styleArray' => $styleArray,
-        'ccdaOk' => $ccdaOk,
-        'allow_custom_report' => $GLOBALS['allow_custom_report'] ?? '0',
-        'healthSnapshot' => $filteredEvent->getDataElement('healthSnapshot'),
-        'languageDirection' => $_SESSION['language_direction'] ?? 'ltr',
-        'dateDisplayFormat' => $GLOBALS['date_display_format'],
-        'timeDisplayFormat' => $GLOBALS['time_display_format'],
-        'timezone' => $GLOBALS['gbl_time_zone'] ?? '',
-        'assetVersion' => $GLOBALS['v_js_includes'],
-        'extendVisit' => $_SESSION['portal_visit_extended'] ?? 1,
-        'eventNames' => [
-            'sectionRenderPost' => RenderEvent::EVENT_SECTION_RENDER_POST,
-            'scriptsRenderPre' => RenderEvent::EVENT_SCRIPTS_RENDER_PRE,
-            'dashboardInjectCard' => RenderEvent::EVENT_DASHBOARD_INJECT_CARD,
-            'dashboardRenderScripts' => RenderEvent::EVENT_DASHBOARD_RENDER_SCRIPTS
-        ]
-    ];
-
-    echo $twig->render('portal/home.html.twig', $data);
-} catch (LoaderError | RuntimeError | SyntaxError $e) {
-    OpenEMR\Common\Session\SessionUtil::portalSessionCookieDestroy();
-    if ($e instanceof SyntaxError) {
-        (new SystemLogger())->error($e->getMessage(), ['file' => $e->getFile(), 'trace' => $e->getTraceAsString()]);
-    }
-    die(text($e->getMessage()));
-}
+echo $twig->render('portal/home.html.twig', [
+    'user' => $user,
+    'whereto' => $_SESSION['whereto'] ?? null ?: ($whereto ?? '#documentscard'),
+    'result' => $result,
+    'msgs' => $msgs,
+    'msgcnt' => $msgcnt,
+    'newcnt' => $newcnt,
+    'allow_portal_appointments' => $GLOBALS['allow_portal_appointments'],
+    'web_root' => $GLOBALS['web_root'],
+    'payment_gateway' => $GLOBALS['payment_gateway'],
+    'gateway_mode_production' => $GLOBALS['gateway_mode_production'],
+    'portal_two_payments' => $GLOBALS['portal_two_payments'],
+    'allow_portal_chat' => $GLOBALS['allow_portal_chat'],
+    'portal_onsite_document_download' => $GLOBALS['portal_onsite_document_download'],
+    'portal_two_ledger' => $GLOBALS['portal_two_ledger'],
+    'images_static_relative' => $GLOBALS['images_static_relative'],
+    'youHave' => xl('You have'),
+    'navMenu' => $navMenu,
+    'pagetitle' => xl('Home') . ' | ' . xl('OpenEMR Portal'),
+    'messagesURL' => $messagesURL,
+    'patientID' => $pid,
+    'patientName' => $_SESSION['ptName'] ?? null,
+    'csrfUtils' => CsrfUtils::collectCsrfToken(),
+    'isEasyPro' => $isEasyPro,
+    'appointments' => $appointments,
+    'appts' => $appts,
+    'appointmentLimit' => $apptLimit,
+    'appointmentCount' => $count ?? null,
+    'displayLimitLabel' => xl('Display limit reached'),
+    'site_id' => $_SESSION['site_id'] ?? ($_GET['site'] ?? 'default'), // one way or another, we will have a site_id.
+    'portal_timeout' => $GLOBALS['portal_timeout'] ?? 1800, // timeout is in seconds
+    'language_defs' => $language_defs,
+    'eventNames' => [
+        'sectionRenderPost' => RenderEvent::EVENT_SECTION_RENDER_POST,
+        'scriptsRenderPre' => RenderEvent::EVENT_SCRIPTS_RENDER_PRE
+    ]
+]);

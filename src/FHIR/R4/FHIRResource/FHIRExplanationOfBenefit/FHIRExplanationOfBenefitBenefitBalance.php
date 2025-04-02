@@ -343,7 +343,7 @@ class FHIRExplanationOfBenefitBenefitBalance extends FHIRBackboneElement impleme
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->category)) {

@@ -36,8 +36,6 @@ class Signature implements SignatureIF
     private $uid; // user id of the signer
     private $firstName; // first name of signer
     private $lastName; // last name of signer
-    private $suffix; // suffix of signer
-    private $valedictory; // aka credential of signer
     private $datetime; // date and time of the signature
     private $hash; // hash of the thing being signed on (SignableIF)
     private $signatureHash = null; // hash of data in this signature
@@ -53,8 +51,6 @@ class Signature implements SignatureIF
         $uid,
         $firstName,
         $lastName,
-        $suffix,
-        $valedictory,
         $datetime,
         $hash,
         $amendment = null,
@@ -67,8 +63,6 @@ class Signature implements SignatureIF
         $this->uid = $uid;
         $this->firstName = $firstName;
         $this->lastName = $lastName;
-        $this->suffix = $suffix;
-        $this->valedictory = $valedictory;
         $this->datetime = $datetime;
         $this->hash = $hash;
         $this->amendment = $amendment;
@@ -110,16 +104,6 @@ class Signature implements SignatureIF
     public function getLastName()
     {
         return $this->lastName;
-    }
-
-    public function getSuffix()
-    {
-        return $this->suffix;
-    }
-
-    public function getValedictory()
-    {
-        return $this->valedictory;
     }
 
     public function getDatetime()

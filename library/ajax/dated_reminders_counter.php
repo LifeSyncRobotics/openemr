@@ -16,7 +16,7 @@
 
 require_once(__DIR__ . "/../../interface/globals.php");
 require_once("$srcdir/dated_reminder_functions.php");
-require_once("$srcdir/pnotes.inc.php");
+require_once("$srcdir/pnotes.inc");
 
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionTracker;
@@ -33,23 +33,19 @@ if (SessionTracker::isSessionExpired()) {
 // keep this below above time out check.
 OpenEMR\Common\Session\SessionUtil::setSession('keepAliveTime', time());
 
-$total_counts = array();
-$other_count = array();
+$portal_count = array();
 // if portal is enabled get various alerts
 if (!empty($_POST['isPortal'])) {
-    $total_counts = GetPortalAlertCounts();
+    $portal_count = GetPortalAlertCounts();
 }
 
-if (!empty($_POST['isServicesOther'])) {
-    $other_count = GetServiceOtherCounts();
-    $total_counts = array_merge($total_counts, $other_count);
-}
 //Collect number of due reminders
 $dueReminders = GetDueReminderCount(5, strtotime(date('Y/m/d')));
+
 //Collect number of active messages
 $activeMessages = getPnotesByUser("1", "no", $_SESSION['authUser'], true);
-// Below for Message Button count display.
-$totalNumber = $dueReminders + $activeMessages;
-$total_counts['reminderText'] = ($totalNumber > 0 ? text((int)$totalNumber) : '');
 
-echo json_encode($total_counts);
+$totalNumber = $dueReminders + $activeMessages;
+$portal_count['reminderText'] = ($totalNumber > 0 ? text((int)$totalNumber) : '');
+
+echo json_encode($portal_count);

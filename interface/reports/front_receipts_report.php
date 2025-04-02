@@ -13,13 +13,12 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 require_once "$srcdir/options.inc.php";
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
-use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 
 if (!AclMain::aclCheckCore('acct', 'rep_a')) {
@@ -36,6 +35,10 @@ if (!empty($_POST)) {
 $from_date = (isset($_POST['form_from_date'])) ? DateToYYYYMMDD($_POST['form_from_date']) : date('Y-m-d');
 $to_date   = (isset($_POST['form_to_date'])) ? DateToYYYYMMDD($_POST['form_to_date']) : date('Y-m-d');
 
+function bucks($amt)
+{
+    return ($amt != 0.00) ? oeFormatMoney($amt) : '';
+}
 ?>
 <html>
 <head>
@@ -63,7 +66,7 @@ $to_date   = (isset($_POST['form_to_date'])) ? DateToYYYYMMDD($_POST['form_to_da
         // The OnClick handler for receipt display.
         function show_receipt(pid,timestamp) {
             dlgopen('../patient_file/front_payment.php?receipt=1&patient=' + encodeURIComponent(pid) +
-                '&time=' + encodeURIComponent(timestamp), '_blank', 850, 550, '', '', {
+                '&time=' + encodeURIComponent(timestamp), '_blank', 550, 400, '', '', {
                 onClosed: 'reload'
             });
          }
@@ -208,7 +211,7 @@ $to_date   = (isset($_POST['form_to_date'])) ? DateToYYYYMMDD($_POST['form_to_da
 if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) {
     ?>
 <div id="report_results">
-<table class='table table-striped'>
+<table class='table'>
 <thead class='thead-light'>
 <th> <?php echo xlt('Time'); ?> </th>
 <th> <?php echo xlt('Patient'); ?> </th>
@@ -276,27 +279,18 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) {
             <?php echo text($row['source']); ?>
   </td>
   <td align='right'>
-            <?php echo text(FormatMoney::getBucks($row['amount1'])); ?>
+            <?php echo text(bucks($row['amount1'])); ?>
   </td>
   <td align='right'>
-            <?php echo text(FormatMoney::getBucks($row['amount2'])); ?>
+            <?php echo text(bucks($row['amount2'])); ?>
   </td>
   <td align='right'>
-            <?php echo text(FormatMoney::getBucks($row['amount1'] + $row['amount2'])); ?>
+            <?php echo text(bucks($row['amount1'] + $row['amount2'])); ?>
   </td>
  </tr>
             <?php
             $total1 += $row['amount1'];
             $total2 += $row['amount2'];
-            $method = $row['method'];
-            if (empty($total1_by_method[$method])) {
-                $total1_by_method[$method] = 0;
-            }
-            $total1_by_method[$method] += $row['amount1'];
-            if (empty($total2_by_method[$method])) {
-                $total2_by_method[$method] = 0;
-            }
-            $total2_by_method[$method] += $row['amount2'];
         }
         ?>
 
@@ -306,36 +300,18 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_orderby'])) {
  </td>
 </tr>
 
-        <?php
-        $method_keys = array_keys(array_unique(array_merge($total1_by_method, $total2_by_method)));
-        foreach ($method_keys as $method_key) { ?>
-            <tr class="report_totals_by_method">
-                <td colspan='5'>
-                    <?php echo xlt('Totals by Method') . ' ' . text($method_key); ?>
-                <td align='right'>
-                        <?php echo text(FormatMoney::getBucks($total1_by_method[$method_key])); ?>
-                </td>
-                <td align='right'>
-                        <?php echo text(FormatMoney::getBucks($total2_by_method[$method_key])); ?>
-                </td>
-                <td align='right'>
-                        <?php echo text(FormatMoney::getBucks($total1_by_method[$method_key] + $total2_by_method[$method_key])); ?>
-                </td>
-            </tr>
-        <?php } ?>
-
 <tr class="report_totals">
  <td colspan='5'>
         <?php echo xlt('Totals'); ?>
  </td>
  <td align='right'>
-        <?php echo text(FormatMoney::getBucks($total1)); ?>
+        <?php echo text(bucks($total1)); ?>
  </td>
  <td align='right'>
-        <?php echo text(FormatMoney::getBucks($total2)); ?>
+        <?php echo text(bucks($total2)); ?>
  </td>
  <td align='right'>
-        <?php echo text(FormatMoney::getBucks($total1 + $total2)); ?>
+        <?php echo text(bucks($total1 + $total2)); ?>
  </td>
 </tr>
 

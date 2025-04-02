@@ -37,7 +37,7 @@ class SurgeryService extends BaseService
 
     public function getUuidFields(): array
     {
-        return ['uuid', 'euuid', 'puuid', 'recorder_uuid'];
+        return ['uuid', 'euuid', 'puuid'];
     }
 
     public function search($search, $isAndCondition = true)
@@ -58,8 +58,7 @@ class SurgeryService extends BaseService
                     encounter.euuid,
                     recorders.recorder_npi,
                     recorders.recorder_uuid,
-                    recorders.recorder_username,
-                    surgeries.date_modified
+                    recorders.recorder_username
                 FROM (
                     SELECT
                         id
@@ -72,7 +71,6 @@ class SurgeryService extends BaseService
                         ,`pid`
                         ,`comments`
                         ,`user` as surgery_recorder
-                        ,`modifydate` AS date_modified
                     FROM lists
                     WHERE
                         `type` = 'surgery'

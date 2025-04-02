@@ -2,8 +2,6 @@
 
 /**
  * Patient report
- * TODO: Note that this file can be refactored to re-use shared code with the portal_patient_report.php file
- * that file has been refactored to use twig templates and this file could be reworked to re-use much of that code
  *
  * @package   OpenEMR
  * @link      http://www.open-emr.org
@@ -17,9 +15,9 @@
  */
 
 require_once("../../globals.php");
-require_once("$srcdir/lists.inc.php");
-require_once("$srcdir/forms.inc.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/lists.inc");
+require_once("$srcdir/forms.inc");
+require_once("$srcdir/patient.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -274,7 +272,7 @@ $oemr_ui = new OemrUI($arrOeUiSettings);
 
                         <?php
 
-                            $eventDispatcher->dispatch(new GenericEvent(), PatientReportEvent::ACTIONS_RENDER_POST);
+                            $eventDispatcher->dispatch(PatientReportEvent::ACTIONS_RENDER_POST, new GenericEvent());
 
                         ?>
                         <input type='hidden' name='pdf' value='0' />
@@ -757,7 +755,7 @@ $(function () {
 
     <?php
         //event dispatch
-        $eventDispatcher->dispatch(new GenericEvent(), PatientReportEvent::JAVASCRIPT_READY_POST);
+        $eventDispatcher->dispatch(PatientReportEvent::JAVASCRIPT_READY_POST, new GenericEvent());
 
     ?>
 

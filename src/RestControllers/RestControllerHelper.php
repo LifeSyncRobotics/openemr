@@ -16,11 +16,7 @@ use OpenEMR\Common\Logging\SystemLogger;
 use OpenEMR\Events\RestApiExtend\RestApiCreateEvent;
 use OpenEMR\Events\RestApiExtend\RestApiResourceServiceEvent;
 use OpenEMR\Events\RestApiExtend\RestApiScopeEvent;
-use OpenEMR\FHIR\R4\FHIRDomainResource\FHIROperationDefinition;
-use OpenEMR\FHIR\R4\FHIRElement\FHIROperationKind;
-use OpenEMR\FHIR\R4\FHIRElement\FHIROperationParameterUse;
 use OpenEMR\Services\FHIR\IResourceSearchableService;
-use OpenEMR\Services\FHIR\UtilsService;
 use OpenEMR\Services\Search\FhirSearchParameterDefinition;
 use OpenEMR\Services\Search\SearchFieldType;
 use OpenEMR\FHIR\R4\FHIRDomainResource\FHIRPatient;
@@ -51,17 +47,8 @@ class RestControllerHelper
      */
     const FHIR_SERVICES_NAMESPACE = "OpenEMR\\Services\\FHIR\\Fhir";
 
-    const DEFAULT_STRUCTURE_DEFINITION = "http://hl7.org/fhir/StructureDefinition/";
-
     // @see https://www.hl7.org/fhir/search.html#table
     const FHIR_SEARCH_CONTROL_PARAM_REV_INCLUDE_PROVENANCE = "Provenance:target";
-
-    private $restURL = "";
-
-    public function __construct($restAPIUrl = "")
-    {
-        $this->restURL = $restAPIUrl;
-    }
 
     /**
      * Configures the HTTP status code and payload returned within a response.
@@ -119,13 +106,12 @@ class RestControllerHelper
      * @param        $isMultipleResultResponse - Indicates if the response contains multiple results.
      * @return array[]
      */
-    public static function handleProcessingResult(ProcessingResult $processingResult, $successStatusCode, $isMultipleResultResponse = false): array
+    public static function handleProcessingResult($processingResult, $successStatusCode, $isMultipleResultResponse = false): array
     {
         $httpResponseBody = [
             "validationErrors" => [],
             "internalErrors" => [],
-            "data" => [],
-            "links" => []
+            "data" => []
         ];
         if (!$processingResult->isValid()) {
             http_response_code(400);
@@ -136,29 +122,13 @@ class RestControllerHelper
             $httpResponseBody["internalErrors"] = $processingResult->getInternalErrors();
             (new SystemLogger())->debug("RestControllerHelper::handleProcessingResult() 500 error", ['internalErrors' => $processingResult->getValidationMessages()]);
         } else {
-            http_response_code($successStatusCode ?? 0);
+            http_response_code($successStatusCode);
             $dataResult = $processingResult->getData();
             $recordsCount = count($dataResult);
             (new SystemLogger())->debug("RestControllerHelper::handleFhirProcessingResult() Records found", ['count' => $recordsCount]);
 
             if (!$isMultipleResultResponse) {
                 $dataResult = ($recordsCount === 0) ? [] : $dataResult[0];
-            } else {
-                $pagination = $processingResult->getPagination();
-                // if site_addr_oauth is not set then we set it to be empty so we can handle relative urls
-                $bundleUrl = ($GLOBALS['site_addr_oath'] ?? '') . ($_SERVER['REDIRECT_URL'] ?? '');
-                $getParams = $_GET;
-                // cleanup _limit and _offset
-                unset($getParams['_limit']);
-                unset($getParams['_offset']);
-                // cleanup a mod_rewrite piece so the URL is nicer.
-                if (isset($getParams['_REWRITE_COMMAND'])) {
-                    unset($getParams['_REWRITE_COMMAND']);
-                }
-                $queryParams = http_build_query($getParams);
-
-                $pagination->setSearchUri($bundleUrl . '?' . $queryParams);
-                $httpResponseBody['links'] = $processingResult->getPagination()->getLinks();
             }
 
             $httpResponseBody["data"] = $dataResult;
@@ -227,9 +197,6 @@ class RestControllerHelper
 
             $paramExists = false;
             $type = $searchDefinition->getType();
-            if ($type == SearchFieldType::DATETIME) {
-                $type = 'date'; // fhir merges date and datetime into a single date for capability statement purposes.
-            }
 
             foreach ($capResource->getSearchParam() as $searchParam) {
                 if (strcmp($searchParam->getName(), $fhirSearchField) == 0) {
@@ -264,48 +231,28 @@ class RestControllerHelper
 
     public function addOperations($resource, $items, FHIRCapabilityStatementResource $capResource)
     {
-
         // TODO: @adunsulag we need to architect a more generic way of adding operations like we do with resources
         $operation = end($items);
         // we want to skip over anything that's not a resource $operation
-
-        // first check to make sure the operation is not already defined
-        // such as $bulkdata-status when we have both a POST and a DELETE rest route to the same operation
-        if (!empty($capResource->getOperation())) {
-            foreach ($capResource->getOperation() as $existingOperation) {
-                // this doesn't handle the $export operations
-                // TODO: is there a better way to handle all operations and not just things such as $bulkdata-status?
-                if ($existingOperation->getName() == $operation) {
-                    return; // already exists so let's skip adding this operation
-                }
-            }
-        }
-
         if ($operation == '$export') {
-            // operation definition must use the operation 'name'
-            // rest.resource.operation.name must come from the OperationDefinition's code attribute which in this case is 'export'
-            $definitionName = 'export';
-            $operationName = 'export';
             if ($resource != '$export') {
-                $definitionName = strtolower($resource) . '-export';
+                $operationName = strtolower($resource) . '-export';
+            } else {
+                $operationName = 'export';
             }
             // define export operation
             $fhirOperation = new FHIRCapabilityStatementOperation();
-            $fhirOperation->setName($operationName);
-            $fhirOperation->setDefinition(new FHIRCanonical('http://hl7.org/fhir/uv/bulkdata/OperationDefinition/' . $definitionName));
-            $capResource->addOperation($fhirOperation);
-        } elseif ($operation === '$bulkdata-status') {
-            $fhirOperation = new FHIRCapabilityStatementOperation();
             $fhirOperation->setName($operation);
-            $fhirOperation->setDefinition($this->restURL . '/OperationDefinition/$bulkdata-status');
+            $fhirOperation->setDefinition(new FHIRCanonical('http://hl7.org/fhir/uv/bulkdata/OperationDefinition/' . $operationName));
             $capResource->addOperation($fhirOperation);
+        } else if ($operation === '$bulkdata-status') {
             // TODO: @adunsulag we should document in our capability statement how to use the bulkdata-status operation
-        } elseif ($operation === '$docref') {
+        } else if ($operation === '$docref') {
             $fhirOperation = new FHIRCapabilityStatementOperation();
             $fhirOperation->setName($operation);
             $fhirOperation->setDefinition(new FHIRCanonical('http://hl7.org/fhir/us/core/OperationDefinition/docref'));
             $capResource->addOperation($fhirOperation);
-        } elseif (is_string($operation) && strpos($operation, '$') === 0) {
+        } else if (is_string($operation) && strpos($operation, '$') === 0) {
             (new SystemLogger())->debug("Found operation that is not supported in system", ['resource' => $resource, 'operation' => $operation, 'items' => $items]);
         }
     }
@@ -328,11 +275,9 @@ class RestControllerHelper
                 $code = "search-type";
             }
         } elseif (strcmp($reqMethod, "POST") == 0) {
-            $code = "create";
+            $code = "insert";
         } elseif (strcmp($reqMethod, "PUT") == 0) {
             $code = "update";
-        } elseif (strcmp($reqMethod, "DELETE") == 0) {
-            $code = "delete";
         }
 
         if (!empty($code)) {
@@ -345,7 +290,7 @@ class RestControllerHelper
     }
 
 
-    public function getCapabilityRESTObject($routes, $serviceClassNameSpace = self::FHIR_SERVICES_NAMESPACE, $structureDefinition = self::DEFAULT_STRUCTURE_DEFINITION): FHIRCapabilityStatementRest
+    public function getCapabilityRESTObject($routes, $serviceClassNameSpace = self::FHIR_SERVICES_NAMESPACE, $structureDefinition = "http://hl7.org/fhir/StructureDefinition/"): FHIRCapabilityStatementRest
     {
         $restItem = new FHIRCapabilityStatementRest();
         $mode = new FHIRRestfulCapabilityMode();
@@ -380,17 +325,11 @@ class RestControllerHelper
                 if (!empty($serviceClass)) {
                     $service = new $serviceClass();
                 }
-                // typically the type is the same as the resource, but for operations it will be our OperationDefinition
-                $type = self::getResourceTypeForResource($resource);
-                $capResource = $resourcesHash[$type] ?? null;
 
-                if (empty($capResource)) {
+                if (!array_key_exists($resource, $resourcesHash)) {
                     $capResource = new FHIRCapabilityStatementResource();
-                    // make it explicit that we do not let the user use their own resource ids to create a new resource
-                    // in the PUT/update operation.
-                    $capResource->setUpdateCreate(false);
-                    $capResource->setType(new FHIRCode($type));
-                    $capResource->setProfile(new FHIRCanonical($structureDefinition . $type));
+                    $capResource->setType(new FHIRCode($resource));
+                    $capResource->setProfile(new FHIRCanonical($structureDefinition . $resource));
 
                     if ($service instanceof IResourceUSCIGProfileService) {
                         $profileUris = $service->getProfileURIs();
@@ -398,12 +337,11 @@ class RestControllerHelper
                             $capResource->addSupportedProfile(new FHIRCanonical($uri));
                         }
                     }
-                    // per the specification type must be unique in the capability statement
-                    $resourcesHash[$type] = $capResource;
+                    $resourcesHash[$resource] = $capResource;
                 }
-                $this->setSearchParams($resource, $capResource, $service);
-                $this->addRequestMethods($items, $capResource);
-                $this->addOperations($resource, $items, $capResource);
+                $this->setSearchParams($resource, $resourcesHash[$resource], $service);
+                $this->addRequestMethods($items, $resourcesHash[$resource]);
+                $this->addOperations($resource, $items, $resourcesHash[$resource]);
             }
         }
 
@@ -411,21 +349,6 @@ class RestControllerHelper
             $restItem->addResource($capResource);
         }
         return $restItem;
-    }
-
-    /**
-     * Given a resource we've pulled from our rest route definitions figure out the type from our valueset
-     * for the resource type: http://hl7.org/fhir/2021Mar/valueset-resource-types.html
-     * @param string $resource
-     * @return string
-     */
-    private static function getResourceTypeForResource(string $resource)
-    {
-        $firstChar = $resource[0] ?? '';
-        if ($firstChar == '$') {
-            return 'OperationDefinition';
-        }
-        return $resource;
     }
 
     /**

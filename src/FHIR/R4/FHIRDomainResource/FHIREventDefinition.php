@@ -1007,7 +1007,7 @@ class FHIREventDefinition extends FHIRDomainResource implements \JsonSerializabl
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         $json['resourceType'] = $this->_fhirElementName;

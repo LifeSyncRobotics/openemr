@@ -22,7 +22,7 @@ table.imagetable th {
 }
 
 table.imagetable td {
-    background: #FFFFFF;
+    background: #EFEFFF;
     padding: 3px;
     color: dimGray;
     border-bottom: 1px solid #DDDDDD;
@@ -40,7 +40,7 @@ div.installer {
     background-repeat: repeat-x;
     margin: 0px;
     padding: 8px;
-    width: 100%;
+    width: 98%;
     float: left;
     min-height: 300px;
     border-top: 1px solid #DDD;
@@ -52,7 +52,7 @@ div.installer_code {
     float: left;
     margin-right: 10px;
     font-size: 110%;
-    font-family: "courier new", serif;
+    font-family: "courier new";
 }
 
 div.installer_result {
@@ -165,7 +165,7 @@ img {
 
 /* changing the default theme*/
 ul.tabNav li.current a {
-    background: #4e84c4 !important;
+    background: #4E84C4 !important;
     padding: 8px;
 }
 

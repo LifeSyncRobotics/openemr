@@ -9,7 +9,7 @@
 
 namespace OpenEMR\Events\PatientDemographics;
 
-use Symfony\Contracts\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\Event;
 
 /**
  *  Event object for restricting access to users viewing patients' demographics screen

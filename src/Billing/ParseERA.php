@@ -20,7 +20,7 @@ class ParseERA
     {
         if ($out['loopid'] == '2110' || $out['loopid'] == '2100') {
             // Production date is posted with adjustments, so make sure it exists.
-            if (empty($out['production_date'])) {
+            if (!$out['production_date']) {
                 $out['production_date'] = $out['check_date'];
             }
 
@@ -183,7 +183,7 @@ class ParseERA
                 }
                 $out['loopid'] = '1000A';
                 $out['payer_name'] = trim($seg[2]);
-                $out['payer_id'] = trim($seg[4] ?? ''); // will be overwritten if in REF*2U below
+                $out['payer_id'] = trim($seg[4] ?? null); // will be overwritten if in REF*2U below
             } elseif ($segid == 'N3' && $out['loopid'] == '1000A') {
                 $out['payer_street'] = trim($seg[1]);
                 // TBD: N302 may exist as an additional address line.
@@ -537,7 +537,7 @@ class ParseERA
                 //if ($out['loopid']) return 'Unexpected TRN segment';
                 $out['check_number' . $check_count] = trim($seg[2]);
                 $out['payer_tax_id' . $check_count] = substr($seg[3], 1); // 9 digits
-                $out['payer_id' . $check_count] = trim($seg[4] ?? '');
+                $out['payer_id' . $check_count] = trim($seg[4] ?? null);
                 // Note: TRN04 further qualifies the paying entity within the
                 // organization identified by TRN03.
             }

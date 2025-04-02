@@ -18,8 +18,6 @@
 
 namespace OpenEMR\Billing;
 
-use OpenEMR\Common\Database\QueryUtils;
-
 class MiscBillingOptions
 {
     public $box_14_qualifier_options;
@@ -66,15 +64,10 @@ class MiscBillingOptions
         echo     "</select>";
     }
 
-    public function getReferringProviders()
-    {
-        $query = "SELECT id, lname, fname,npi FROM users WHERE npi != '' ORDER BY lname, fname";
-        return QueryUtils::fetchRecords($query, []);
-    }
-
     public function genReferringProviderSelect($selname, $toptext, $default = 0, $disabled = false)
     {
-        $providers = $this->getReferringProviders();
+        $query = "SELECT id, lname, fname FROM users WHERE npi != '' ORDER BY lname, fname";
+        $res = sqlStatement($query);
         echo "<select name='" . attr($selname) . "' id='" . attr($selname) . "' class='form-control'";
         if ($disabled) {
             echo " disabled";
@@ -82,36 +75,7 @@ class MiscBillingOptions
 
         echo ">";
         echo "<option value=''>" . text($toptext);
-        foreach ($providers as $row) {
-            $provid = $row['id'];
-            echo "<option value='" . attr($provid) . "'";
-            if ($provid == $default) {
-                echo " selected";
-            }
-
-            echo ">" . text($row['lname'] . ", " . $row['fname']);
-        }
-
-        echo "</select>\n";
-    }
-
-    public function getOrderingProviders()
-    {
-        $query = "SELECT id, lname, fname,npi FROM users WHERE npi != '' ORDER BY lname, fname";
-        return QueryUtils::fetchRecords($query, []);
-    }
-
-    public function genOrderingProviderSelect($selname, $toptext, $default = 0, $disabled = false)
-    {
-        $orderingProviders = $this->getOrderingProviders();
-        echo "<select name='" . attr($selname) . "' id='" . attr($selname) . "' class='form-control'";
-        if ($disabled) {
-            echo " disabled";
-        }
-
-        echo ">";
-        echo "<option value=''>" . text($toptext);
-        foreach ($orderingProviders as $row) {
+        while ($row = sqlFetchArray($res)) {
             $provid = $row['id'];
             echo "<option value='" . attr($provid) . "'";
             if ($provid == $default) {

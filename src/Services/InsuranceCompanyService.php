@@ -7,10 +7,8 @@
  * @link      http://www.open-emr.org
  * @author    Matthew Vita <matthewvita48@gmail.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
- * @author    Stephen Nielson <snielson@discoverandchange.com>
  * @copyright Copyright (c) 2018 Matthew Vita <matthewvita48@gmail.com>
  * @copyright Copyright (c) 2018 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -20,12 +18,9 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Database\SqlQueryException;
 use OpenEMR\Common\Logging\SystemLogger;
 use OpenEMR\Common\Uuid\UuidRegistry;
-use OpenEMR\Services\{
-    AddressService,
-    PhoneNumberService,
-    Search\FhirSearchWhereClauseBuilder,
-    Search\SearchFieldException
-};
+use OpenEMR\Services\AddressService;
+use OpenEMR\Services\Search\FhirSearchWhereClauseBuilder;
+use OpenEMR\Services\Search\SearchFieldException;
 use OpenEMR\Validators\InsuranceCompanyValidator;
 use OpenEMR\Validators\ProcessingResult;
 
@@ -34,24 +29,8 @@ class InsuranceCompanyService extends BaseService
     private const INSURANCE_TABLE = "insurance_companies";
     private $insuranceCompanyValidator;
     private $addressService = null;
-    private $phoneNumberService = null;
     public const TYPE_FAX = 5;
     public const TYPE_WORK = 2;
-
-    /**
-     * @var null | array $cqm_sops cached CQM SOPS
-     */
-    private $cqm_sops = null;
-
-    /**
-     * @var null | array $types cached insurance types
-     */
-    private $types = null;
-
-    /**
-     * @var null | array $claim_types cached claim types
-     */
-    private $claim_types = null;
 
 
     /**
@@ -60,61 +39,11 @@ class InsuranceCompanyService extends BaseService
     public function __construct()
     {
         $this->addressService = new AddressService();
-        $this->phoneNumberService = new PhoneNumberService();
         UuidRegistry::createMissingUuidsForTables([self::INSURANCE_TABLE]);
         $this->insuranceCompanyValidator = new InsuranceCompanyValidator();
         parent::__construct(self::INSURANCE_TABLE);
     }
 
-    public function getInsuranceDisplayName($insuranceId)
-    {
-        $searchResults = $this->search(['id' => $insuranceId]);
-        $insuranceCompany = null;
-        if ($searchResults->hasData()) {
-            $insuranceCompany = $searchResults->getData()[0];
-        }
-        if (!empty($insuranceCompany)) {
-            return self::getDisplayNameForInsuranceRecord($insuranceCompany);
-        } else {
-            return "";
-        }
-    }
-    public static function getDisplayNameForInsuranceRecord($insuranceCompany)
-    {
-        switch ($GLOBALS['insurance_information']) {
-            case '1':
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['line1'] . ", " . $insuranceCompany['line2'] . ")";
-                break;
-            case '2':
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['line1'] . ", " . $insuranceCompany['line2'] . ", " . $insuranceCompany['zip'] . ")";
-                break;
-            case '3':
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['line1'] . ", " . $insuranceCompany['line2'] . ", " . $insuranceCompany['state'] . ")";
-                break;
-            case '4':
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['line1'] . ", " . $insuranceCompany['line2'] . ", " . $insuranceCompany['state'] .
-                    ", " . $insuranceCompany['zip'] . ")";
-                break;
-            case '5':
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['line1'] . ", " . $insuranceCompany['line2'] . ", " . $insuranceCompany['city'] .
-                    ", " . $insuranceCompany['state'] . ", " . $insuranceCompany['zip'] . ")";
-                break;
-            case '6':
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['line1'] . ", " . $insuranceCompany['line2'] . ", " . $insuranceCompany['city'] .
-                    ", " . $insuranceCompany['state'] . ", " . $insuranceCompany['zip'] . ", " . $insuranceCompany['cms_id'] . ")";
-                break;
-            case '7':
-                preg_match("/\d+/", $insuranceCompany['line1'], $matches);
-                $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['zip'] .
-                    "," . $matches[0] . ")";
-                break;
-            case '0':
-            default:
-                $returnval = $insuranceCompany['name'];
-                break;
-        }
-        return $returnval;
-    }
     public function getUuidFields(): array
     {
         return ['uuid'];
@@ -130,9 +59,8 @@ class InsuranceCompanyService extends BaseService
         $sql .= "        i.ins_type_code,";
         $sql .= "        i.x12_receiver_id,";
         $sql .= "        i.x12_default_partner_id,";
-        $sql .= "        x12.x12_default_partner_name,";
         $sql .= "        i.alt_cms_id,";
-        $sql .= "        i.inactive,work_number.work_id,fax_number.fax_id,";
+        $sql .= "        i.inactive,work_number.id as work_id,fax_number.id AS fax_id,";
         $sql .= "        CONCAT(
                             COALESCE(work_number.country_code,'')
                             ,COALESCE(work_number.area_code,'')
@@ -150,29 +78,22 @@ class InsuranceCompanyService extends BaseService
         $sql .= "        a.city,";
         $sql .= "        a.state,";
         $sql .= "        a.zip,";
-        $sql .= "        a.plus_four,";
-        $sql .= "        a.country,";
-        $sql .= "        i.date_created,";
-        $sql .= "        i.last_updated";
+        $sql .= "        a.country";
         $sql .= " FROM insurance_companies i ";
-        $sql .= " LEFT JOIN (SELECT line1,line2,city,state,zip,plus_four,country,foreign_id FROM addresses) a ON i.id = a.foreign_id";
+        $sql .= " JOIN addresses a ON i.id = a.foreign_id";
         // the foreign_id here is a globally unique sequence so there is no conflict.
         // I don't like the assumption here as it should be more explicit what table we are pulling
         // from since OpenEMR mixes a bunch of paradigms.  I initially worried about data corruption as phone_numbers
         // foreign id could be ambigious here... but since the sequence is globally unique @see \generate_id() we can
         // join here safely...
         $sql .= " LEFT JOIN (
-                        SELECT id AS work_id,foreign_id,country_code, area_code, prefix, number
+                        SELECT id,foreign_id,country_code, area_code, prefix, number
                         FROM phone_numbers WHERE number IS NOT NULL AND type = " . self::TYPE_WORK . "
                     ) work_number ON i.id = work_number.foreign_id";
         $sql .= " LEFT JOIN (
-                        SELECT id AS fax_id,foreign_id,country_code, area_code, prefix, number
+                        SELECT id,foreign_id,country_code, area_code, prefix, number
                         FROM phone_numbers WHERE number IS NOT NULL AND type = " . self::TYPE_FAX . "
                     ) fax_number ON i.id = fax_number.foreign_id";
-        $sql .= " LEFT JOIN (
-                        SELECT id AS x12_default_partner_id, name AS x12_default_partner_name
-                        FROM x12_partners
-                    ) x12 ON i.x12_default_partner_id = x12.x12_default_partner_id";
 
         $processingResult = new ProcessingResult();
         try {
@@ -236,7 +157,7 @@ class InsuranceCompanyService extends BaseService
         $sql .= "        a.zip,";
         $sql .= "        a.country";
         $sql .= " FROM insurance_companies i";
-        $sql .= " LEFT JOIN addresses a ON i.id = a.foreign_id";
+        $sql .= " JOIN addresses a ON i.id = a.foreign_id";
 
         if (!empty($search)) {
             $sql .= ' AND ';
@@ -262,7 +183,7 @@ class InsuranceCompanyService extends BaseService
     public function getOneById($id)
     {
         // TODO: this should be refactored to use getAll but its selecting all the columns and for backwards
-        // compatibility we will leave this here.
+        // compatibility we will live this here.
         $sql = "SELECT * FROM insurance_companies WHERE id=?";
         return sqlQuery($sql, array($id));
     }
@@ -270,16 +191,6 @@ class InsuranceCompanyService extends BaseService
     public function getOne($uuid): ProcessingResult
     {
         return $this->getAll(['uuid' => $uuid]);
-    }
-
-
-    public function getInsuranceTypesCached()
-    {
-        if ($this->types !== null) {
-            return $this->types;
-        }
-        $this->types = $this->getInsuranceTypes();
-        return $this->types;
     }
 
     public function getInsuranceTypes()
@@ -294,15 +205,6 @@ class InsuranceCompanyService extends BaseService
         return $types;
     }
 
-    public function getInsuranceClaimTypesCached()
-    {
-        if ($this->claim_types !== null) {
-            return $this->claim_types;
-        }
-        $this->claim_types = $this->getInsuranceClaimTypes();
-        return $this->claim_types;
-    }
-
     public function getInsuranceClaimTypes()
     {
         $claim_types = [];
@@ -313,15 +215,6 @@ class InsuranceCompanyService extends BaseService
             $claim_types[$i] = $row['claim_type'];
         }
         return $claim_types;
-    }
-
-    public function getInsuranceCqmSopCached()
-    {
-        if ($this->cqm_sops !== null) {
-            return $this->cqm_sops;
-        }
-        $this->cqm_sops = $this->getInsuranceCqmSop();
-        return $this->cqm_sops;
     }
 
     public function getInsuranceCqmSop()
@@ -341,12 +234,7 @@ class InsuranceCompanyService extends BaseService
     {
         // insurance companies need to use sequences table since they share the
         // addresses table with pharmacies
-        // I don't like actually inserting a raw id... yet if we don't allow for this
-        // it makes it very hard for any kind of data import that needs to maintain the same id.
-        if (empty($data["id"])) {
-            $data["id"] = generate_id();
-        }
-        $freshId = $data['id'];
+        $freshId = generate_id();
 
         $sql = " INSERT INTO insurance_companies SET";
         $sql .= "     id=?,";
@@ -359,8 +247,7 @@ class InsuranceCompanyService extends BaseService
         $sql .= "     alt_cms_id=?,";
         $sql .= "     cqm_sop=?";
 
-        // throws an exception if the record doesn't insert
-        QueryUtils::sqlInsert(
+        sqlInsert(
             $sql,
             array(
                 $freshId,
@@ -377,10 +264,6 @@ class InsuranceCompanyService extends BaseService
 
         if (!empty($data["city"] ?? null) && !empty($data["state"] ?? null)) {
             $this->addressService->insert($data, $freshId);
-        }
-
-        if (!empty($data["phone"] ?? null)) {
-            $this->phoneNumberService->insert($data, $freshId);
         }
 
         return $freshId;
@@ -407,9 +290,9 @@ class InsuranceCompanyService extends BaseService
                 $data["cms_id"],
                 $data["ins_type_code"],
                 $data["x12_receiver_id"],
-                $data["x12_default_partner_id"] ?? null,
+                $data["x12_default_partner_id"],
                 $data["alt_cms_id"],
-                $data["cqm_sop"] ?? null,
+                $data["cqm_sop"],
                 $iid
             )
         );
@@ -424,30 +307,6 @@ class InsuranceCompanyService extends BaseService
             return false;
         }
 
-        // no point in updating the phone if there is no phone record...
-        if (!empty($data['phone'])) {
-            $phoneNumberResults = $this->phoneNumberService->update($data, $iid);
-
-            if (!$phoneNumberResults) {
-                return false;
-            }
-        }
-
         return $iid;
-    }
-
-    /**
-     * Return an array of insurance companies with the same payer id
-     *
-     * @param  $cms_id  Insurance company payer id (assigned by clearinghouses)
-     * @return Array Insurance company data payload.
-     */
-    public function getAllByPayerID($cms_id)
-    {
-        $insuranceCompanyResult = $this->search(['cms_id' => $cms_id]);
-        if ($insuranceCompanyResult->hasData()) {
-            $result = $insuranceCompanyResult->getData();
-        }
-        return $result;
     }
 }

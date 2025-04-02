@@ -12,15 +12,15 @@
  * @author    Stephen Waite <stephen.waite@cmsvt.com>
  * @copyright Copyright (c) 2016 Terry Hill <terry@lillysystems.com>
  * @copyright Copyright (c) 2017-2020 Brady Miller <brady.g.miller@gmail.com>
- * @copyright Copyright (c) 2018-2025 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2018-2020 Jerry Padgett <sjpadgett@gmail.com>
  * @copyright Copyright (c) 2019-2020 Sherwin Gaddis <sherwingaddis@gmail.com>
- * @copyright Copyright (c) 2021-2025 Stephen Waite <stephen.waite@cmsvt.com>
+ * @copyright Copyright (c) 2021 Stephen Waite <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 require_once "../globals.php";
 require_once "../../custom/code_types.inc.php";
-require_once "$srcdir/patient.inc.php";
+require_once "$srcdir/patient.inc";
 require_once "$srcdir/options.inc.php";
 
 use OpenEMR\Billing\BillingReport;
@@ -342,36 +342,24 @@ $partners = $x->_utility_array($x->x12_partner_factory());
             f.bn_mark.disabled = !can_mark;
         }
 
-        async function toInsurance(type, pid, pubpid, pname, enc, datestr, dobstr, enc_pid_array, enc_date_array, cal_cat_array) {
-            patUrl = 'patient_file/summary/insurance_edit.php?set_pid=' + encodeURIComponent(pid);
-            pid = parseInt(pid, 10);
-            // Restore the session (getSessionValue calls restoreSession()) and load the encounter
-            let curpid = parseInt(await top.getSessionValue('pid'));
-            try {
-                if (curpid !== pid) { // set patient
-                    if (curpid != 0) {
-                        top.clearPatient(false);
-                    }
-                    await parent.left_nav.setPatient(pname, pid, pubpid, '', dobstr);
-                    await parent.asyncLoadFrame('dem1', 'pat', patUrl);
-                    await parent.left_nav.setPatientEncounter(enc_pid_array, enc_date_array, cal_cat_array);
-                }
-                // to insurance
-                // If current patient is the same as the one we're trying to load, load the insurance edit frame
-                if (curpid == pid) {
-                    await parent.asyncLoadFrame('dem1', 'pat', patUrl);
-                }
-                await parent.asyncLoadFrame('ens1', 'enc', 'patient_file/history/encounters.php?pid=' + encodeURIComponent(pid));
-                await parent.activateTabByName('pat', true);
-                
-            } catch (error) {
-                console.error('Failed to process patient:', error);
-            }
+        // Process a click to go to an encounter.
+        function toencounter(pid, pubpid, pname, enc, datestr, dobstr) {
+            top.restoreSession();
+            encurl = 'patient_file/encounter/encounter_top.php?set_encounter=' + encodeURIComponent(enc) +
+                '&pid=' + encodeURIComponent(pid);
+            parent.left_nav.setPatient(pname, pid, pubpid, '', dobstr);
+            parent.left_nav.setEncounter(datestr, enc, 'enc');
+            parent.left_nav.loadFrame('enc2', 'enc', encurl);
         }
 
-        function toEncounter(newpid, enc) {
+        // Process a click to go to an patient.
+        function topatient(pid, pubpid, pname, enc, datestr, dobstr) {
             top.restoreSession();
-            top.RTop.location = "<?php echo $GLOBALS['webroot']; ?>/interface/patient_file/summary/demographics.php?set_pid=" + encodeURIComponent(newpid) + "&set_encounterid=" + encodeURIComponent(enc);
+            paturl = 'patient_file/summary/demographics_full.php?pid=' + encodeURIComponent(pid);
+            parent.left_nav.setPatient(pname, pid, pubpid, '', dobstr);
+            parent.left_nav.loadFrame('ens1', 'enc',
+                'patient_file/history/encounters.php?pid=' + encodeURIComponent(pid));
+            parent.left_nav.loadFrame('dem1', 'pat', paturl);
         }
 
         function popMBO(pid, enc, mboid) {
@@ -1085,29 +1073,15 @@ $partners = $x->_utility_array($x->x12_partner_factory());
                                 <?php
                                 $lhtml .= "<div class='button-group'>";
                                 // Not sure why the next section seems to do nothing except post "To Encounter" button 2/17/09 JCH
-                                $lhtml .= "<a class='btn btn-sm btn-primary' role='button'" .
-                                    "href='javascript: window.toEncounter(" .
-                                        attr_js($iter['enc_pid']) . "," .
-                                        attr_js($iter['enc_encounter']) .
-                                    ");" . " '>" . xlt('Encounter') . " " . text(oeFormatShortDate($raw_encounter_date)) . "</a>";
+                                $lhtml .= "<a class='btn btn-sm btn-primary' role='button'" . "href='javascript:
+                                    window.toencounter(" . attr_js($iter['enc_pid']) . "," . attr_js($name['pubpid']) . "," . attr_js($ptname) . "," . attr_js($iter['enc_encounter']) . "," . attr_js(oeFormatShortDate($raw_encounter_date)) . "," . attr_js(" " . xl('DOB') . ": " . oeFormatShortDate($name['DOB_YMD']) . " " . xl('Age') . ": " . getPatientAge($name['DOB_YMD'])) . ");
+                                    top.window.parent.left_nav.setPatientEncounter(EncounterIdArray[" . attr($iter['enc_pid']) . "],EncounterDateArray[" . attr($iter['enc_pid']) . "], CalendarCategoryArray[" . attr($iter['enc_pid']) . "]);
+                                    top.setEncounter(" . attr_js($iter['enc_encounter']) . ");
+                                    '>" . xlt('Encounter') . " " . text(oeFormatShortDate($raw_encounter_date)) . "</a>";
 
                                 // Changed "To xxx" buttons to allow room for encounter date display 2/17/09 JCH
-                                $lhtml .= "<a class='btn btn-sm btn-primary' role='button' " .
-                                    "href='javascript:window.toInsurance(" .
-                                        "\"ins\"" . "," .
-                                        attr_js($iter['enc_pid']) . "," .
-                                        attr_js($name['pubpid']) . "," .
-                                        attr_js($ptname) . "," .
-                                        attr_js($iter['enc_encounter']) . "," .
-                                        attr_js(oeFormatShortDate($raw_encounter_date)) . "," .
-                                        attr_js(" " . xl('DOB') . ": " .
-                                            oeFormatShortDate($name['DOB_YMD']) . " " .
-                                            xl('Age') . ": " .
-                                            getPatientAge($name['DOB_YMD'])) . "," .
-                                        "EncounterIdArray[" . attr_js($iter['enc_pid']) . "]" . "," .
-                                        "EncounterDateArray[" . attr_js($iter['enc_pid']) . "]" . "," .
-                                        "CalendarCategoryArray[" . attr_js($iter['enc_pid']) . "]" .
-                                    ");" . " '>" . xlt('Insurance') . "</a>";
+                                $lhtml .= "<a class='btn btn-sm btn-primary' role='button' " . "href=\"javascript:window.topatient(" . attr_js($iter['enc_pid']) . "," . attr_js($name['pubpid']) . "," . attr_js($ptname) . "," . attr_js($iter['enc_encounter']) . "," . attr_js(oeFormatShortDate($raw_encounter_date)) . "," . attr_js(" " . xl('DOB') . ": " . oeFormatShortDate($name['DOB_YMD']) . " " . xl('Age') . ": " . getPatientAge($name['DOB_YMD'])) . ");
+                                    top.window.parent.left_nav.setPatientEncounter(EncounterIdArray[" . attr($iter['enc_pid']) . "],EncounterDateArray[" . attr($iter['enc_pid']) . "], CalendarCategoryArray[" . attr($iter['enc_pid']) . "])\">" . xlt('Patient') . "</a>";
                                 $is_edited = $iter['mboid'] ? 'btn-success' : 'btn-secondary';
                                 $title = $iter['mboid'] ? xlt("This claim has HCFA 1500 miscellaneous billing options") : xlt("Click to add HCFA 1500 miscellaneous billing options");
                                 $lhtml .= "<a class='btn btn-sm $is_edited' role='button' title='" . attr($title) . "' onclick='popMBO(" . attr_js($iter['enc_pid']) . "," . attr_js($iter['enc_encounter']) . "," . attr_js($iter['mboid']) . "); return false;'>" . xlt('MBO ') . "</a>";
@@ -1122,8 +1096,8 @@ $partners = $x->_utility_array($x->x12_partner_factory());
                                         $iter['enc_pid']
                                         )
                                     );
-                                    $is_edited = ($c['status'] ?? null) ? 'btn-success' : 'btn-warning';
-                                    $bname = ($c['status'] ?? null) ? xl('Reviewed') : xl('Review UB04');
+                                    $is_edited = $c['status'] ? 'btn-success' : 'btn-warning';
+                                    $bname = $c['status'] ? xl('Reviewed') : xl('Review UB04');
                                     $lhtml .= "<a class='btn btn-sm $is_edited' role='button' onclick='popUB04(" . attr_js($iter['enc_pid']) . "," . attr_js($iter['enc_encounter']) . "); return false;'>" . text($bname) . "</a>";
                                 }
                                 $lhtml .= "</div>";
@@ -1139,23 +1113,43 @@ $partners = $x->_utility_array($x->x12_partner_factory());
                                     $lhtml .= "&nbsp;<span class='form-group'>" . xlt('Bill') . ": ";
                                     $lhtml .= "<select name='claims[" . attr($this_encounter_id) . "][payer]' onchange='onNewPayer(event)' class='form-control'>";
 
-                                    $last_level_closed = sqlQuery("SELECT `last_level_closed` FROM `form_encounter` WHERE `encounter` = ?", array($iter['enc_encounter']))['last_level_closed'];
-                                    $effective_insurances = getEffectiveInsurances($iter['pid'], $iter['enc_date']);
-                                    $insuranceCount = count($effective_insurances ?? []);
+                                    $query = "SELECT id.provider AS id, id.type, id.date, " .
+                                    "ic.x12_default_partner_id AS ic_x12id, ic.name AS provider " .
+                                    "FROM insurance_data AS id, insurance_companies AS ic WHERE " .
+                                    "ic.id = id.provider AND " .
+                                    "id.pid = ? AND " .
+                                    "(id.date <= ? OR id.date IS NULL) " .
+                                    "ORDER BY id.type ASC, id.date DESC";
 
-                                    foreach ($effective_insurances as $key => $row) {
-                                        $insuranceName = sqlQuery("SELECT `name` FROM `insurance_companies` WHERE `id` = ?", array($row['provider']))['name'];
-                                        $x12Partner = sqlQuery("SELECT `x12_default_partner_id` FROM `insurance_companies` WHERE `id` = ?", array($row['provider']))['x12_default_partner_id'];
-                                        $lhtml .= "<option value=\"" . attr(substr($row['type'], 0, 1) . $row['provider']) . "\"";
-                                        if (
-                                            $key == $last_level_closed
-                                            || $insuranceCount == 1
-                                        ) {
-                                            $lhtml .= " selected";
-                                            $default_x12_partner = $x12Partner;
+                                    $result = sqlStatement(
+                                        $query,
+                                        array(
+                                        $iter['enc_pid'],
+                                        $raw_encounter_date
+                                        )
+                                    );
+                                    $count = 0;
+                                    $default_x12_partner = $iter['ic_x12id'] ?? null;
+                                    $prevtype = '';
+
+                                    while ($row = sqlFetchArray($result)) {
+                                        if (strcmp($row['type'], $prevtype) == 0) {
+                                            continue;
                                         }
-
-                                        $lhtml .= " data-partner='" . attr($x12Partner) . "'>" . text($row['type']) . ": " . text($insuranceName) . "</option>";
+                                        $prevtype = $row['type'];
+                                        if (strlen($row['provider']) > 0) {
+                                            // This preserves any existing insurance company selection, which is
+                                            // important when EOB posting has re-queued for secondary billing.
+                                            $lhtml .= "<option value=\"" . attr(substr($row['type'], 0, 1) . $row['id']) . "\"";
+                                            if (($count == 0 && !$iter['payer_id']) || $row['id'] == $iter['payer_id']) {
+                                                $lhtml .= " selected";
+                                                if (!is_numeric($default_x12_partner)) {
+                                                    $default_x12_partner = $row['ic_x12id'];
+                                                }
+                                            }
+                                            $lhtml .= " data-partner='" . attr($row['ic_x12id']) . "'>" . text($row['type']) . ": " . text($row['provider']) . "</option>";
+                                        }
+                                        $count++;
                                     }
 
                                     $lhtml .= "<option value='-1'>" . xlt("Unassigned") . "</option>\n";
@@ -1198,7 +1192,6 @@ $partners = $x->_utility_array($x->x12_partner_factory());
                                             "id.pid = ? AND " .
                                             "id.provider = ? AND " .
                                             "(id.date <= ? OR id.date IS NULL) AND " .
-                                            "(id.date_end >= ? OR id.date_end IS NULL) AND " .
                                             "ic.id = id.provider " .
                                             "ORDER BY id.type ASC, id.date DESC";
 
@@ -1207,7 +1200,6 @@ $partners = $x->_utility_array($x->x12_partner_factory());
                                             array(
                                             $iter['enc_pid'],
                                             $crow['payer_id'],
-                                            $raw_encounter_date,
                                             $raw_encounter_date
                                             )
                                         );

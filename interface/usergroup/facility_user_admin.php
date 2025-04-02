@@ -217,7 +217,7 @@ if (!isset($_GET["user_id"]) || !isset($_GET["fac_id"])) {
         </div>
     </div>
     <!-- include support for the list-add selectbox feature -->
-    <?php require $GLOBALS['fileroot'] . "/library/options_listadd.inc.php"; ?>
+    <?php include $GLOBALS['fileroot'] . "/library/options_listadd.inc"; ?>
 
     <script>
         <?php echo $date_init; ?>

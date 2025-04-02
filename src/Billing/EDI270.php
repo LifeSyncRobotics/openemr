@@ -12,13 +12,11 @@
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @author    Jerry Padgett <sjpadgett@gmail.com>
  * @author    Stephen Waite <stephen.waite@cmsvt.com>
- * @author    Stephen Nielson <snielson@discoverandchange.com>
  * @copyright Copyright (c) 2010 MMF Systems, Inc
  * @copyright Copyright (c) 2016 Terry Hill <terry@lillysystems.com>
  * @copyright Copyright (c) 2017 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2019 Jerry Padgett <sjpadgett@gmail.com>
- * @copyright Copyright (c) 2019-2023 Stephen Waite <stephen.waite@cmsvt.com>
- * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
+ * @copyright Copyright (c) 2019 Stephen Waite <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -27,10 +25,7 @@ namespace OpenEMR\Billing;
 require_once(dirname(__FILE__) . "/../../library/edihistory/codes/edih_271_code_class.php");
 
 use edih_271_codes;
-use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\MultipartStream;
-use OpenEMR\Billing\BillingProcessor\BillingClaimBatchControlNumber;
-use OpenEMR\Common\Crypto\CryptoGen;
+use OpenEMR\Common\Http\oeHttp;
 use OpenEMR\Common\Utils\RandomGenUtils;
 
 // @TODO global to become private var when this goes to a class.
@@ -51,13 +46,13 @@ class EDI270
         $ISA = array();
         $ISA[0] = "ISA"; // Interchange Control Header Segment ID
         $ISA[1] = "00";  // Author Info Qualifier
-        $ISA[2] = str_pad("", 10, " ");        // Author Information
+        $ISA[2] = str_pad("0000000", 10, " ");        // Author Information
         $ISA[3] = "00"; //   Security Information Qualifier
         //   MEDI-CAL NOTE: For Leased-Line & Dial-Up use '01',
         //   for BATCH use '00'.
         //   '00' No Security Information Present
         //   (No Meaningful Information in I04)
-        $ISA[4] = str_pad("", 10, " ");         // Security Information
+        $ISA[4] = str_pad("0000000000", 10, " ");         // Security Information
         $ISA[5] = str_pad($X12info['x12_isa05'], 2, " ");              // Interchange ID Qualifier
         $ISA[6] = str_pad($X12info['x12_sender_id'], 15, " ");      // INTERCHANGE SENDER ID
         $ISA[7] = str_pad($X12info['x12_isa07'], 2, " ");              // Interchange ID Qualifier
@@ -66,7 +61,7 @@ class EDI270
         $ISA[10] = str_pad(date('Hi'), 4, " ");       // Interchange Time (HHMM)
         $ISA[11] = "^";                                 // Interchange Control Standards Identifier
         $ISA[12] = str_pad("00501", 5, " ");          // Interchange Control Version Number
-        $ISA[13] = BillingClaimBatchControlNumber::getIsa13();      // INTERCHANGE CONTROL NUMBER
+        $ISA[13] = str_pad("000000001", 9, " ");      // INTERCHANGE CONTROL NUMBER
         $ISA[14] = str_pad($X12info['x12_isa14'], 1, " ");              // Acknowledgment Request [0= not requested, 1= requested]
         $ISA[15] = str_pad($X12info['x12_isa15'], 1, " ");                 // Usage Indicator [ P = Production Data, T = Test Data ]
         $ISA['Created'] = implode('*', $ISA);       // Data Element Separator
@@ -86,7 +81,7 @@ class EDI270
         $GS[3] = $X12info['x12_receiver_id'];              // Application Receiver's ID
         $GS[4] = date('Ymd');               // Date [CCYYMMDD]
         $GS[5] = date('His');               // Time [HHMM] Group Creation Time
-        $GS[6] = BillingClaimBatchControlNumber::getGs06(); // Group Control Number No zeros for 5010
+        $GS[6] = "2";                       // Group Control Number No zeros for 5010
         $GS[7] = "X";                   // Responsible Agency Code Accredited Standards Committee X12 ]
         $GS[8] = "005010X279A1";            // Version Release / Industry[ Identifier Code Query 005010X279A1
         $GS['Created'] = implode('*', $GS);         // Data Element Separator
@@ -163,7 +158,7 @@ class EDI270
             $NM1[6] = "";                       // Data Element not required.
             $NM1[7] = "";                       // Data Element not required.
             $NM1[8] = "PI";                     // 5010 no longer uses "46"
-            if ($GLOBALS['enable_eligibility_requests']) {
+            if ($GLOBALS['enable_oa']) {
                 $payerId = $row['eligibility_id'];
             } else {
                 $payerId = $row['cms_id'];
@@ -432,11 +427,8 @@ class EDI270
         LEFT JOIN insurance_companies as c ON (c.id = i.provider)
         WHERE p.pid = ?";
         $res = sqlStatement($query, array($pid));
-        $resArray = array();
-        while ($row = sqlFetchArray($res)) {
-            $resArray[] = $row;
-        }
-        $details = self::requestRealTimeEligible($resArray, '', "~", ':', true);
+
+        $details = self::requestRealTimeEligible($res, '', "~", ':', true);
         if ($details === false) {
             $details = "Error: Nothing returned from X12 Partner.";
         }
@@ -671,8 +663,11 @@ class EDI270
             }
             $col++;
         }
+        if ($col === 2) {
+            $showString .= "</div>";
+        }
         if ($title === 1) {
-            $showString .= "<br /><span><b>" . xlt("Nothing To Report") . "</b></span><br />";
+            $showString = "<br /><span><b>" . xlt("Nothing To Report") . "</b></span><br />";
         }
         $showString .= "</div>\n";
         echo $showString;
@@ -791,83 +786,82 @@ class EDI270
             $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
             $payloadId = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
         }
-        $boundary = RandomGenUtils::createUniqueToken(12);
 
-        $cryptoGen = new CryptoGen();
-        $decrypted_password = $cryptoGen->decryptStandard($X12info['x12_sftp_pass']);
-        $rt_password = $decrypted_password;
-        $rt_user = $X12info['x12_sftp_login'];
+        $boundary = RandomGenUtils::createUniqueToken(12);
+        $rt_passwrd = $X12info['x12_isa04'];
+        $rt_user = $X12info['x12_isa02'];
         $sender_id = $X12info['x12_sender_id'];
         $receiver_id = $X12info['x12_receiver_id'];
         $now_date = date("Y-m-d\TH:i:s\Z");
-        $url = $X12info['x12_eligibility_endpoint'];
-        $multipart_form = [
-            [
-                'name' => 'PayloadType',
-                'contents' => 'X12_270_Request_005010X279A1',
-            ],
-            [
-                'name' => 'ProcessingMode',
-                'contents' => 'RealTime',
-            ],
-            [
-                'name' => 'PayloadId',
-                'contents' => $payloadId,
-            ],
-            [
-                'name' => 'TimeStamp',
-                'contents' => $now_date,
-            ],
-            [
-                'name' => 'UserName',
-                'contents' => $rt_user,
-            ],
-            [
-                'name' => 'Password',
-                'contents' => $rt_password,
-            ],
-            [
-                'name' => 'SenderId',
-                'contents' => $sender_id,
-            ],
-            [
-                'name' => 'ReceiverId',
-                'contents' => $receiver_id,
-            ],
-            [
-                'name' => 'CORERuleVersion',
-                'contents' => '2.2.0',
-            ],
-            [
-                'name' => 'Payload',
-                'contents' => $x12_270,
-            ]
+        $headers = array(
+            'Content-Type' => "multipart/form-data; boundary=$boundary",
+            'Host' => ' wsd.officeally.com'
+        );
 
-        ];
+// IMPORTANT: Do not change the format of $mime_body below.
+// HTTP MIME Multipart is non-normative. LFs matter...
+//
+        $mime_body = <<<MIMEBODY
+--$boundary
+Content-Disposition: form-data; name="ProcessingMode"
 
-        $params = [
-            'headers' => [
-                'Connection' => 'close',
-                'Content-Type' => 'multipart/form-data; boundary=' . $boundary,
-            ],
-            'body' => new MultipartStream($multipart_form, $boundary), // here is all the magic
-        ];
+RealTime
+--$boundary
+Content-Disposition: form-data; name="TimeStamp"
 
+$now_date
+--$boundary
+Content-Disposition: form-data; name="PayloadID"
+
+$payloadId
+--$boundary
+Content-Disposition: form-data; name="CORERuleVersion"
+
+2.2.0
+--$boundary
+Content-Disposition: form-data; name="ReceiverID"
+
+$receiver_id
+--$boundary
+Content-Disposition: form-data; name="SenderID"
+
+$sender_id
+--$boundary
+Content-Disposition: form-data; name="PayloadType"
+
+X12_270_Request_005010X279A1
+--$boundary
+Content-Disposition: form-data; name="UserName"
+
+$rt_user
+--$boundary
+Content-Disposition: form-data; name="Password"
+
+$rt_passwrd
+--$boundary
+Content-Disposition: form-data; name="Payload"
+
+$x12_270
+--$boundary--
+MIMEBODY;
         // send the request
-        $response = (new Client())->request('POST', $url, $params);
+        $response = oeHttp::bodyFormat('body')
+            //->setDebug('5000')/* @todo uncomment and set proxy port to debug eg Fiddler */
+            ->usingHeaders($headers)
+            ->post('https://wsd.officeally.com/TransactionSite/rtx.aspx', $mime_body); // @TODO put request urls in x12 partner's for versatility.
 
-        $formBody = $response->getBody();
-        $contentType = $response->getHeader('Content-Type')[0];
-        $hContentLength = (int)$response->getHeader('Content-Length')[0];
-        $cksum = ($hContentLength - strlen($formBody)) === 0; // validate content size
+        $formBody = $response->body();
+        $contentType = $response->header('Content-Type')[0];
+        $hContentLength = (int)$response->header('Content-Length')[0];
+        $cksum = ($hContentLength - strlen($formBody)) === 0 ? true : false; // validate content size
         $formData = self::mimeParse($formBody, $contentType);
-        // validate the response
+
         $errors = '';
         if (!$cksum) {
             $errors .= "Error:" . xlt("Request Content Fails Integrity Test");
         }
-        if ($response->getStatusCode() !== 200) {
-            $errors .= "\nError:" . xlt("Http Error") . ": " . $response->getReasonPhrase() . " : " . $response->getStatusCode();
+        if ($response->status() !== 200) {
+            $errors .= "\nError:" . xlt("Http Error") . ": " . $response->getReasonPhrase() . " : " . $response->status();
         }
         if ($formData['ErrorCode'] != "Success") {
             $errors .= "\nError:" . $formData['ErrorCode'] . "\n" . $formData['ErrorMessage'];
@@ -877,41 +871,28 @@ class EDI270
             return $errors;
         }
 
-        return $formData['Payload'];
+        $x12_271 = $formData['Payload'];
+
+        return $x12_271;
     }
 
-    public static function mimeParse(string $formBody, $contentType)
+    public static function mimeParse(string $formBody = null, $contentType)
     {
-        // Normalize
-        $mimeBody = preg_replace('~\r\n?~', "\r\n", $formBody);
-        // Extract boundary from content type
-        list($contentType, $boundaryDirective) = explode(";", trim($contentType));
-        $boundary = trim(explode("=", trim($boundaryDirective))[1], '"');
-        $boundary = preg_quote($boundary, '/');
-        // Split the body using boundary
-        $pattern = "/--" . $boundary . "(--)?\r?\n/";
-        $mimeFields = preg_split($pattern, $mimeBody);
-        // Remove any empty elements, like the final one after the closing boundary
-        $mimeFields = array_filter($mimeFields);
-        $mimeData = [];
-        foreach ($mimeFields as $field) {
+        $mimeBody = preg_replace('~\r\n?~', "\r", $formBody);
+        list($contentType, $bound, $cs) = explode(";", trim($contentType)); // $contentType & $cs are throwaways
+        $bound = explode("=", trim($bound, ' '))[1];
+        $mimeFields = preg_split("/-+$bound/", $mimeBody);
+        array_pop($mimeFields);
+        $hold = $isMatches = [];
+        foreach ($mimeFields as $id => $field) {
             if (empty($field)) {
                 continue;
             }
-            // extract name and content from the field
-            if (preg_match('/Content-Disposition:.*?name="([^"]+)"[\r\n]+(?:[^\r\n]+\r\n)?([\s\S]+)\r\n$/', $field, $matches)) {
-                $name = $matches[1];
-                $content = trim($matches[2]);
-                // Check if the field is an array (i.e., name ends with "[]")
-                if (substr($name, -2) === '[]') {
-                    $name = substr($name, 0, -2);
-                    if (!isset($mimeData[$name])) {
-                        $mimeData[$name] = [];
-                    }
-                    $mimeData[$name][] = $content;
-                } else {
-                    $mimeData[$name] = $content;
-                }
+            preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $field, $isMatches);
+            if (preg_match('/^(.*)\[\]$/i', $isMatches[1], $hold)) {
+                $mimeData[$hold[1]][] = $isMatches[2];
+            } else {
+                $mimeData[$isMatches[1]] = $isMatches[2];
             }
         }
         return $mimeData;
@@ -943,7 +924,7 @@ class EDI270
             $responses = $content;
         }
 
-        // Loop through each 271. '\n' delims records in batch.
+// Loop through each 271. '\n' delims records in batch.
         foreach ($responses as $new) {
             if (empty($new)) {
                 continue;
@@ -1033,7 +1014,7 @@ class EDI270
                         $trace++;
                         if ($in['pid']) {
                             $in['benefits'] = $benefits ? $benefits : [];
-                            $subscribers[] = $in;
+                            array_push($subscribers, $in);
                             $loop['context'] = $elements[0];
                             $benefits = [];
                         }

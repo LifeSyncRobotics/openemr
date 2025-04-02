@@ -111,12 +111,6 @@ var acronymize = exports.acronymize = function (string) {
     if (ret === "PM") {
         ret = "MC";
     }
-    if (ret === "PW") {
-        ret = "WP";
-    }
-    if (ret === "EC") {
-        ret = "EC";
-    }
     if (ret === "HA") {
         ret = "H";
     }

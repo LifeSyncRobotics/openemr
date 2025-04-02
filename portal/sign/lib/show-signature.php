@@ -38,18 +38,6 @@ if ($isPortal) {
 }
 require_once("../../../interface/globals.php");
 
-if (!$isPortal) {
-    $userManipulatedFlag = false;
-    if ($user != $_SESSION['authUserID']) {
-        $userManipulatedFlag = true;
-    }
-
-    if ($userManipulatedFlag) {
-        echo js_escape("error");
-        exit();
-    }
-}
-
 $created = time();
 $lastmod = date('Y-m-d H:i:s');
 $status = 'filed';
@@ -69,7 +57,7 @@ if ($req_pid === 0 || empty($user)) {
     }
 }
 
-if (($data['mode'] ?? null) === 'fetch_info') {
+if ($data['mode'] === 'fetch_info') {
     $stmt = "Select CONCAT(IFNULL(fname,''), ' ',IFNULL(lname,'')) as userName From users Where id = ?";
     $user_result = sqlQuery($stmt, array($user)) ?: [];
     $stmt = "Select CONCAT(IFNULL(fname,''), ' ',IFNULL(lname,'')) as ptName From patient_data Where pid = ?";
@@ -99,20 +87,20 @@ if ($isAdmin) {
     $row = sqlQuery("SELECT pid,status,sig_image,type,user FROM onsite_signatures WHERE pid=? And user=?", array($req_pid, $user));
 }
 
-if (!($row['pid'] ?? null) && !($row['user'] ?? null)) {
+if (!$row['pid'] && !$row['user']) {
     $status = 'waiting';
     $qstr = "INSERT INTO onsite_signatures (pid,lastmod,status,type,user,signator,created) VALUES (?,?,?,?,?,?,?)";
     sqlStatement($qstr, array($req_pid, $lastmod, $status, $type, $user, $signer, $created));
 }
 
-if (($row['status'] ?? null) == 'filed') {
-    if (($data['mode'] ?? null) === 'fetch_info') {
+if ($row['status'] == 'filed') {
+    if ($data['mode'] === 'fetch_info') {
         $info_query['signature'] = $row['sig_image'];
         echo js_escape($info_query);
         exit();
     }
     echo js_escape($row['sig_image']);
-} elseif (($row['status'] ?? null) == 'waiting' || $status == 'waiting') {
+} elseif ($row['status'] == 'waiting' || $status == 'waiting') {
     $info_query['message'] = 'waiting';
     echo js_escape($info_query);
 }

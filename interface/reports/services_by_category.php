@@ -16,7 +16,6 @@ require_once("../globals.php");
 require_once("../../custom/code_types.inc.php");
 
 use OpenEMR\Common\Csrf\CsrfUtils;
-use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 
 if (!empty($_POST)) {
@@ -25,6 +24,16 @@ if (!empty($_POST)) {
     }
 }
 
+// Format dollars for display.
+//
+function bucks($amount)
+{
+    if (empty($amount)) {
+        return '';
+    }
+
+    return oeFormatMoney($amount);
+}
 ?>
 <html>
 <head>
@@ -240,7 +249,7 @@ if (!empty($_POST['form_refresh'])) {
         "AND p.pr_level = lo.option_id " .
         "WHERE lo.list_id = 'pricelevel' AND lo.activity = 1 ORDER BY lo.seq", array($row['id']));
         while ($prow = sqlFetchArray($pres)) {
-            echo "   <td class='text' align='right'>" . text(FormatMoney::getBucks($prow['pr_price'])) . "</td>\n";
+            echo "   <td class='text' align='right'>" . text(bucks($prow['pr_price'])) . "</td>\n";
         }
 
         echo "  </tr>\n";

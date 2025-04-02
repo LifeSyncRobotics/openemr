@@ -35,7 +35,7 @@
 function smarty_function_xlj($params, &$smarty)
 {
     if (empty($params['t'])) {
-        trigger_error("xlj: missing 't' parameter", E_USER_WARNING);
+        $smarty->trigger_error("xk: missing 't' parameter");
         return;
     } else {
         $translate = $params['t'];

@@ -10,7 +10,7 @@
 namespace OpenEMR\Events\Globals;
 
 use OpenEMR\Services\Globals\GlobalsService;
-use Symfony\Contracts\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Event object for creating custom global settings

@@ -132,7 +132,7 @@ class FHIRPropertyRepresentation extends FHIRElement implements \JsonSerializabl
     /**
      * @return mixed
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         return $this->value;
     }

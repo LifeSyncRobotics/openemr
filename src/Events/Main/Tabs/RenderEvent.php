@@ -13,7 +13,7 @@
 
 namespace OpenEMR\Events\Main\Tabs;
 
-use Symfony\Contracts\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\Event;
 
 class RenderEvent extends Event
 {

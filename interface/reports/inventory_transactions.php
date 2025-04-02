@@ -13,18 +13,26 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
-use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 
 if (!empty($_POST)) {
     if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"])) {
         CsrfUtils::csrfNotVerified();
     }
+}
+
+function bucks($amount)
+{
+    if ($amount != 0) {
+        return oeFormatMoney($amount);
+    }
+
+    return '';
 }
 
 function thisLineItem($row, $xfer = false)
@@ -74,8 +82,8 @@ function thisLineItem($row, $xfer = false)
         echo csvEscape($row['lot_number'])                   . ',';
         echo csvEscape($row['warehouse'])                    . ',';
         echo csvEscape($dpname)                              . ',';
-        echo csvEscape(0 - $row['quantity'])                 . ',';
-        echo csvEscape(FormatMoney::getBucks($row['fee']))   . ',';
+        echo csvEscape(0 - $row['quantity'])            . ',';
+        echo csvEscape(bucks($row['fee']))                   . ',';
         echo csvEscape($row['billed'])                       . ',';
         echo csvEscape($row['notes'])                        . "\n";
     } else {
@@ -105,7 +113,7 @@ function thisLineItem($row, $xfer = false)
         <?php echo text(0 - $row['quantity']); ?>
   </td>
   <td class="detail" align="right">
-        <?php echo text(FormatMoney::getBucks($row['fee'])); ?>
+        <?php echo text(bucks($row['fee'])); ?>
   </td>
   <td class="detail" align="center">
         <?php echo empty($row['billed']) ? '&nbsp;' : '*'; ?>
@@ -417,7 +425,7 @@ if ($form_action) { // if submit or export
         <?php echo text($grandqty); ?>
   </td>
   <td class="dehead" align="right">
-        <?php echo text(FormatMoney::getBucks($grandtotal)); ?>
+        <?php echo text(bucks($grandtotal)); ?>
   </td>
   <td class="dehead" colspan="2">
 

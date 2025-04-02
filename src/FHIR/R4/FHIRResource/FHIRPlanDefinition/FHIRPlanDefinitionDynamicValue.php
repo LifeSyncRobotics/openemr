@@ -163,7 +163,7 @@ class FHIRPlanDefinitionDynamicValue extends FHIRBackboneElement implements \Jso
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->path)) {

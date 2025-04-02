@@ -221,7 +221,7 @@ class FHIREffectEvidenceSynthesisPrecisionEstimate extends FHIRBackboneElement i
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->type)) {

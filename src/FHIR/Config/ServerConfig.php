@@ -13,9 +13,6 @@
 
 namespace OpenEMR\FHIR\Config;
 
-use http\Exception\RuntimeException;
-use OpenEMR\Common\Auth\OAuth2KeyConfig;
-
 class ServerConfig
 {
     /**
@@ -33,8 +30,6 @@ class ServerConfig
      */
     private $webRoot;
 
-    private $webServerRoot;
-
     public function __construct()
     {
         // we may let these be injected at another point in time but for now we set this up as globals
@@ -49,22 +44,7 @@ class ServerConfig
      */
     public function getFhirUrl()
     {
-        return $this->getBaseApiUrl() . "/fhir";
-    }
-
-    public function getStandardApiUrl()
-    {
-        return $this->getBaseApiUrl() . "/api";
-    }
-
-    public function getInternalBaseApiUrl()
-    {
-        return $this->webRoot . '/apis/' . $this->siteId;
-    }
-
-    public function getBaseApiUrl()
-    {
-        return $this->oauthAddress . $this->getInternalBaseApiUrl();
+        return $this->oauthAddress . $this->webRoot . '/apis/' . $this->siteId . "/fhir";
     }
 
     public function getFhir3rdPartyAppRequirementsDocument()
@@ -124,33 +104,5 @@ class ServerConfig
     {
         $this->webRoot = $webRoot;
         return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getWebServerRoot()
-    {
-        return $this->webServerRoot;
-    }
-
-    /**
-     * @param mixed $webServerRoot
-     */
-    public function setWebServerRoot($webServerRoot): void
-    {
-        $this->webServerRoot = $webServerRoot;
-    }
-
-    public function getPublicRestKey()
-    {
-        // TODO: @adunsulag we have redundancy here in OAuth2KeyConfig and ServerConfig.  We should probably merge these.
-        $site = $this->getSiteId() ?? "default";
-        $webServerRoot = $this->getWebServerRoot() ?? $GLOBALS['web_root'] ?? "";
-        // if we can't get the web server root then we can't get the public key
-        if (empty($webServerRoot)) {
-            throw new RuntimeException("Unable to determine web server root");
-        }
-        return $webServerRoot . "/sites/" . $site . "/documents/certificates/oapublic.key";
     }
 }

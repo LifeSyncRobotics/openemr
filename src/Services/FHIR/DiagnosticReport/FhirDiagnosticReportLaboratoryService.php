@@ -29,7 +29,6 @@ use OpenEMR\Services\FHIR\Traits\PatientSearchTrait;
 use OpenEMR\Services\FHIR\UtilsService;
 use OpenEMR\Services\ProcedureService;
 use OpenEMR\Services\Search\FhirSearchParameterDefinition;
-use OpenEMR\Services\Search\ISearchField;
 use OpenEMR\Services\Search\SearchFieldType;
 use OpenEMR\Services\Search\SearchModifier;
 use OpenEMR\Services\Search\ServiceField;
@@ -72,13 +71,7 @@ class FhirDiagnosticReportLaboratoryService extends FhirServiceBase
             'category' => new FhirSearchParameterDefinition('category', SearchFieldType::TOKEN, ['category']),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['report_date']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('report_uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField(),
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['report_date']);
     }
 
     public function supportsCategory($category)
@@ -98,24 +91,23 @@ class FhirDiagnosticReportLaboratoryService extends FhirServiceBase
     public function parseOpenEMRRecord($dataRecord = array(), $encode = false)
     {
         $report = new FHIRDiagnosticReport();
+        $meta = new FHIRMeta();
+        $meta->setVersionId('1');
+        $meta->setLastUpdated(gmdate('c'));
+        $report->setMeta($meta);
+
+
         $dataRecordReport = array_pop($dataRecord['reports']);
-        $fhirMeta = new FHIRMeta();
-        $fhirMeta->setVersionId('1');
-        if (!empty($dataRecordReport['date'])) {
-            $fhirMeta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecordReport['date']));
-        } else {
-            $fhirMeta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
-        $report->setMeta($fhirMeta);
+
 
         $id = new FHIRId();
         $id->setValue($dataRecordReport['uuid']);
         $report->setId($id);
 
         if (!empty($dataRecordReport['date'])) {
-            $utcDate = UtilsService::getLocalDateAsUTC($dataRecordReport['date']);
-            $report->setEffectiveDateTime(new FHIRDateTime($utcDate));
-            $report->setIssued(new FHIRInstant($utcDate));
+            $date = gmdate('c', strtotime($dataRecordReport['date']));
+            $report->setEffectiveDateTime(new FHIRDateTime($date));
+            $report->setIssued(new FHIRInstant($date));
         } else {
             $report->setDate(UtilsService::createDataMissingExtension());
         }

@@ -21,32 +21,25 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Database\SqlQueryException;
 use OpenEMR\Common\Logging\SystemLogger;
 use OpenEMR\Common\Uuid\UuidRegistry;
-use OpenEMR\Services\Search\{
-    DateSearchField,
-    FhirSearchWhereClauseBuilder,
-    SearchFieldException,
-    TokenSearchField,
-    TokenSearchValue
-};
-use OpenEMR\Events\Services\ServiceSaveEvent;
-use OpenEMR\Services\Traits\ServiceEventTrait;
+use OpenEMR\Services\Search\FhirSearchWhereClauseBuilder;
+use OpenEMR\Services\Search\SearchFieldException;
+use OpenEMR\Services\Search\TokenSearchField;
+use OpenEMR\Services\Search\TokenSearchValue;
 use OpenEMR\Validators\EncounterValidator;
 use OpenEMR\Validators\ProcessingResult;
 use Particle\Validator\Validator;
 
-require_once dirname(__FILE__) . "/../../library/forms.inc.php";
-require_once dirname(__FILE__) . "/../../library/encounter.inc.php";
+require_once dirname(__FILE__) . "/../../library/forms.inc";
+require_once dirname(__FILE__) . "/../../library/encounter.inc";
 
 class EncounterService extends BaseService
 {
-    use ServiceEventTrait;
-
     /**
      * @var EncounterValidator
      */
     private $encounterValidator;
 
-    public const ENCOUNTER_TABLE = "form_encounter";
+    private const ENCOUNTER_TABLE = "form_encounter";
     private const PATIENT_TABLE = "patient_data";
     private const PROVIDER_TABLE = "users";
     private const FACILITY_TABLE = "facility";
@@ -199,7 +192,6 @@ class EncounterService extends BaseService
                        fe.referral_source,
                        fe.billing_facility,
                        fe.external_id,
-                       fe.last_update,
                        fe.pos_code,
                        fe.class_code,
                        class.notes as class_title,
@@ -216,17 +208,16 @@ class EncounterService extends BaseService
                        fa.billing_facility_uuid,
                        fa.billing_facility_name,
                        fa.billing_location_uuid,
-
+                
                        fe.provider_id,
                        fe.referring_provider_id,
-                       fe.ordering_provider_id,
                        providers.provider_uuid,
                        providers.provider_username,
                        referrers.referrer_uuid,
                        referrers.referrer_username,
                        fe.discharge_disposition,
                        discharge_list.discharge_disposition_text
-
+                       
 
                        FROM (
                            select
@@ -253,9 +244,7 @@ class EncounterService extends BaseService
                                facility_id,
                                discharge_disposition,
                                pid as encounter_pid,
-                               referring_provider_id,
-                               ordering_provider_id,
-                               last_update
+                               referring_provider_id
                            FROM form_encounter
                        ) fe
                        LEFT JOIN openemr_postcalendar_categories as opc
@@ -268,7 +257,7 @@ class EncounterService extends BaseService
                                 ,facility.`name` AS billing_facility_name
                                 ,locations.uuid AS billing_location_uuid
                            from facility
-                           LEFT JOIN uuid_mapping AS locations
+                           LEFT JOIN uuid_mapping AS locations 
                                ON locations.target_uuid = facility.uuid AND locations.resource='Location'
                        ) fa ON fa.billing_facility_id = fe.billing_facility
                        LEFT JOIN (
@@ -302,7 +291,7 @@ class EncounterService extends BaseService
                                 ,facility.`name` AS facility_name
                                 ,`locations`.`uuid` AS facility_location_uuid
                            from facility
-                           LEFT JOIN uuid_mapping AS locations
+                           LEFT JOIN uuid_mapping AS locations 
                                ON locations.target_uuid = facility.uuid AND locations.resource='Location'
                        ) facilities ON facilities.facility_id = fe.facility_id
                        LEFT JOIN (
@@ -370,13 +359,9 @@ class EncounterService extends BaseService
         $encounter = generate_id();
         $data['encounter'] = $encounter;
         $data['uuid'] = UuidRegistry::getRegistryForTable(self::ENCOUNTER_TABLE)->createUuid();
-        if (empty($data['date'])) {
-            $data['date'] = date("Y-m-d");
-        }
+        $data['date'] = date("Y-m-d");
         $puuidBytes = UuidRegistry::uuidToBytes($puuid);
         $data['pid'] = $this->getIdByUuid($puuidBytes, self::PATIENT_TABLE, "pid");
-
-        $data = $this->dispatchSaveEvent(ServiceSaveEvent::EVENT_PRE_SAVE, $data);
         $query = $this->buildInsertColumns($data);
         $sql = " INSERT INTO form_encounter SET ";
         $sql .= $query['set'];
@@ -395,19 +380,15 @@ class EncounterService extends BaseService
             $data["provider_id"],
             $data["date"],
             $data['user'],
-            $data['group']
+            $data['group'],
+            $data['referring_provider_id']
         );
 
         if ($results) {
-            $processingResult = $this->getEncounter(UuidRegistry::uuidToString($data['uuid']), $puuid);
-            if ($processingResult->hasData()) {
-                $data = $processingResult->getFirstDataResult();
-                $data['encounter'] = $encounter; // make sure to be backwards compatible
-                $record = $this->dispatchSaveEvent(ServiceSaveEvent::EVENT_POST_SAVE, $data);
-                $processingResult->setData([$record]);
-            } else {
-                $processingResult->addProcessingResult("Failed to retrieve record after insert");
-            }
+            $processingResult->addData(array(
+                'encounter' => $encounter,
+                'uuid' => UuidRegistry::uuidToString($data['uuid']),
+            ));
         } else {
             $processingResult->addProcessingError("error processing SQL Insert");
         }
@@ -455,7 +436,6 @@ class EncounterService extends BaseService
         }
 
         $data['facility'] = $facility;
-        $data = $this->dispatchSaveEvent(ServiceSaveEvent::EVENT_PRE_SAVE, $data);
 
         $query = $this->buildUpdateColumns($data);
         $sql = " UPDATE form_encounter SET ";
@@ -472,10 +452,6 @@ class EncounterService extends BaseService
 
         if ($results) {
             $processingResult = $this->getEncounter($euuid, $puuid);
-            if ($processingResult->hasData()) {
-                $record = $this->dispatchSaveEvent(ServiceSaveEvent::EVENT_POST_SAVE, $processingResult->getFirstDataResult());
-                $processingResult->setData([$record]);
-            }
         } else {
             $processingResult->addProcessingError("error processing SQL Update");
         }
@@ -725,52 +701,5 @@ class EncounterService extends BaseService
             return $encounterResult->getData()[0]['referring_provider_id'] ?? '';
         }
         return [];
-    }
-
-    /**
-     * Returns the ordering provider for the encounter matching the patient and encounter identifier.
-     *
-     * @param  $pid          The legacy identifier of particular patient
-     * @param  $encounter_id The identifier of a particular encounter
-     * @return string        ordering provider of first row of encounter data (it's an id from the users table)
-     */
-    public function getOrderingProviderID($pid, $encounter_id)
-    {
-        $encounterResult = $this->search(['pid' => $pid, 'eid' => $encounter_id], $options = ['limit' => '1']);
-        if ($encounterResult->hasData()) {
-            return $encounterResult->getData()[0]['ordering_provider_id'] ?? '';
-        }
-        return [];
-    }
-
-    /**
-     * Return an array of encounters within a date range
-     *
-     * @param  $start_date  Any encounter starting on this date
-     * @param  $end_date  Any encounter ending on this date
-     * @return Array Encounter data payload.
-     */
-    public function getEncountersByDateRange($startDate, $endDate)
-    {
-        $dateField = new DateSearchField('date', ['ge' . $startDate, 'le' . $endDate], DateSearchField::DATE_TYPE_DATE, $isAnd = true);
-        $encounterResult = $this->search(['date' => $dateField]);
-        if ($encounterResult->hasData()) {
-            $result = $encounterResult->getData();
-            return $result;
-        }
-        return [];
-    }
-
-    /**
-     * Returns the default POS code that is set in the facility table.
-     *
-     * @param $facility_id
-     * @return mixed
-     */
-    public function getPosCode($facility_id)
-    {
-        $sql = "SELECT pos_code FROM facility WHERE id = ?";
-        $result = sqlQuery($sql, [$facility_id]);
-        return $result['pos_code'];
     }
 }

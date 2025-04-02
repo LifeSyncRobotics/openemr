@@ -28,7 +28,6 @@ use OpenEMR\FHIR\R4\FHIRElement\FHIRId;
 use OpenEMR\Services\Search\FhirSearchParameterDefinition;
 use OpenEMR\Services\Search\ISearchField;
 use OpenEMR\Services\Search\SearchFieldType;
-use OpenEMR\Services\Search\SearchQueryConfig;
 use OpenEMR\Services\Search\ServiceField;
 use OpenEMR\Services\Search\TokenSearchValue;
 use OpenEMR\Validators\ProcessingResult;
@@ -90,8 +89,6 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
 
     const FIELD_NAME_GENDER = 'sex';
 
-    private ?array $searchParameters = null;
-
     public function __construct()
     {
         parent::__construct();
@@ -110,7 +107,7 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
             // core FHIR required fields for now
             '_id' => $this->getPatientContextSearchField(),
             'identifier' => new FhirSearchParameterDefinition('identifier', SearchFieldType::TOKEN, ['ss', 'pubpid']),
-            'name' => new FhirSearchParameterDefinition('name', SearchFieldType::STRING, ['fname', 'mname', 'lname', 'title']),
+            'name' => new FhirSearchParameterDefinition('name', SearchFieldType::STRING, ['title', 'fname', 'mname', 'lname']),
             'birthdate' => new FhirSearchParameterDefinition('birthdate', SearchFieldType::DATE, ['DOB']),
             'gender' => new FhirSearchParameterDefinition('gender', SearchFieldType::TOKEN, [self::FIELD_NAME_GENDER]),
             'address' => new FhirSearchParameterDefinition(
@@ -140,19 +137,12 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
                 ['state', 'contact_address_state']
             ),
 
-            'email' => new FhirSearchParameterDefinition('email', SearchFieldType::TOKEN, ['email','email_direct']),
+            'email' => new FhirSearchParameterDefinition('email', SearchFieldType::TOKEN, ['email']),
             'family' => new FhirSearchParameterDefinition('family', SearchFieldType::STRING, ['lname']),
             'given' => new FhirSearchParameterDefinition('given', SearchFieldType::STRING, ['fname', 'mname']),
             'phone' => new FhirSearchParameterDefinition('phone', SearchFieldType::TOKEN, ['phone_home', 'phone_biz', 'phone_cell']),
-            'telecom' => new FhirSearchParameterDefinition('telecom', SearchFieldType::TOKEN, ['email','email_direct', 'phone_home', 'phone_biz', 'phone_cell']),
-            '_lastUpdated' => $this->getLastModifiedSearchField(),
-            'generalPractitioner' => new FhirSearchParameterDefinition('generalPractitioner', SearchFieldType::REFERENCE, ['provider_uuid'])
+            'telecom' => new FhirSearchParameterDefinition('telecom', SearchFieldType::TOKEN, ['email', 'phone_home', 'phone_biz', 'phone_cell'])
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['last_updated']);
     }
 
     /**
@@ -166,20 +156,13 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
     {
         $patientResource = new FHIRPatient();
 
-        $meta = new FHIRMeta();
-        $meta->setVersionId('1');
-        if (!empty($dataRecord['last_updated'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['last_updated']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
-        $patientResource->setMeta($meta);
+        $meta = array('versionId' => '1', 'lastUpdated' => gmdate('c'));
+        $patientResource->setMeta(new FHIRMeta($meta));
 
         $patientResource->setActive(true);
         $id = new FHIRId();
         $id->setValue($dataRecord['uuid']);
         $patientResource->setId($id);
-        $patientResource->setDeceasedBoolean($dataRecord[ 'deceased_date' ] != null);
 
         $this->parseOpenEMRPatientSummaryText($patientResource, $dataRecord);
         $this->parseOpenEMRPatientName($patientResource, $dataRecord);
@@ -193,7 +176,6 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
         $this->parseOpenEMRSocialSecurityRecord($patientResource, $dataRecord['ss']);
         $this->parseOpenEMRPublicPatientIdentifier($patientResource, $dataRecord['pubpid']);
         $this->parseOpenEMRCommunicationRecord($patientResource, $dataRecord['language']);
-        $this->parseOpenEMRGeneralPractitioner($patientResource, $dataRecord);
 
 
         if ($encode) {
@@ -277,7 +259,7 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
                 }
                 if (!empty($prevName['previous_name_enddate'])) {
                     $fhirPeriod = new FHIRPeriod();
-                    $fhirPeriod->setEnd(UtilsService::getLocalDateAsUTC($prevName['previous_name_enddate']));
+                    $fhirPeriod->setEnd(gmdate('c', strtotime($prevName['previous_name_enddate'])));
                     $previousHumanName->setPeriod($fhirPeriod);
                 }
                 $patientResource->addName($previousHumanName);
@@ -315,13 +297,6 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
         if (!empty($dataRecord['email'])) {
             $patientResource->addTelecom($this->createContactPoint('email', $dataRecord['email'], 'home'));
         }
-        if (!empty($dataRecord['email_direct'])) {
-            $patientResource->addTelecom($this->createContactPoint('email', $dataRecord['email_direct'], 'mobile'));
-            // "mobile" per spec:
-            //    "A telecommunication device that moves and stays with its owner.
-            //    May have characteristics of all other use codes, suitable for urgent matters,
-            //    not the first choice for routine business."
-        }
     }
 
     private function parseOpenEMRGenderAndBirthSex(FHIRPatient $patientResource, $sex)
@@ -334,7 +309,7 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
         if ($genderValue !== 'Unknown') {
             if ($genderValue === 'Male') {
                 $birthSex = 'M';
-            } elseif ($genderValue === 'Female') {
+            } else if ($genderValue === 'Female') {
                 $birthSex = 'F';
             }
         }
@@ -363,7 +338,7 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
                 // @see https://www.hl7.org/fhir/us/core/ValueSet-omb-race-category.html
                 $code = "ASKU";
                 $display = xlt("Asked but no answer");
-            } elseif (!empty($record)) {
+            } else if (!empty($record)) {
                 $code = $record['notes'];
                 $display = $record['title'];
                 $system = FhirCodeSystemConstants::OID_RACE_AND_ETHNICITY;
@@ -475,13 +450,6 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
         }
     }
 
-    private function parseOpenEMRGeneralPractitioner(FHIRPatient $patientResource, array $dataRecord)
-    {
-        if (!empty($dataRecord['provider_uuid'])) {
-            $patientResource->addGeneralPractitioner(UtilsService::createRelativeReference('Practitioner', $dataRecord['provider_uuid']));
-        }
-    }
-
     private function createIdentifier($use, $system, $code, $systemUri, $value): FHIRIdentifier
     {
         $identifier = new FHIRIdentifier();
@@ -555,7 +523,7 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
                 $addressPeriod = UtilsService::getPeriodTimestamps($address->getPeriod());
                 if (empty($addressPeriod['end'])) {
                     $activeAddress = $address;
-                } elseif (!empty($mostRecentPeriods['end']) && $addressPeriod['end'] > $mostRecentPeriods['end']) {
+                } else if (!empty($mostRecentPeriods['end']) && $addressPeriod['end'] > $mostRecentPeriods['end']) {
                     // if our current period is more recent than our most recent address we want to grab that one
                     $mostRecentPeriods = $addressPeriod;
                     $activeAddress = $address;
@@ -577,14 +545,8 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
                 $systemValue = (string)$contactPoint->getSystem() ?? "contact_other";
                 $contactValue = (string)$contactPoint->getValue();
                 if ($systemValue === 'email') {
-                    $use = (string)$contactPoint->getUse() ?? "home";
-                    $useMapping = ['mobile' => 'email_direct'];
-                    if (isset($useMapping[$use])) {
-                        $data[$useMapping[$use]] = $contactValue;
-                    } else {
-                        $data[$systemValue] = (string)$contactValue;
-                    }
-                } elseif ($systemValue == "phone") {
+                    $data[$systemValue] = (string)$contactValue;
+                } else if ($systemValue == "phone") {
                     $use = (string)$contactPoint->getUse() ?? "work";
                     $useMapping = ['mobile' => 'phone_cell', 'home' => 'phone_home', 'work' => 'phone_biz'];
                     if (isset($useMapping[$use])) {
@@ -607,13 +569,6 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
                 if (isset($validCodes[$codingCode])) {
                     $data[$validCodes[$codingCode]] = $identifier->getValue() ?? null;
                 }
-            }
-        }
-
-        if (!empty($fhirResource->getGeneralPractitioner())) {
-            $providerReference = UtilsService::parseReference($fhirResource->getGeneralPractitioner()[0]);
-            if (!empty($providerReference) && $providerReference['resourceType'] === 'Practitioner' && $providerReference['localResource']) {
-                $data['provider_uuid'] = $providerReference['uuid'];
             }
         }
 
@@ -645,7 +600,14 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
         return $processingResult;
     }
 
-    protected function searchForOpenEMRRecordsWithConfig($openEMRSearchParameters, SearchQueryConfig $config): ProcessingResult
+    /**
+     * Searches for OpenEMR records using OpenEMR search parameters
+     *
+     * @param ISearchField[] openEMRSearchParameters OpenEMR search fields
+     * @param $puuidBind - Optional variable to only allow visibility of the patient with this puuid.
+     * @return ProcessingResult
+     */
+    protected function searchForOpenEMRRecords($openEMRSearchParameters): ProcessingResult
     {
         // do any conversions on the data that we need here
 
@@ -665,19 +627,7 @@ class FhirPatientService extends FhirServiceBase implements IFhirExportableResou
             $field->setValues(array_map($upperCaseCode, $field->getValues()));
         }
 
-        return $this->patientService->search($openEMRSearchParameters, true, $config);
-    }
-
-    /**
-     * Searches for OpenEMR records using OpenEMR search parameters
-     *
-     * @param ISearchField[] openEMRSearchParameters OpenEMR search fields
-     * @param $puuidBind - Optional variable to only allow visibility of the patient with this puuid.
-     * @return ProcessingResult
-     */
-    protected function searchForOpenEMRRecords($openEMRSearchParameters): ProcessingResult
-    {
-        return $this->searchForOpenEMRRecordsWithConfig($openEMRSearchParameters, new SearchQueryConfig());
+        return $this->patientService->search($openEMRSearchParameters);
     }
 
     public function createProvenanceResource($dataRecord, $encode = false)

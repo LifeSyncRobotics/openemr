@@ -138,7 +138,7 @@ class CCDAEventsSubscriber implements EventSubscriberInterface
                 // from original ccr/display.php code
                 if ($type == 'CCR') {
                     $stylesheet .= "ccr.xsl";
-                } elseif ($type == "CCD") {
+                } else if ($type == "CCD") {
                     $stylesheet .= "cda.xsl";
                 }
                 if (!file_exists($stylesheet)) {

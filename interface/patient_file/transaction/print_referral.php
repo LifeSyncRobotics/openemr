@@ -14,9 +14,9 @@
  */
 
 require_once("../../globals.php");
-require_once("$srcdir/transactions.inc.php");
+require_once("$srcdir/transactions.inc");
 require_once("$srcdir/options.inc.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 
 $template_file = $GLOBALS['OE_SITE_DIR'] . "/referral_template.html";
 
@@ -28,7 +28,6 @@ $TEMPLATE_LABELS = array(
   'label_webpage_title'         => xlt('Referral Form'),
   'label_form1_title'           => xlt('Referral Form'),
   'label_name'                  => xlt('Name'),
-  'label_dob'                   => xlt('DOB'),
   'label_age'                   => xlt('Age'),
   'label_gender'                => xlt('Gender'),
   'label_address'               => xlt('Address'),
@@ -152,10 +151,10 @@ if (empty($facrow['facility_npi'])) {
 }
 
 // Generate link to MA logo if it exists.
-$logo = "";
+$logo = "<!-- '" . ($ma_logo_path ?? '') . "' does not exist. -->";
 $ma_logo_path = "sites/" . $_SESSION['site_id'] . "/images/ma_logo.png";
 if (is_file("$webserver_root/$ma_logo_path")) {
-    $logo = "$web_root/$ma_logo_path";
+    $logo = "<img src='$web_root/$ma_logo_path' style='height:" . round(9 * 5.14) . "pt' />";
 }
 
 $s = '';
@@ -195,8 +194,6 @@ while ($frow = sqlFetchArray($fres)) {
 foreach ($patdata as $key => $value) {
     if ($key == "sex") {
         $s = str_replace("{pt_$key}", generate_display_field(array('data_type' => '1','list_id' => 'sex'), $value), $s);
-    } elseif ($key == "DOB") {
-        $s = str_replace("{pt_$key}", text(oeFormatShortDate($value)), $s);
     } else {
         $s = str_replace("{pt_$key}", text($value), $s);
     }

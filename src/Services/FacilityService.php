@@ -133,7 +133,6 @@ class FacilityService extends BaseService
 
     public function getAllBillingLocations()
     {
-        // TODO: Should we be sorting by id?  seems like we'd want to sort by name like getAllServiceLocations does
         return $this->get(array(
             "where" => "WHERE FAC.billing_location = 1",
             "order" => "ORDER BY FAC.id ASC"
@@ -146,8 +145,7 @@ class FacilityService extends BaseService
             // Not okay to throw exception here. Most UI are pulldowns which init to empty.
             return false;
         }
-        // $id has to be a string for TokenSearchField()
-        $result = $this->search(['id' => new TokenSearchField('id', (string) $id, false)]);
+        $result = $this->search(['id' => new TokenSearchField('id', $id, false)]);
         if (!empty($result->getData())) {
             $facility_result = $result->getData();
             $facility = array_pop($facility_result);
@@ -214,7 +212,7 @@ class FacilityService extends BaseService
         );
 
         $facilityUpdatedEvent = new FacilityUpdatedEvent($dataBeforeUpdate, $data);
-        $GLOBALS["kernel"]->getEventDispatcher()->dispatch($facilityUpdatedEvent, FacilityUpdatedEvent::EVENT_HANDLE, 10);
+        $GLOBALS["kernel"]->getEventDispatcher()->dispatch(FacilityUpdatedEvent::EVENT_HANDLE, $facilityUpdatedEvent, 10);
 
         return $result;
     }
@@ -230,7 +228,7 @@ class FacilityService extends BaseService
         );
 
         $facilityCreatedEvent = new FacilityCreatedEvent(array_merge($data, ['id' => $facilityId]));
-        $GLOBALS["kernel"]->getEventDispatcher()->dispatch($facilityCreatedEvent, FacilityCreatedEvent::EVENT_HANDLE, 10);
+        $GLOBALS["kernel"]->getEventDispatcher()->dispatch(FacilityCreatedEvent::EVENT_HANDLE, $facilityCreatedEvent, 10);
 
         return $facilityId;
     }
@@ -288,8 +286,7 @@ class FacilityService extends BaseService
             $sql .= "        FAC.mail_zip,";
             $sql .= "        FAC.oid,";
             $sql .= "        FAC.iban,";
-            $sql .= "        FAC.info,";
-            $sql .= "        FAC.inactive";
+            $sql .= "        FAC.info";
             $sql .= " FROM facility FAC";
 
             $records = self::selectHelper($sql, $map);

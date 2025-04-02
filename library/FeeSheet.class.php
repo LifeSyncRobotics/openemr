@@ -29,7 +29,7 @@ require_once(dirname(__FILE__) . "/../custom/code_types.inc.php");
 require_once(dirname(__FILE__) . "/../interface/drugs/drugs.inc.php");
 require_once(dirname(__FILE__) . "/options.inc.php");
 require_once(dirname(__FILE__) . "/appointment_status.inc.php");
-require_once(dirname(__FILE__) . "/forms.inc.php");
+require_once(dirname(__FILE__) . "/forms.inc");
 
 use OpenEMR\Billing\BillingUtilities;
 use OpenEMR\Common\Acl\AclMain;
@@ -38,8 +38,8 @@ use OpenEMR\Common\Logging\EventAuditLogger;
 // For logging checksums set this to true.
 define('CHECKSUM_LOGGING', true);
 
-// require_once(dirname(__FILE__) . "/api.inc.php");
-// require_once(dirname(__FILE__) . "/forms.inc.php");
+// require_once(dirname(__FILE__) . "/api.inc");
+// require_once(dirname(__FILE__) . "/forms.inc");
 
 class FeeSheet
 {
@@ -55,7 +55,6 @@ class FeeSheet
     public $provider_id = 0;
     public $supervisor_id = 0;
     public $code_is_in_fee_sheet = false;       // Set by genCodeSelectorValue()
-    public $payer_id;
 
   // Possible units of measure for NDC drug quantities.
     public $ndc_uom_choices = array(

@@ -685,7 +685,7 @@ Deceased patients may also be marked as inactive for the same reasons, but may b
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         $json['resourceType'] = $this->_fhirElementName;

@@ -13,7 +13,6 @@ namespace OpenEMR\Services\FHIR\DocumentReference;
 
 use OpenEMR\FHIR\R4\FHIRDomainResource\FHIRDocumentReference;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRAttachment;
-use OpenEMR\FHIR\R4\FHIRElement\FHIRCodeableConcept;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRId;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRIdentifier;
 use OpenEMR\FHIR\R4\FHIRElement\FHIRMeta;
@@ -31,7 +30,6 @@ use OpenEMR\Services\FHIR\Traits\FhirServiceBaseEmptyTrait;
 use OpenEMR\Services\FHIR\Traits\PatientSearchTrait;
 use OpenEMR\Services\FHIR\UtilsService;
 use OpenEMR\Services\Search\FhirSearchParameterDefinition;
-use OpenEMR\Services\Search\ISearchField;
 use OpenEMR\Services\Search\SearchFieldType;
 use OpenEMR\Services\Search\SearchModifier;
 use OpenEMR\Services\Search\ServiceField;
@@ -75,13 +73,7 @@ class FhirPatientDocumentReferenceService extends FhirServiceBase
             'patient' => $this->getPatientContextSearchField(),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['date']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField(),
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['date']);
     }
 
     protected function searchForOpenEMRRecords($openEMRSearchParameters): ProcessingResult
@@ -106,14 +98,10 @@ class FhirPatientDocumentReferenceService extends FhirServiceBase
     public function parseOpenEMRRecord($dataRecord = array(), $encode = false)
     {
         $docReference = new FHIRDocumentReference();
-        $fhirMeta = new FHIRMeta();
-        $fhirMeta->setVersionId('1');
-        if (!empty($dataRecord['date'])) {
-            $fhirMeta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['date']));
-        } else {
-            $fhirMeta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
-        $docReference->setMeta($fhirMeta);
+        $meta = new FHIRMeta();
+        $meta->setVersionId('1');
+        $meta->setLastUpdated(gmdate('c'));
+        $docReference->setMeta($meta);
 
         $id = new FHIRId();
         $id->setValue($dataRecord['uuid']);
@@ -126,7 +114,7 @@ class FhirPatientDocumentReferenceService extends FhirServiceBase
         // TODO: @adunsulag need to support content.attachment.url
 
         if (!empty($dataRecord['date'])) {
-            $docReference->setDate(UtilsService::getLocalDateAsUTC($dataRecord['date']));
+            $docReference->setDate(gmdate('c', strtotime($dataRecord['date'])));
         } else {
             $docReference->setDate(UtilsService::createDataMissingExtension());
         }
@@ -137,7 +125,7 @@ class FhirPatientDocumentReferenceService extends FhirServiceBase
             // we currently don't track anything dealing with start and end date for the context
             if (!empty($dataRecord['encounter_date'])) {
                 $period = new FHIRPeriod();
-                $period->setStart(UtilsService::getLocalDateAsUTC($dataRecord['encounter_date']));
+                $period->setStart(gmdate('c', strtotime($dataRecord['encounter_date'])));
                 $context->setPeriod($period);
             }
             $context->addEncounter(UtilsService::createRelativeReference('Encounter', $dataRecord['euuid']));
@@ -146,12 +134,11 @@ class FhirPatientDocumentReferenceService extends FhirServiceBase
 
         // populate the link to download the patient document
         if (!empty($dataRecord['uuid'])) {
-            $url = $this->getFhirApiURL() . '/fhir/Binary/' . $dataRecord['uuid'];
+            $url = $this->getFhirApiURL() . '/fhir/Document/' . $dataRecord['uuid'] . '/Binary';
             $content = new FHIRDocumentReferenceContent();
             $attachment = new FHIRAttachment();
             $attachment->setContentType($dataRecord['mimetype']);
             $attachment->setUrl(new FHIRUrl($url));
-            $attachment->setTitle($dataRecord['name'] ?? '');
             $content->setAttachment($attachment);
             // TODO: if we support tagging a specific document with a reference code we can put that here.
             // since it's plain text we have no other interpretation so we just use the mime type sufficient IHE Format code
@@ -178,16 +165,10 @@ class FhirPatientDocumentReferenceService extends FhirServiceBase
                 $docReference->addCategory(UtilsService::createCodeableConcept($codeableConcept));
             }
         } else {
-            if (!empty($dataRecord['category_name'])) {
-                $concept = new FHIRCodeableConcept();
-                $concept->setText($dataRecord['category_name']);
-                $docReference->addCategory($concept);
-            } else {
-                // although the category is extensible, ONC inferno fails to validate with an extended code set so we are
-                // going to create data absent reasons.  The codes come from the document categories codes column.  If we are
-                // missing the codes we will just go with a Data Absent Reason (DAR)
-                $docReference->addCategory(UtilsService::createDataAbsentUnknownCodeableConcept());
-            }
+            // although the category is extensible, ONC inferno fails to validate with an extended code set so we are
+            // going to create data absent reasons.  The codes come from the document categories codes column.  If we are
+            // missing the codes we will just go with a Data Absent Reason (DAR)
+            $docReference->addCategory(UtilsService::createDataAbsentUnknownCodeableConcept());
         }
 
         $fhirOrganizationService = new FhirOrganizationService();

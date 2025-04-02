@@ -3,7 +3,8 @@
 /**
  *  backuplog.php
  *
- *  Here /interface/globals.php is not referred, because it includes sqlconf.php
+ *  Here /interface/globals.php is not referred, because it includes auth.inc.
+ *   auth.inc verifies for user authentication information & login session variables.
  *  Pass these variables $webserver_root & $_GLOBALS[backup_log_dir] as parameters for CRON.
  *
  * @package   OpenEMR

@@ -12,7 +12,7 @@
  */
 
 require_once("../globals.php");
-require_once("$srcdir/patient.inc.php");
+require_once("$srcdir/patient.inc");
 require_once("$srcdir/options.inc.php");
 require_once("../drugs/drugs.inc.php");
 require_once("../../custom/code_types.inc.php");
@@ -238,13 +238,13 @@ Search options include diagnosis, procedure, prescription, medical history, and 
                         <td class='col-form-label' width="100"><?php echo xlt('Facility'); ?>: </td>
                         <td width="250"> <?php dropdown_facility($facility, 'facility', false); ?> </td>
                         <td class='col-form-label' width="100"><?php echo xlt('From'); ?>: </td>
-                        <td><input type='text' class='datetimepicker form-control' name='date_from' id="date_from" size='18' value='<?php echo attr(oeFormatDateTime($sql_date_from, "global", true)); ?>'></td>
+                        <td><input type='text' class='datetimepicker form-control' name='date_from' id="date_from" size='18' value='<?php echo attr(oeFormatDateTime($sql_date_from, 0, true)); ?>'></td>
                     </tr>
                     <tr>
                         <td class='col-form-label'><?php echo xlt('Patient ID'); ?>:</td>
                         <td><input name='patient_id' class="numeric_only form-control" type='text' id="patient_id" title='<?php echo xla('Optional numeric patient ID'); ?>' value='<?php echo attr($patient_id); ?>' size='10' maxlength='20' /></td>
                         <td class='col-form-label'><?php echo xlt('To{{Range}}'); ?>: </td>
-                        <td><input type='text' class='datetimepicker form-control' name='date_to' id="date_to" size='18' value='<?php echo attr(oeFormatDateTime($sql_date_to, "global", true)); ?>'></td>
+                        <td><input type='text' class='datetimepicker form-control' name='date_to' id="date_to" size='18' value='<?php echo attr(oeFormatDateTime($sql_date_to, 0, true)); ?>'></td>
                     </tr>
                     <tr>
                         <td class='col-form-label'><?php echo xlt('Age Range'); ?>:</td>
@@ -261,7 +261,7 @@ Search options include diagnosis, procedure, prescription, medical history, and 
                         </tr>
                         </table></td>
                         <td class='col-form-label'><?php echo xlt('Problem DX'); ?>:</td>
-                        <td><input type='text' name='form_diagnosis' class= 'form-control' size='10' maxlength='250' value='<?php echo attr($form_diagnosis); ?>' onclick='sel_diagnosis(this)' title='<?php echo xla('Click to select or change diagnoses'); ?>' readonly /></td>
+                        <td><input type='text' name='form_diagnosis form-control' class= 'form-control' size='10' maxlength='250' value='<?php echo attr($form_diagnosis); ?>' onclick='sel_diagnosis(this)' title='<?php echo xla('Click to select or change diagnoses'); ?>' readonly /></td>
                                                 <td>&nbsp;</td>
 <!-- Visolve -->
                     </tr>
@@ -449,7 +449,7 @@ if (!empty($_POST['form_refresh'])) {
                 pd.race AS patient_race,pd.ethnicity AS patient_ethinic,
                 concat(u.fname, ' ', u.lname)  AS users_provider,
                 REPLACE(REPLACE(concat_ws(',',IF(pd.hipaa_allowemail = 'YES', 'Allow Email','NO'),IF(pd.hipaa_allowsms = 'YES', 'Allow SMS','NO') , IF(pd.hipaa_mail = 'YES', 'Allow Mail Message','NO') , IF(pd.hipaa_voice = 'YES', 'Allow Voice Message','NO') ), ',NO',''), 'NO,','') as communications";
-    if (!empty($form_diagnosis)) {
+    if (strlen($form_diagnosis) > 0 || !empty($_POST['form_diagnosis_allergy']) || !empty($_POST['form_diagnosis_medprb'])) {
         $sqlstmt = $sqlstmt . ",li.date AS lists_date,
                    li.diagnosis AS lists_diagnosis,
                         li.title AS lists_title";
@@ -506,8 +506,12 @@ if (!empty($_POST['form_refresh'])) {
     $sqlstmt = $sqlstmt . " from patient_data as pd left outer join users as u on u.id = pd.providerid
             left outer join facility as f on f.id = u.facility_id";
 
-    if (!empty($form_diagnosis)) {
+    if (strlen($form_diagnosis) > 0 || (!empty($_POST['form_diagnosis_allergy']) && !empty($_POST['form_diagnosis_medprb']))) {
         $sqlstmt = $sqlstmt . " left outer join lists as li on (li.pid  = pd.pid AND (li.type='medical_problem' OR li.type='allergy')) ";
+    } elseif (!empty($_POST['form_diagnosis_allergy'])) {
+        $sqlstmt = $sqlstmt . " left outer join lists as li on (li.pid  = pd.pid AND (li.type='allergy')) ";
+    } elseif (!empty($_POST['form_diagnosis_medprb'])) {
+        $sqlstmt = $sqlstmt . " left outer join lists as li on (li.pid  = pd.pid AND (li.type='medical_problem')) ";
     }
 
     if ($type == 'Procedure' || ( strlen($form_lab_results) != 0) || !empty($_POST['lab_results'])) {
@@ -547,14 +551,14 @@ if (!empty($_POST['form_refresh'])) {
 
 //where
       $whr_stmt = "where 1=1";
-    if (!empty($form_diagnosis)) {
+    if (strlen($form_diagnosis) > 0 || !empty($_POST['form_diagnosis_allergy']) || !empty($_POST['form_diagnosis_medprb'])) {
         $whr_stmt = $whr_stmt . " AND li.date >= ? AND li.date < DATE_ADD(?, INTERVAL 1 DAY) AND DATE(li.date) <= ?";
         array_push($sqlBindArray, $sql_date_from, $sql_date_to, date("Y-m-d"));
     }
 
     if (strlen($form_lab_results) != 0 || !empty($_POST['lab_results'])) {
-        $whr_stmt = $whr_stmt . " AND pr.date >= ? AND pr.date < DATE_ADD(?, INTERVAL 1 DAY) AND DATE(pr.date) <= ?";
-        array_push($sqlBindArray, $sql_date_from, $sql_date_to, date("Y-m-d"));
+              $whr_stmt = $whr_stmt . " AND pr.date >= ? AND pr.date < DATE_ADD(?, INTERVAL 1 DAY) AND DATE(pr.date) <= ?";
+              array_push($sqlBindArray, $sql_date_from, $sql_date_to, date("Y-m-d"));
     }
 
     if (strlen($form_drug_name) != 0 || !empty($_POST['form_drug'])) {
@@ -641,9 +645,9 @@ if (!empty($_POST['form_refresh'])) {
         array_push($sqlBindArray, $facility);
     }
 
-    if (!empty($form_diagnosis)) {
-        $whr_stmt = $whr_stmt . " AND (li.diagnosis LIKE ?) ";
-        array_push($sqlBindArray, '%' . $form_diagnosis . '%');
+    if (strlen($form_diagnosis) > 0) {
+        $whr_stmt = $whr_stmt . " AND (li.diagnosis LIKE ? or li.diagnosis LIKE ? or li.diagnosis LIKE ? or li.diagnosis = ?) ";
+        array_push($sqlBindArray, $form_diagnosis . "%", '%' . $form_diagnosis . '%', '%' . $form_diagnosis, $form_diagnosis);
     }
 
   //communication preferences added in clinical report
@@ -679,7 +683,7 @@ if (!empty($_POST['form_refresh'])) {
         $odrstmt = $odrstmt . ",patient_age";
     }
 
-    if (!empty($form_diagnosis)) {
+    if ((strlen($form_diagnosis) > 0)) {
         $odrstmt = $odrstmt . ",lists_diagnosis";
     } elseif ((!empty($_POST['form_diagnosis_allergy'])) || (!empty($_POST['form_diagnosis_medprb']))) {
         $odrstmt = $odrstmt . ",lists_title";
@@ -774,7 +778,7 @@ if (!empty($_POST['form_refresh'])) {
                 </tr>
 <!-- Diagnosis Report Start-->
                 <?php
-                if (!empty($form_diagnosis)) {
+                if (strlen($form_diagnosis) > 0 || !empty($_POST['form_diagnosis_allergy']) || !empty($_POST['form_diagnosis_medprb'])) {
                     ?>
                 <tr bgcolor="#C3FDB8" align="left">
                     <td colspan='12'><strong><?php echo "#";

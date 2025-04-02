@@ -13,7 +13,7 @@
  */
 
 require_once("../../globals.php");
-require_once(dirname(__FILE__) . "/../../../library/forms.inc.php");
+require_once(dirname(__FILE__) . "/../../../library/forms.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -95,13 +95,8 @@ if (!empty($_POST['confirm'])) {
 
                     <p>
                     <?php
-                    $formdir = $_GET["formname"] ?? '';
-                    $form_id = $_GET["id"] ?? 0;
-                    if ($formdir == 'questionnaire_assessments') {
-                        $formName = sqlQuery("SELECT form_name FROM forms WHERE id = ? AND deleted = 0", array($form_id));
-                    } else {
-                        $formName = getFormNameByFormdir($formdir);
-                    }
+                    $formdir = $_GET["formname"];
+                    $formName = getFormNameByFormdir($formdir);
                     echo xlt('You are about to delete the following form from this encounter') . ': ' . text(xl_form_title($formName["form_name"]));
                     ?>
                     </p>

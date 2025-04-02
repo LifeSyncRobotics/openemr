@@ -442,7 +442,7 @@ class FHIROperationDefinitionParameter extends FHIRBackboneElement implements \J
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->name)) {

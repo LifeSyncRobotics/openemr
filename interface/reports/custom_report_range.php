@@ -11,9 +11,9 @@
  */
 
 require_once(dirname(__file__) . "/../globals.php");
-require_once("$srcdir/forms.inc.php");
-require_once("$srcdir/patient.inc.php");
-require_once("$srcdir/report.inc.php");
+require_once("$srcdir/forms.inc");
+require_once("$srcdir/patient.inc");
+require_once("$srcdir/report.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Billing\BillingUtilities;
@@ -330,7 +330,7 @@ if (!(empty($_POST['start']) || empty($_POST['end']))) {
 
         print "<div id='superbill_billingdata'>";
         print "<h1>" . xlt('Billing Information') . ":</h1>";
-        if (!empty($patient)) {
+        if (!empty($patient) && is_array($patient) && count($patient) > 0) {
             $billings = array();
             echo "<table class='table w-100'>";
             echo "<tr>";

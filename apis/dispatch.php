@@ -48,7 +48,7 @@ if (!empty($_SERVER['HTTP_APICSRFTOKEN'])) {
     // For rest api endpoints that do not require auth, such as the capability statement
     //  note that the site is validated in the skipApiAuth() function
     // refactor resource
-    $restRequest->setRequestSite($gbl::$SITE);
+    $resource = str_replace('/' . $gbl::$SITE, '', $resource);
     // set site
     $_GET['site'] = $gbl::$SITE;
     $isLocalApi = false;
@@ -76,17 +76,15 @@ if (!empty($_SERVER['HTTP_APICSRFTOKEN'])) {
     foreach ($scopes as $attr) {
         if (stripos($attr, 'site:') !== false) {
             $site = str_replace('site:', '', $attr);
-            $restRequest->setRequestSite($site);
+            // while here parse site from endpoint
+            $resource = str_replace('/' . $site, '', $resource);
         }
     }
     // set our scopes and updated resources as needed
     $restRequest->setAccessTokenScopes($scopes);
 
     // ensure 1) sane site 2) site from gbl and access token are the same and 3) ensure the site exists on filesystem
-    if (
-        empty($restRequest->getRequestSite()) || empty($gbl::$SITE) || preg_match('/[^A-Za-z0-9\\-.]/', $gbl::$SITE)
-        || ($restRequest->getRequestSite() !== $gbl::$SITE) || !file_exists(__DIR__ . '/../sites/' . $gbl::$SITE)
-    ) {
+    if (empty($site) || empty($gbl::$SITE) || preg_match('/[^A-Za-z0-9\\-.]/', $gbl::$SITE) || ($site !== $gbl::$SITE) || !file_exists(__DIR__ . '/../sites/' . $gbl::$SITE)) {
         $logger->error("OpenEMR Error - api site error, so forced exit");
         http_response_code(400);
         exit();
@@ -119,8 +117,7 @@ if (!empty($_SERVER['HTTP_APICSRFTOKEN'])) {
 }
 
 // set the route as well as the resource information.  Note $resource is actually the route and not the resource name.
-//$restRequest->setRequestPath($resource);
-$resource = $restRequest->getRequestPath();
+$restRequest->setRequestPath($resource);
 
 if (!$isLocalApi) {
     // Will start the api OpenEMR session/cookie.
@@ -154,7 +151,7 @@ if (!empty($tokenId)) {
 
 
 // recollect this so the DEBUG global can be used if set
-    $logger = new SystemLogger();
+$logger = new SystemLogger();
 
 $gbl::$apisBaseFullUrl = $GLOBALS['site_addr_oath'] . $GLOBALS['webroot'] . "/apis/" . $gbl::$SITE;
 $restRequest->setApiBaseFullUrl($gbl::$apisBaseFullUrl);
@@ -274,12 +271,7 @@ if ($isLocalApi) {
             http_response_code(401);
             exit();
         }
-        $logger->debug("dispatch.php request setup for user role", ['authUserID' => $user['id'], 'authUser' => $user['username']]);
-        if (
-            $restRequest->requestHasScope(SmartLaunchController::CLIENT_APP_STANDALONE_LAUNCH_SCOPE)
-            || $restRequest->requestHasScope(SmartLaunchController::CLIENT_APP_REQUIRED_LAUNCH_SCOPE)
-        ) {
-            $logger->debug("dispatch.php api is userRole populating token context for request due to smart launch scope");
+        if ($restRequest->requestHasScope(SmartLaunchController::CLIENT_APP_STANDALONE_LAUNCH_SCOPE)) {
             $restRequest = $gbl->populateTokenContextForRequest($restRequest);
         }
     } elseif ($userRole == 'patient') {
@@ -295,7 +287,6 @@ if ($isLocalApi) {
         }
         $restRequest->setPatientRequest(true);
         $restRequest->setPatientUuidString($puuidStringCheck);
-        $logger->debug("dispatch.php request setup for patient role", ['patient' => $puuidStringCheck]);
     } else if ($userRole === 'system') {
         $_SESSION['authUser'] = $user["username"] ?? null;
         $_SESSION['authUserID'] = $user["id"] ?? null;
@@ -321,7 +312,7 @@ if ($isLocalApi) {
 
 //Extend API using RestApiCreateEvent
 $restApiCreateEvent = new RestApiCreateEvent($gbl::$ROUTE_MAP, $gbl::$FHIR_ROUTE_MAP, $gbl::$PORTAL_ROUTE_MAP, $restRequest);
-$restApiCreateEvent = $GLOBALS["kernel"]->getEventDispatcher()->dispatch($restApiCreateEvent, RestApiCreateEvent::EVENT_HANDLE, 10);
+$restApiCreateEvent = $GLOBALS["kernel"]->getEventDispatcher()->dispatch(RestApiCreateEvent::EVENT_HANDLE, $restApiCreateEvent, 10);
 $gbl::$ROUTE_MAP = $restApiCreateEvent->getRouteMap();
 $gbl::$FHIR_ROUTE_MAP = $restApiCreateEvent->getFHIRRouteMap();
 $gbl::$PORTAL_ROUTE_MAP = $restApiCreateEvent->getPortalRouteMap();
@@ -392,9 +383,6 @@ $apiCallOutput = ob_get_clean();
 if (!$isLocalApi) {
     $gbl::destroySession();
 }
-// TODO: @adunsulag we should consider rearranging the order of this code. We would rather return the response interface
-// then something that was collected in the buffer... There are things internally that just dump to the screen which
-// we really don't want to just spit out to the screen such as prepared statement error failures.
 // Send the output if not empty
 if (!empty($apiCallOutput)) {
     echo $apiCallOutput;

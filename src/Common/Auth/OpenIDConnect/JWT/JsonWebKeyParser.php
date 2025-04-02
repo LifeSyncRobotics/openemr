@@ -45,8 +45,7 @@ class JsonWebKeyParser
             'scope' => $refreshTokenData['scopes'],
             'exp' => $refreshTokenData['expire_time'],
             'sub' => $refreshTokenData['user_id'],
-            'jti' => $refreshTokenData['refresh_token_id'],
-            'client_id' => $refreshTokenData['client_id'] ?? '' // should always be there since we use it in the renewal
+            'jti' => $refreshTokenData['refresh_token_id']
         );
         if ($refreshTokenData['expire_time'] < \time()) {
             $result['active'] = false;

@@ -30,7 +30,6 @@ use OpenEMR\Services\FHIR\Traits\FhirBulkExportDomainResourceTrait;
 use OpenEMR\Services\FHIR\Traits\FhirServiceBaseEmptyTrait;
 use OpenEMR\Services\PractitionerService;
 use OpenEMR\Services\Search\FhirSearchParameterDefinition;
-use OpenEMR\Services\Search\ISearchField;
 use OpenEMR\Services\Search\ReferenceSearchValue;
 use OpenEMR\Services\Search\SearchFieldType;
 use OpenEMR\Services\Search\ServiceField;
@@ -77,14 +76,9 @@ class FhirAllergyIntoleranceService extends FhirServiceBase implements IResource
         return  [
             'patient' => $this->getPatientContextSearchField(),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('allergy_uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField(),
         ];
     }
 
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['modifydate']);
-    }
 
     /**
      * Parses an OpenEMR allergyIntolerance record, returning the equivalent FHIR AllergyIntolerance Resource
@@ -119,11 +113,7 @@ class FhirAllergyIntoleranceService extends FhirServiceBase implements IResource
         $allergyIntoleranceResource = new FHIRAllergyIntolerance();
         $fhirMeta = new FHIRMeta();
         $fhirMeta->setVersionId("1");
-        if (!empty($dataRecord['date'])) {
-            $fhirMeta->setLastUpdated(UtilsService::getLocalDateAsUTC($dataRecord['modifydate']));
-        } else {
-            $fhirMeta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $fhirMeta->setLastUpdated(gmdate('c'));
         $allergyIntoleranceResource->setMeta($fhirMeta);
 
         $id = new FHIRId();
@@ -173,7 +163,7 @@ class FhirAllergyIntoleranceService extends FhirServiceBase implements IResource
             $allergyIntoleranceResource->setPatient($patient);
         }
 
-        if (isset($dataRecord['practitioner']) && !empty($dataRecord['practitioner_npi'])) {
+        if (isset($dataRecord['practitioner'])) {
             $recorder = new FHIRReference();
             $recorder->setReference('Practitioner/' . $dataRecord['practitioner']);
             $allergyIntoleranceResource->setRecorder($recorder);
@@ -181,8 +171,7 @@ class FhirAllergyIntoleranceService extends FhirServiceBase implements IResource
 
         // cardinality is 0..*
         // however in OpenEMR we currently only track a single reaction, we will populate it if we have it.
-        // if a reaction is unassigned, it has no codes and so we will skip over this as it has no meaning in FHIR.
-        if (!empty($dataRecord['reaction']) && $dataRecord['reaction'] !== 'unassigned') {
+        if (!empty($dataRecord['reaction'])) {
             $reaction = new FHIRAllergyIntoleranceReaction();
             $reactionConcept = new FHIRCodeableConcept();
             $conceptText = $dataRecord['reaction_title'] ?? "";

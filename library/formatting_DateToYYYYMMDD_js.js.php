@@ -32,20 +32,13 @@ function DateToYYYYMMDD_js(value){
 }
 
 function TimeToHHMMSS_js(value){
-    if (value.trim() == '') {
-        return '';
-    }
-
-    var is_pm = value.trim().toUpperCase().indexOf('PM');
-    if (is_pm > 0) {
-        let d = new Date("1970-01-01 " + value);
-        let value = d.setHours(d.getHours() + 12).toTimeString();
-    }
+    //For now, just return the Value, since input fields are not formatting time.
+    // This can be upgraded if decided to format input time fields.
     return value.trim();
 }
 
 function DateToYYYYMMDDHHMMSS_js(value){
-    if (typeof value === 'undefined' || value.trim() == '') {
+    if (typeof value === 'undefined') {
         return undefined;
     }
     var parts = value.split(' ');

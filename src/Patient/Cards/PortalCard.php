@@ -21,9 +21,9 @@ use OpenEMR\Events\Patient\Summary\Card\SectionEvent;
 
 class PortalCard extends CardModel
 {
-    private const TEMPLATE_FILE = 'patient/partials/portal.html.twig';
+    const TEMPLATE_FILE = 'patient/partials/portal.html.twig';
 
-    private const CARD_ID = 'patient_portal';
+    const CARD_ID = 'patient_portal';
 
     private $opts = [];
 
@@ -59,41 +59,27 @@ class PortalCard extends CardModel
 
     private function renderCard()
     {
-        $dispatchResult = $this->ed->dispatch(new RenderEvent(self::CARD_ID), RenderEvent::EVENT_HANDLE);
+        $dispatchResult = $this->ed->dispatch(RenderEvent::EVENT_HANDLE, new RenderEvent(self::CARD_ID));
         $this->opts['templateVariables']['prependedInjection'] = $dispatchResult->getPrependedInjection();
         $this->opts['templateVariables']['appendedInjection'] = $dispatchResult->getAppendedInjection();
     }
 
-    // used in twigs
     private function setOpts()
     {
         global $GLOBALS;
         global $pid;
-        // RM get name for 'choices' group, i.e. group 4 in 'layout_gropu_properties' table in db
-        $sql = "SELECT grp_title FROM layout_group_properties WHERE grp_group_id = 4 AND grp_form_id = 'DEM'";
-        $res = sqlStatement($sql);
-        $nrow = sqlFetchArray($res);
-        $groupName = ($nrow['grp_title']  !== '' ? $nrow['grp_title'] : 'Choices');
-
         $this->opts = [
-            'acl' => ['patients', 'demo'],
-            'initiallyCollapsed' => (getUserSetting(self::CARD_ID . '_expand') == 0),
-            'add' => false,
+            'acl' => ['patients', 'dem'],
+            'initiallyCollapsed' => (getUserSetting(self::CARD_ID) == 0) ? false : true,
+            'add' => true,
             'edit' => false,
             'collapse' => true,
             'templateFile' => self::TEMPLATE_FILE,
             'identifier' => self::CARD_ID,
             'title' => xl('Patient Portal') . ' / ' . xl('API Access'),
             'templateVariables' => [
-               'allowpp' => $groupName,
-                'isPortalEnabled' => isPortalEnabled(),
-                'isPortalSiteAddressValid' => isPortalSiteAddressValid(),
-                'isPortalAllowed' => isPortalAllowed($pid),
+                'portalAuthorized' => portalAuthorized($pid),
                 'portalLoginHref' => $GLOBALS['webroot'] . "/interface/patient_file/summary/create_portallogin.php",
-                'isApiAllowed' => isApiAllowed($pid),
-                'areCredentialsCreated' => areCredentialsCreated($pid),
-                'isContactEmail' => isContactEmail($pid),
-                'isEnforceSigninEmailPortal' => isEnforceSigninEmailPortal($pid)
             ],
         ];
     }

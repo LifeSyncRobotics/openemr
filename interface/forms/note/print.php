@@ -14,7 +14,7 @@
 
 
 require_once(__DIR__ . "/../../globals.php");
-require_once("$srcdir/api.inc.php");
+require_once("$srcdir/api.inc");
 
 use OpenEMR\Core\Header;
 
@@ -29,6 +29,11 @@ if ($_GET['id'] != "") {
     $obj = formFetch("form_" . $form_name, $_GET["id"]);
 }
 
+/* remove the time-of-day from the date fields */
+if ($obj['date_of_signature'] != "") {
+    $dateparts = explode(" ", $obj['date_of_signature']);
+    $obj['date_of_signature'] = $dateparts[0];
+}
 ?>
 <html><head>
 <title><?php echo "Form: note"?></title>
@@ -62,7 +67,7 @@ if ($_GET['id'] != "") {
 </td><td>
 <span class="text"><?php echo xlt('Date'); ?></span>
    <input type='text' size='10' name='date_of_signature' id='date_of_signature'
-    value='<?php echo attr(oeFormatShortDate($obj['date_of_signature'])); ?>'
+    value='<?php echo attr($obj['date_of_signature']); ?>'
     />
 </td></tr>
 </table>

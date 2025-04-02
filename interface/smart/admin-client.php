@@ -20,18 +20,10 @@ use OpenEMR\Common\Csrf\CsrfInvalidException;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\FHIR\SMART\ClientAdminController;
 use OpenEMR\Common\Logging\SystemLogger;
-use OpenEMR\Common\Twig\TwigContainer;
-use Symfony\Component\HttpFoundation\Request;
 
-$twig = (new TwigContainer(null, $GLOBALS['kernel']))->getTwig();
-
-$router = new ClientAdminController(new ClientRepository(), new SystemLogger(), $twig, 'admin-client.php');
+$router = new ClientAdminController(new ClientRepository(), new SystemLogger(), 'admin-client.php');
 try {
-    $request = Request::createFromGlobals();
-    $response = $router->dispatch($request);
-    if (isset($response) && $response instanceof \Symfony\Component\HttpFoundation\Response) {
-        $response->send();
-    }
+    $router->dispatch(($_REQUEST['action'] ?? null), $_REQUEST);
 } catch (CsrfInvalidException $exception) {
     CsrfUtils::csrfNotVerified();
 } catch (AccessDeniedException $exception) {

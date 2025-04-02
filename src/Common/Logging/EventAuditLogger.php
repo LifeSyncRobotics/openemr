@@ -155,17 +155,8 @@ MSG;
      * @param string    $menu_item
      * @param int       $ccda_doc_id
      */
-    public function newEvent(
-        $event,
-        $user,
-        $groupname,
-        $success,
-        $comments = "",
-        $patient_id = null,
-        $log_from = 'open-emr',
-        $menu_item = 'dashboard',
-        $ccda_doc_id = 0
-    ) {
+    public function newEvent($event, $user, $groupname, $success, $comments = "", $patient_id = null, $log_from = 'open-emr', $menu_item = 'dashboard', $ccda_doc_id = 0)
+    {
         $category = $event;
         // Special case delete for lists table
         if ($event == 'delete') {
@@ -649,7 +640,7 @@ MSG;
             }
         }
 
-        if (empty($GLOBALS["audit_events_{$event}"])) {
+        if (empty($GLOBALS["audit_events_${event}"])) {
             if (!$GLOBALS['gbl_force_log_breakglass'] || !$this->isBreakglassUser($user)) {
                 return;
             }
@@ -842,45 +833,6 @@ MSG;
             $patientId = 0;
         }
         $this->sendAtnaAuditMsg($user, $group, $event, $patientId, $success, $comments);
-    }
-
-    /**
-     * Log HTTP request details
-     */
-    public function logHttpRequest()
-    {
-        // Skip if audit logging or http request logging is disabled
-        if (empty($GLOBALS['enable_auditlog']) || empty($GLOBALS['audit_events_http-request'])) {
-            return;
-        }
-
-        // Map HTTP methods to event action types
-        $methodMap = [
-            'GET' => 'select',
-            'POST' => 'update',
-            'PUT' => 'update',
-            'DELETE' => 'delete',
-            'PATCH' => 'update'
-        ];
-
-        $method = $_SERVER['REQUEST_METHOD'] ?? '';
-        $event = $methodMap[$method] ?? 'select';
-
-        // Build the comment with path and query params
-        $comment = $_SERVER['SCRIPT_NAME'];
-        if (!empty($_SERVER['QUERY_STRING'])) {
-            $comment .= '?' . $_SERVER['QUERY_STRING'];
-        }
-
-        // Record the log entry
-        $this->newEvent(
-            "http-request-$event",  // event
-            $_SESSION['authUser'] ?? null, // user
-            $_SESSION['authProvider'] ?? null, // groupname
-            1, // success
-            $comment, // comments
-            $_SESSION['pid'] ?? null // patient_id
-        );
     }
 
     /**

@@ -26,8 +26,6 @@ class SyndromicsurveillanceController extends AbstractActionController
 
     protected $listenerObject;
 
-    public $search;
-
     public function __construct(\Syndromicsurveillance\Model\SyndromicsurveillanceTable $table)
     {
         $this->listenerObject   = new Listener();

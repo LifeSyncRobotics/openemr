@@ -18,13 +18,10 @@ use OpenEMR\Events\Services\ServiceSaveEvent;
 use OpenEMR\Services\FHIR\UtilsService;
 use OpenEMR\Services\Search\FhirSearchWhereClauseBuilder;
 use OpenEMR\Services\Search\TokenSearchField;
-use OpenEMR\Services\Traits\ServiceEventTrait;
 use OpenEMR\Validators\ProcessingResult;
 
 class SocialHistoryService extends BaseService
 {
-    use ServiceEventTrait;
-
     public const TABLE_NAME = "history_data";
 
     public function __construct()
@@ -191,7 +188,24 @@ class SocialHistoryService extends BaseService
     {
         // note the uuid here is the uuid_mapping table's uuid since each column in the table has its own distinct uuid
         // in the system.
-        return ['puuid', 'uuid'];
+        return ['puuid', 'euuid', 'uuid', 'user_uuid'];
+    }
+
+
+    /**
+     *
+     * @param string $type The type of save event to dispatch
+     * @param $saveData The history data to send in the event
+     * @return array
+     */
+    private function dispatchSaveEvent(string $type, $saveData)
+    {
+        $saveEvent = new ServiceSaveEvent($this, $saveData);
+        $filteredData = $GLOBALS["kernel"]->getEventDispatcher()->dispatch($saveEvent, $type);
+        if ($filteredData instanceof ServiceSaveEvent) { // make sure whoever responds back gives us the right data.
+            $saveData = $filteredData->getSaveData();
+        }
+        return $saveData;
     }
 
     public function updateHistoryDataForPatientPid($pid, $new)

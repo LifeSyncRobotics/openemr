@@ -35,7 +35,7 @@
 
 require_once("../../globals.php");
 require_once("../../../library/options.inc.php");
-require_once($GLOBALS["srcdir"] . "/api.inc.php");
+require_once($GLOBALS["srcdir"] . "/api.inc");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;

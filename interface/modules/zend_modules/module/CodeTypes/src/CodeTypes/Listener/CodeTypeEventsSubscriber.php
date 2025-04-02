@@ -117,7 +117,7 @@ class CodeTypeEventsSubscriber implements EventSubscriberInterface
                 } else {
                     $logger("Skipping Section #updateCPT4Mappings");
                 }
-            } elseif ($this->isSnomedCodeType($record['ct_key'])) {
+            } else if ($this->isSnomedCodeType($record['ct_key'])) {
                 if ($this->shouldUpdateSNOMEDMappings()) {
                     $logger("Updating " . $record['ct_key'] . " Mappings");
                     $this->updateSNOMEDCTMappings($logger);
@@ -133,7 +133,7 @@ class CodeTypeEventsSubscriber implements EventSubscriberInterface
         if ($event->getCodeType() == "SNOMED") {
             // check if we have SNOMED codes installed and update our list options
             $this->updateSNOMEDCTMappings();
-        } elseif ($event->getCodeType() == "CPT4" && $this->shouldUpdateCPT4Mappings()) {
+        } else if ($event->getCodeType() == "CPT4" && $this->shouldUpdateCPT4Mappings()) {
             // check if we have CPT4 codes installed and update our list options
             $this->updateCPT4Mappings();
         }

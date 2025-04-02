@@ -163,7 +163,7 @@ class FHIRPatientLink extends FHIRBackboneElement implements \JsonSerializable
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->other)) {

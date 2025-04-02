@@ -11,7 +11,7 @@
  * @author  sunsetsystems <sunsetsystems>
  * @copyright Copyright (c) 2005 andres_paglayan <andres_paglayan>
  * @copyright Copyright (c) 2008 cfapress <cfapress>
- * @copyright Copyright (c) 2017-2023 Robert Down <robertdown@live.com>
+ * @copyright Copyright (c) 2017-2022 Robert Down <robertdown@live.com>
  * @copyright Copyright (c) 2007 sunsetsystems <sunsetsystems>
  * @license https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
@@ -19,7 +19,7 @@
 ?>
 <!-- Forms generated from formsWiz -->
 <?php
-require_once(__DIR__ . "/../../globals.php");
+require_once("../../globals.php");
 
 use OpenEMR\Core\Header;
 
@@ -30,7 +30,7 @@ use OpenEMR\Core\Header;
 </head>
 <body class="body_top">
 <?php
-require_once("$srcdir/api.inc.php");
+include_once("$srcdir/api.inc");
 $obj = formFetch("form_obstetrical", $_GET["id"]);
 ?>
 <form method=post action="<?php echo $rootdir?>/forms/obstetrical/save.php?mode=update&id=<?php echo attr_url($_GET["id"]); ?>" name="my_form">

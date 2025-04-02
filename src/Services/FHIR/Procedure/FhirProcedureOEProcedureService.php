@@ -72,13 +72,7 @@ class FhirProcedureOEProcedureService extends FhirServiceBase
             'patient' => $this->getPatientContextSearchField(),
             'date' => new FhirSearchParameterDefinition('date', SearchFieldType::DATETIME, ['report_date']),
             '_id' => new FhirSearchParameterDefinition('_id', SearchFieldType::TOKEN, [new ServiceField('report_uuid', ServiceField::TYPE_UUID)]),
-            '_lastUpdated' => $this->getLastModifiedSearchField(),
         ];
-    }
-
-    public function getLastModifiedSearchField(): ?FhirSearchParameterDefinition
-    {
-        return new FhirSearchParameterDefinition('_lastUpdated', SearchFieldType::DATETIME, ['report_date']);
     }
 
     /**
@@ -116,17 +110,13 @@ class FhirProcedureOEProcedureService extends FhirServiceBase
     public function parseOpenEMRRecord($dataRecord = array(), $encode = false)
     {
         $procedureResource = new FHIRProcedure();
-        $report = array_pop($dataRecord['reports']);
 
         $meta = new FHIRMeta();
         $meta->setVersionId('1');
-        if (!empty($report['date'])) {
-            $meta->setLastUpdated(UtilsService::getLocalDateAsUTC($report['date']));
-        } else {
-            $meta->setLastUpdated(UtilsService::getDateFormattedAsUTC());
-        }
+        $meta->setLastUpdated(gmdate('c'));
         $procedureResource->setMeta($meta);
 
+        $report = array_pop($dataRecord['reports']);
 
         $id = new FHIRId();
         $id->setValue($report['uuid']);
@@ -214,7 +204,7 @@ class FhirProcedureOEProcedureService extends FhirServiceBase
 
 
         if (!empty($report['date'])) {
-            $procedureResource->setPerformedDateTime(UtilsService::getLocalDateAsUTC($report['date']));
+            $procedureResource->setPerformedDateTime(gmdate('c', strtotime($report['date'])));
         } else {
             $procedureResource->setPerformedDateTime(UtilsService::createDataMissingExtension());
         }

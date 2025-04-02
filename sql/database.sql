@@ -153,7 +153,6 @@ CREATE TABLE `audit_master` (
   `ip_address` varchar(100) NOT NULL,
   `type` tinyint(4) NOT NULL COMMENT '1-new patient,2-existing patient,3-change is only in the document,4-Patient upload,5-random key,10-Appointment',
   `is_qrda_document` BOOLEAN NULL DEFAULT FALSE,
-  `is_unstructured_document` BOOLEAN NULL DEFAULT FALSE,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
 
@@ -168,7 +167,7 @@ CREATE TABLE `audit_details` (
   `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `table_name` VARCHAR(100) NOT NULL COMMENT 'openemr table name',
   `field_name` VARCHAR(100) NOT NULL COMMENT 'openemr table''s field name',
-  `field_value` LONGTEXT COMMENT 'openemr table''s field value',
+  `field_value` TEXT COMMENT 'openemr table''s field value',
   `audit_master_id` BIGINT(20) NOT NULL COMMENT 'Id of the audit_master table',
   `entry_identification` VARCHAR(255) NOT NULL DEFAULT '1' COMMENT 'Used when multiple entry occurs from the same table.1 means no multiple entry',
   PRIMARY KEY (`id`),
@@ -202,16 +201,15 @@ CREATE TABLE `background_services` (
 --
 
 INSERT INTO `background_services` (`name`, `title`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
-('phimail', 'phiMail Direct Messaging Service', 5, 'phimail_check', '/library/direct_message_check.inc.php', 100);
+('phimail', 'phiMail Direct Messaging Service', 5, 'phimail_check', '/library/direct_message_check.inc', 100);
 INSERT INTO `background_services` (`name`, `title`, `active`, `running`, `next_run`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
 ('MedEx', 'MedEx Messaging Service', 0, 0, '2017-05-09 17:39:10', 0, 'start_MedEx', '/library/MedEx/MedEx_background.php', 100);
 INSERT INTO `background_services` (`name`, `title`, `active`, `running`, `next_run`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
 ('X12_SFTP', 'SFTP Claims to X12 Partner Service', 0, 0, '2021-01-18 11:25:10', 1, 'start_X12_SFTP', '/library/billing_sftp_service.php', 100);
 INSERT INTO `background_services` (`name`, `title`, `active`, `running`, `next_run`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
-('UUID_Service', 'Automated UUID Creation Service', 1, 0, '2021-01-18 11:25:10', 240, 'autoPopulateAllMissingUuids', '/library/uuid.php', 100);
+('WenoExchange', 'Weno Log Sync', 0, 0, '2021-01-18 11:25:10', 0, 'start_weno', '/library/weno_log_sync.php', 100);
 INSERT INTO `background_services` (`name`, `title`, `active`, `running`, `next_run`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
-('Email_Service', 'Email Service', 1, 0, '2021-01-18 11:25:10', 2, 'emailServiceRun', '/library/email_service_run.php', 100);
-
+('UUID_Service', 'Automated UUID Creation Service', 1, 0, '2021-01-18 11:25:10', 240, 'autoPopulateAllMissingUuids', '/library/uuid.php', 100);
 -- --------------------------------------------------------
 
 --
@@ -297,16 +295,16 @@ CREATE TABLE `categories` (
 -- Inserting data for table `categories`
 --
 
-INSERT INTO `categories` VALUES (1, 'Categories', '', 0, 0, 61, 'patients|docs', '');
+INSERT INTO `categories` VALUES (1, 'Categories', '', 0, 0, 59, 'patients|docs', '');
 INSERT INTO `categories` VALUES (2, 'Lab Report', '', 1, 1, 2, 'patients|docs', '');
 INSERT INTO `categories` VALUES (3, 'Medical Record', '', 1, 3, 4, 'patients|docs', '');
-INSERT INTO `categories` VALUES (4, 'Patient Information', '', 1, 5, 10, 'patients|demo', '');
-INSERT INTO `categories` VALUES (5, 'Patient ID card', '', 4, 6, 7, 'patients|demo', '');
+INSERT INTO `categories` VALUES (4, 'Patient Information', '', 1, 5, 10, 'patients|docs', '');
+INSERT INTO `categories` VALUES (5, 'Patient ID card', '', 4, 6, 7, 'patients|docs', '');
 INSERT INTO `categories` VALUES (6, 'Advance Directive', '', 1, 11, 18, 'patients|docs','LOINC:LP173418-7');
 INSERT INTO `categories` VALUES (7, 'Do Not Resuscitate Order', '', 6, 12, 13, 'patients|docs', '');
 INSERT INTO `categories` VALUES (8, 'Durable Power of Attorney', '', 6, 14, 15, 'patients|docs', '');
 INSERT INTO `categories` VALUES (9, 'Living Will', '', 6, 16, 17, 'patients|docs', '');
-INSERT INTO `categories` VALUES (10, 'Patient Photograph', '', 4, 8, 9, 'patients|demo', '');
+INSERT INTO `categories` VALUES (10, 'Patient Photograph', '', 4, 8, 9, 'patients|docs', '');
 INSERT INTO `categories` VALUES (11, 'CCR', '', 1, 19, 20, 'patients|docs', '');
 INSERT INTO `categories` VALUES (12, 'CCD', '', 1, 21, 22, 'patients|docs', 'LOINC:34133-9');
 INSERT INTO `categories` VALUES (13, 'CCDA', '', 1, 23, 24, 'patients|docs', '');
@@ -327,7 +325,7 @@ INSERT INTO `categories` VALUES (27, 'Onsite Portal', '', 1, 51, 56, 'patients|d
 INSERT INTO `categories` VALUES (28, 'Patient', '', 27, 52, 53, 'patients|docs','');
 INSERT INTO `categories` VALUES (29, 'Reviewed', '', 27, 54, 55, 'patients|docs','LOINC:LP173394-0');
 INSERT INTO `categories` VALUES (30, 'FHIR Export Document', '', 1, 57, 58, 'admin|super','LOINC:LP173421-1');
-INSERT INTO `categories` VALUES (31, 'Invoices', '', 1, 59, 60, 'encounters|coding', '');
+
 -- --------------------------------------------------------
 
 --
@@ -344,7 +342,7 @@ CREATE TABLE `categories_seq` (
 -- Inserting data for table `categories_seq`
 --
 
-INSERT INTO `categories_seq` VALUES (31);
+INSERT INTO `categories_seq` VALUES (29);
 
 -- --------------------------------------------------------
 
@@ -654,15 +652,6 @@ CREATE TABLE `clinical_rules` (
   `web_reference` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Clinical Rule Web Reference',
   `linked_referential_cds` VARCHAR(50) NOT NULL DEFAULT '',
   `access_control` VARCHAR(255) NOT NULL DEFAULT 'patients:med' COMMENT 'ACO link for access control',
-  `patient_dob_usage` TEXT COMMENT 'Description of how patient DOB is used by this rule',
-  `patient_ethnicity_usage` TEXT COMMENT 'Description of how patient ethnicity is used by this rule',
-  `patient_health_status_usage` TEXT COMMENT 'Description of how patient health status assessments are used by this rule',
-  `patient_gender_identity_usage` TEXT COMMENT 'Description of how patient gender identity information is used by this rule',
-  `patient_language_usage` TEXT COMMENT 'Description of how patient language information is used by this rule',
-  `patient_race_usage` TEXT COMMENT 'Description of how patient race information is used by this rule',
-  `patient_sex_usage` TEXT COMMENT 'Description of how patient birth sex information is used by this rule',
-  `patient_sexual_orientation_usage` TEXT COMMENT 'Description of how patient sexual orientation is used by this rule',
-  `patient_sodh_usage` TEXT COMMENT 'Description of how patient social determinants of health are used by this rule',
   PRIMARY KEY  (`id`,`pid`)
 ) ENGINE=InnoDB;
 
@@ -1098,7 +1087,6 @@ CREATE TABLE `clinical_rules_log` (
   `category` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'An example category is clinical_reminder_widget',
   `value` TEXT,
   `new_value` TEXT,
-  `facility_id` INT(11) DEFAULT '0' COMMENT 'facility where the rule was executed, 0 if unknown',
   PRIMARY KEY (`id`),
   KEY `pid` (`pid`),
   KEY `uid` (`uid`),
@@ -1495,24 +1483,10 @@ CREATE TABLE `drugs` (
   `drug_code` varchar(25) NULL,
   `consumable` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = will not show on the fee sheet',
   `dispensable` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0 = pharmacy elsewhere, 1 = dispensed here',
-  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (`drug_id`),
   UNIQUE KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `edi_sequences`
---
-
-DROP TABLE IF EXISTS `edi_sequences`;
-CREATE TABLE `edi_sequences` (
-  `id` int(9) unsigned NOT NULL default '0'
-) ENGINE=InnoDB;
-
-INSERT INTO `edi_sequences` VALUES (0);
 -- --------------------------------------------------------
 
 --
@@ -1532,29 +1506,6 @@ CREATE TABLE `eligibility_verification` (
   PRIMARY KEY  (`verification_id`),
   KEY `insurance_id` (`insurance_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `email_queue`
---
-
-CREATE TABLE `email_queue` (
-  `id` bigint NOT NULL auto_increment,
-  `sender` varchar(255) DEFAULT '',
-  `recipient` varchar(255) DEFAULT '',
-  `subject` varchar(255) DEFAULT '',
-  `body` text,
-  `datetime_queued` datetime default NULL,
-  `sent` tinyint DEFAULT 0,
-  `datetime_sent` datetime default NULL,
-  `error` tinyint DEFAULT 0,
-  `error_message` text,
-  `datetime_error` datetime default NULL,
-  `template_name` VARCHAR(255) DEFAULT NULL COMMENT 'The folder prefix and base filename (w/o extension) of the twig template file to use for this email',
-PRIMARY KEY (`id`),
-KEY `sent` (`sent`)
-) ENGINE=InnoDb AUTO_INCREMENT=1;
 
 -- --------------------------------------------------------
 
@@ -1654,6 +1605,44 @@ CREATE  TABLE `erx_ttl_touch` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `erx_weno_drugs`
+--
+
+DROP TABLE IF EXISTS `erx_weno_drugs`;
+CREATE TABLE `erx_weno_drugs` (
+  `drug_id` int(11) NOT NULL AUTO_INCREMENT,
+  `rxcui_drug_coded` int(11) DEFAULT NULL,
+  `generic_rxcui` int(11) DEFAULT NULL,
+  `drug_db_code_qualifier` text,
+  `full_name` varchar(250) NOT NULL,
+  `rxn_dose_form` text,
+  `full_generic_name` varchar(250) NOT NULL,
+  `brand_name` varchar(250) NOT NULL,
+  `display_name` varchar(250) NOT NULL,
+  `route` text,
+  `new_dose_form` varchar(100) DEFAULT NULL,
+  `strength` varchar(15) DEFAULT NULL,
+  `supress_for` text,
+  `display_name_synonym` text,
+  `is_retired` text,
+  `sxdg_rxcui` varchar(10) DEFAULT NULL,
+  `sxdg_tty` text,
+  `sxdg_name` varchar(100) DEFAULT NULL,
+  `psn_drugdescription` varchar(100) DEFAULT NULL,
+  `ncpdp_quantity_term` text,
+  `potency_unit_code` varchar(10) DEFAULT NULL,
+  `dea_schedule_no` int(2) DEFAULT NULL,
+  `dea_schedule` varchar(7) DEFAULT NULL,
+  `ingredients` varchar(100) DEFAULT NULL,
+  `drug_interaction` varchar(100) DEFAULT NULL,
+  `unit_source_code` varchar(3) DEFAULT NULL,
+  `code_list_qualifier` int(3) DEFAULT NULL,
+  PRIMARY KEY (`drug_id`)
+) ENGINE=InnoDB;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `erx_rx_log`
 --
 
@@ -1748,9 +1737,6 @@ CREATE TABLE `facility` (
   `iban` varchar(50) default NULL,
   `info` TEXT,
   `weno_id` VARCHAR(10) DEFAULT NULL,
-  `inactive` tinyint(1) NOT NULL DEFAULT '0',
-  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `uuid` (`uuid`),
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4;
@@ -1759,7 +1745,7 @@ CREATE TABLE `facility` (
 -- Inserting data for table `facility`
 --
 
-INSERT INTO `facility` VALUES (3, NULL, 'Your Clinic Name Here', '000-000-0000', '000-000-0000', '', '', '', '', '', '', NULL, NULL, 1, 1, 1, NULL, '', '', '', '', '', '','#99FFFF','0', '', '1', '', '', '', '', '', '', '', '', NULL, 0, NOW(), NOW());
+INSERT INTO `facility` VALUES (3, NULL, 'Your Clinic Name Here', '000-000-0000', '000-000-0000', '', '', '', '', '', '', NULL, NULL, 1, 1, 1, NULL, '', '', '', '', '', '','#99FFFF','0', '', '1', '', '', '', '', '', '', '', '', NULL);
 
 -- --------------------------------------------------------
 
@@ -1775,34 +1761,12 @@ CREATE TABLE  `facility_user_ids` (
   `uuid` binary(16) DEFAULT NULL,
   `field_id`    varchar(31)  NOT NULL COMMENT 'references layout_options.field_id',
   `field_value` TEXT,
-  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `uid` (`uid`,`facility_id`,`field_id`),
   KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB  AUTO_INCREMENT=1;
 
------------------------------------------------------------
-
---
--- Table structure for table `fee_schedule`
---
-
-DROP TABLE IF EXISTS `fee_schedule`;
-CREATE TABLE `fee_schedule` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `insurance_company_id` INT(11) NOT NULL DEFAULT 0,
-    `plan` VARCHAR(20) DEFAULT '',
-    `code` VARCHAR(10) DEFAULT '',
-    `modifier` VARCHAR(2) DEFAULT '',
-    `type` VARCHAR(20) DEFAULT '',
-    `fee` decimal(12,2) DEFAULT NULL,
-    `effective_date` date DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `ins_plan_code_mod_type_date` (`insurance_company_id`, `plan`, `code`, `modifier`, `type`, `effective_date`)
-) ENGINE=InnoDb AUTO_INCREMENT=1;
-
------------------------------------------------------------
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `fee_sheet_options`
@@ -1855,7 +1819,6 @@ CREATE TABLE `form_clinical_notes` (
     `clinical_notes_type` varchar(100) DEFAULT NULL,
     `clinical_notes_category` varchar(100) DEFAULT NULL,
     `note_related_to` text,
-    `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB;
@@ -1920,9 +1883,6 @@ CREATE TABLE `form_encounter` (
   `encounter_type_description` TEXT,
   `referring_provider_id` INT(11) DEFAULT '0' COMMENT 'referring provider, if any, for this visit',
   `date_end` DATETIME DEFAULT NULL,
-  `in_collection` tinyint(1) default NULL,
-  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `ordering_provider_id` INT(11) DEFAULT '0' COMMENT 'referring provider, if any, for this visit',
   PRIMARY KEY  (`id`),
   UNIQUE KEY `uuid` (`uuid`),
   KEY `pid_encounter` (`pid`, `encounter`),
@@ -2310,7 +2270,6 @@ CREATE TABLE `form_vitals` (
   `ped_bmi` DECIMAL(6,2) default '0.00',
   `ped_head_circ` DECIMAL(6,2) default '0.00',
   `inhaled_oxygen_concentration` DECIMAL(6,2) DEFAULT '0.00',
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (`id`),
   KEY `pid` (`pid`),
   UNIQUE KEY `uuid` (`uuid`)
@@ -3155,8 +3114,6 @@ CREATE TABLE `insurance_companies` (
   `eligibility_id` VARCHAR(32) default NULL,
   `x12_default_eligibility_id` INT(11) default NULL,
   `cqm_sop` int DEFAULT NULL COMMENT 'HL7 Source of Payment for eCQMs',
-  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (`id`),
   UNIQUE KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB;
@@ -3202,7 +3159,6 @@ CREATE TABLE `insurance_data` (
   `policy_type` varchar(25) NOT NULL default '',
   `subscriber_street_line_2` TINYTEXT,
   `subscriber_employer_street_line_2` TINYTEXT,
-  `date_end` date NULL,
   PRIMARY KEY  (`id`),
   UNIQUE KEY `uuid` (`uuid`),
   UNIQUE KEY `pid_type_date` (`pid`,`type`,`date`)
@@ -3271,26 +3227,6 @@ INSERT INTO insurance_type_codes(`id`,`type`,`claim_type`) VALUES ('23','Title V
 INSERT INTO insurance_type_codes(`id`,`type`,`claim_type`) VALUES ('24','Veterans Administration Plan','VA');
 INSERT INTO insurance_type_codes(`id`,`type`,`claim_type`) VALUES ('25','Workers Compensation Health Plan','WC');
 INSERT INTO insurance_type_codes(`id`,`type`,`claim_type`) VALUES ('26','Mutually Defined','ZZ');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `ip_tracking`
---
-DROP TABLE IF EXISTS `ip_tracking`;
-CREATE TABLE `ip_tracking` (
-    `id` bigint NOT NULL auto_increment,
-    `ip_string` varchar(255) DEFAULT '',
-    `total_ip_login_fail_counter` bigint DEFAULT 0,
-    `ip_login_fail_counter` bigint DEFAULT 0,
-    `ip_last_login_fail` datetime DEFAULT NULL,
-    `ip_auto_block_emailed` tinyint DEFAULT 0,
-    `ip_force_block` tinyint DEFAULT 0,
-    `ip_no_prevent_timing_attack` tinyint DEFAULT 0,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `ip_string` (`ip_string`)
-) ENGINE=InnoDb AUTO_INCREMENT=1;
-
 
 -- --------------------------------------------------------
 
@@ -3448,7 +3384,6 @@ CREATE TABLE `layout_group_properties` (
   grp_save_close  tinyint(1)     not null default 0,
   grp_init_open   tinyint(1)     not null default 0,
   grp_referrals   tinyint(1)     not null default 0,
-  grp_unchecked   tinyint(1)     not null default 0,
   grp_services    varchar(4095)  not null default '',
   grp_products    varchar(4095)  not null default '',
   grp_diags       varchar(4095)  not null default '',
@@ -3529,7 +3464,6 @@ INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`,
 INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','mname','1','',30,2,1,5,63,'',0,0,'','[\"C\",\"DAP\"]','Middle Name',0,'','F','','','');
 INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','lname','1','',40,2,2,20,63,'',0,0,'','[\"C\",\"D\",\"DAP\"]','Last Name',0,'','F','','','');
 INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','suffix','1','',50,2,1,5,63,'',0,0,'','[\"EP\",\"DAP\"]','Name Suffix',0,'','F','','','');
-INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','preferred_name','1','Preferred Name',55,2,1,32,64,'',1,3,'','[\"J\",\"DAP\"]','Patient preferred name or name patient is commonly known.',0,'','F','','','');
 INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','birth_fname','1','Birth Name',60,2,1,15,63,'',1,3,'','[\"C\",\"DAP\"]','Birth First Name',0,'','F','','','');
 INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','birth_mname','1','',70,2,1,5,63,'',0,0,'','[\"C\",\"DAP\"]','Middle Name',0,'','F','','','');
 INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','birth_lname','1','',80,2,1,20,63,'',0,0,'','[\"C\",\"DAP\"]','Birth Last Name',0,'','F','','','');
@@ -3607,18 +3541,16 @@ INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`dat
 INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'language', '5', 'Language', 1, 26, 1, 0, 0, 'language', 1, 1, '', '', 'Preferred Language', 0);
 INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'ethnicity', '5', 'Ethnicity', 2, 33, 1, 0, 0, 'ethnicity', 1, 1, '', '[\"EP\"]', 'Ethnicity', 0);
 INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'race', '5', 'Race', 3, 33, 1, 0, 0, 'race', 1, 1, '', '[\"EP\"]', 'Multi Select race and or race category that describes patient race', 0);
-INSERT INTO `layout_options` (`form_id`, `field_id`, `group_id`, `title`, `seq`, `data_type`, `uor`, `fld_length`, `max_length`, `list_id`, `titlecols`, `datacols`, `default_value`, `edit_options`, `description`, `fld_rows`, `list_backup_id`, `source`, `conditions`, `validation`, `codes`) VALUES ('DEM','nationality_country','5','Nationality',4,43,1,0,0,'nationality_with_country',1,1,'','','Patient Nationality. Type to search.',0,'','F','','','');
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'financial_review', '5', 'Financial Review Date', 5, 2, 1, 10, 20, '', 1, 1, '', 'D', 'Financial Review Date', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'family_size', '5', 'Family Size', 6, 2, 1, 20, 63, '', 1, 1, '', '', 'Family Size', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'monthly_income', '5', 'Monthly Income', 7, 2, 1, 20, 63, '', 1, 1, '', '', 'Monthly Income', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'homeless', '5', 'Homeless, etc.', 8, 2, 1, 20, 63, '', 1, 1, '', '', 'Homeless or similar?', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'interpretter', '5', 'Interpreter', 9, 2, 1, 20, 63, '', 1, 1, '', '', 'Interpreter needed?', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'migrantseasonal', '5', 'Migrant/Seasonal', 10, 2, 1, 20, 63, '', 1, 1, '', '', 'Migrant or seasonal worker?', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'contrastart', '5', 'Contraceptives Start',11,4,0,10,10,'',1,1,'','','Date contraceptive services initially provided', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'referral_source', '5', 'Referral Source',12, 26, 1, 0, 0, 'refsource', 1, 1, '', '[\"EP\"]', 'How did they hear about us', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'vfc', '5', 'VFC', 13, 1, 1, 20, 0, 'eligibility', 1, 1, '', '', 'Eligibility status for Vaccine for Children supplied vaccine', 0);
-INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'religion', '5', 'Religion', 14, 1, 1, 0, 0, 'religious_affiliation', 1, 1, '', '[\"EP\"]', 'Patient Religion', 0);
---
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'financial_review', '5', 'Financial Review Date', 4, 2, 1, 10, 20, '', 1, 1, '', 'D', 'Financial Review Date', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'family_size', '5', 'Family Size', 4, 2, 1, 20, 63, '', 1, 1, '', '', 'Family Size', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'monthly_income', '5', 'Monthly Income', 5, 2, 1, 20, 63, '', 1, 1, '', '', 'Monthly Income', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'homeless', '5', 'Homeless, etc.', 6, 2, 1, 20, 63, '', 1, 1, '', '', 'Homeless or similar?', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'interpretter', '5', 'Interpreter', 7, 2, 1, 20, 63, '', 1, 1, '', '', 'Interpreter needed?', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'migrantseasonal', '5', 'Migrant/Seasonal', 8, 2, 1, 20, 63, '', 1, 1, '', '', 'Migrant or seasonal worker?', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'contrastart', '5', 'Contraceptives Start',9,4,0,10,10,'',1,1,'','','Date contraceptive services initially provided', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'referral_source', '5', 'Referral Source',10, 26, 1, 0, 0, 'refsource', 1, 1, '', '[\"EP\"]', 'How did they hear about us', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'vfc', '5', 'VFC', 12, 1, 1, 20, 0, 'eligibility', 1, 1, '', '', 'Eligibility status for Vaccine for Children supplied vaccine', 0);
+INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'religion', '5', 'Religion', 13, 1, 1, 0, 0, 'religious_affiliation', 1, 1, '', '[\"EP\"]', 'Patient Religion', 0);
 INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'deceased_date', '6', 'Date Deceased', 1, 4, 1, 20, 20, '', 1, 3, '', 'D', 'If person is deceased, then enter date of death.', 0);
 INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'deceased_reason', '6', 'Reason Deceased', 2, 2, 1, 30, 255, '', 1, 3, '', '', 'Reason for Death', 0);
 INSERT INTO `layout_options` (`form_id`,`field_id`,`group_id`,`title`,`seq`,`data_type`,`uor`,`fld_length`,`max_length`,`list_id`,`titlecols`,`datacols`,`default_value`,`edit_options`,`description`,`fld_rows`) VALUES ('DEM', 'usertext1', '6', 'User Defined Text 1', 3, 2, 0, 10, 63, '', 1, 1, '', '', 'User Defined', 0);
@@ -3735,7 +3667,6 @@ CREATE TABLE `list_options` (
   `subtype` varchar(31) NOT NULL DEFAULT '',
   `edit_options` tinyint(1) NOT NULL DEFAULT '1',
   `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (`list_id`,`option_id`)
 ) ENGINE=InnoDB;
 
@@ -4104,7 +4035,7 @@ INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) V
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','3','capsule'    ,3,0,'NCI-CONCEPT-ID:C25158');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','4','solution'   ,4,0,'NCI-CONCEPT-ID:C42986');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','5','tsp'        ,5,0,'NCI-CONCEPT-ID:C48544');
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','6','mL'         ,6,0,'NCI-CONCEPT-ID:C28254');
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','6','ml'         ,6,0,'NCI-CONCEPT-ID:C28254');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','7','units'      ,7,0,'NCI-CONCEPT-ID:C44278');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','8','inhalations',8,0,'NCI-CONCEPT-ID:C42944');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, codes ) VALUES ('drug_form','9','gtts(drops)',9,0,'NCI-CONCEPT-ID:C48491');
@@ -4127,10 +4058,10 @@ INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) V
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '3','To Skin'          , 3,0, 'OTH');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '4','To Affected Area' , 4,0, 'OTH');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '5','Sublingual'       , 5,0, 'OTH');
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '6','Left Eye'         , 6,0, 'OTH');
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '7','Right Eye'        , 7,0, 'OTH');
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '8','Each Eye'         , 8,0, 'OTH');
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '9','Subcutaneous'     , 9,0, 'OTH');
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '6','OS'               , 6,0, 'OTH');
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '7','OD'               , 7,0, 'OTH');
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '8','OU'               , 8,0, 'OTH');
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', '9','SQ'               , 9,0, 'OTH');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes, codes ) VALUES ('drug_route','10','IM'               ,10,0, 'IM', 'NCI-CONCEPT-ID:C28161');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route','11','IV'               ,11,0, 'IV');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route','12','Per Nostril'      ,12,0, 'NS');
@@ -4142,7 +4073,6 @@ INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) V
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes ) VALUES ('drug_route', 'transdermal', 'Transdermal', 19, 0, 'TD');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes, codes ) VALUES ('drug_route','intramuscular','Intramuscular' ,20, 0, 'IM', 'NCI-CONCEPT-ID:C28161');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes, codes ) VALUES ('drug_route','inhale','Inhale' ,16, 0, 'RESPIR', 'NCI-CONCEPT-ID:C38216');
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default, notes, codes ) VALUES ('drug_route', 'bymouth', 'By Mouth', 1, 0, 'PO', 'NCI-CONCEPT-ID:C38288');
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','0',''      ,0,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','1','b.i.d.',1,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','2','t.i.d.',2,0);
@@ -4152,7 +4082,7 @@ INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES (
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','6','q.5h'  ,6,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','7','q.6h'  ,7,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','8','q.8h'  ,8,0);
-INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','9','Daily' ,9,0);
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','9','q.d.'  ,9,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','10','a.c.'  ,10,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','11','p.c.'  ,11,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('drug_interval','12','a.m.'  ,12,0);
@@ -4323,7 +4253,6 @@ INSERT INTO list_options ( list_id, option_id, title, seq, option_value ) VALUES
 INSERT INTO list_options (list_id, option_id, title , seq, option_value ) VALUES ('abook_type','emr_direct', 'EMR Direct' ,105,4);
 INSERT INTO list_options (list_id, option_id, title , seq, option_value ) VALUES ('abook_type','external_provider', 'External Provider' ,110,1);
 INSERT INTO list_options (list_id, option_id, title , seq, option_value ) VALUES ('abook_type','external_org', 'External Organization' ,120,1);
-INSERT INTO list_options (list_id, option_id, title , seq, option_value ) VALUES ('abook_type','bill_svc', 'Billing Service' ,120,3);
 
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('lists','proc_type','Procedure Types', 1,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('proc_type','grp','Group'          ,10,0);
@@ -6989,7 +6918,6 @@ CREATE TABLE `module_configuration` (
   `date_added` DATETIME DEFAULT NULL COMMENT 'Datetime the record was initially created',
   `updated_by` BIGINT(20) DEFAULT NULL COMMENT 'users.id the user that last modified this record',
   `date_modified` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Datetime the record was last modified',
-  `date_created` DATETIME DEFAULT NULL COMMENT 'Datetime the record was created',
   PRIMARY KEY (`module_config_id`)
 ) ENGINE=InnoDB;
 
@@ -7087,7 +7015,6 @@ CREATE TABLE `onsite_documents` (
   `full_document` mediumblob,
   `file_name` varchar(255) NOT NULL,
   `file_path` varchar(255) NOT NULL,
-  `template_data` longtext,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
 
@@ -7310,7 +7237,6 @@ CREATE TABLE `openemr_postcalendar_categories` (
   `pc_active` tinyint(1) NOT NULL default 1,
   `pc_seq` int(11) NOT NULL default '0',
   `aco_spec` VARCHAR(63) NOT NULL default 'encounters|notes',
-  `pc_last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (`pc_catid`),
   UNIQUE KEY (`pc_constant_id`),
   KEY `basic_cat` (`pc_catname`,`pc_catcolor`)
@@ -7320,37 +7246,21 @@ CREATE TABLE `openemr_postcalendar_categories` (
 -- Inserting data for table `openemr_postcalendar_categories`
 --
 
-
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (1,'no_show', 'No Show', '#dee2e6', 'Reserved to define when an event did not occur as specified.', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 0, 0, 0, 0, 0, 0,1,1,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (2,'in_office', 'In Office', '#cce5ff', 'Reserved todefine when a provider may haveavailable appointments after.', 1, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 1, 3, 2, 0, 0, 1,1,2,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (3,'out_of_office', 'Out Of Office', '#fdb172', 'Reserved to define when a provider may not have available appointments after.', 1, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 1, 3, 2, 0, 0, 1,1,3,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (4,'vacation', 'Vacation', '#e9ecef', 'Reserved for use to define Scheduled Vacation Time', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 0, 0, 0, 1, 0, 1,1,4,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (5,'office_visit', 'Office Visit', '#ffecb4', 'Normal Office Visit', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,5,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (6,'holidays','Holidays','#8663ba','Clinic holiday',0,NULL,'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}',0,86400,1,3,2,0,0,2,1,6,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (7,'closed','Closed','#2374ab','Clinic closed',0,NULL,'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}',0,86400,1,3,2,0,0,2,1,7,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (8,'lunch', 'Lunch', '#ffd351', 'Lunch', 1, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 3600, 0, 3, 2, 0, 0, 1,1,8,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (9,'established_patient', 'Established Patient', '#93d3a2', '', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0, 0,1,9,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (10,'new_patient','New Patient', '#a2d9e2', '', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 1800, 0, 0, 0, 0, 0, 0,1,10,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (11,'reserved','Reserved','#b02a37','Reserved',1,NULL,'a:5:{s:17:\"event_repeat_freq\";s:1:\"1\";s:22:\"event_repeat_freq_type\";s:1:\"4\";s:19:\"event_repeat_on_num\";s:1:\"1\";s:19:\"event_repeat_on_day\";s:1:\"0\";s:20:\"event_repeat_on_freq\";s:1:\"0\";}',0,900,0,3,2,0,0, 1,1,11,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (12,'health_and_behavioral_assessment', 'Health and Behavioral Assessment', '#ced4da', 'Health and Behavioral Assessment', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,12,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (13,'preventive_care_services', 'Preventive Care Services', '#d3c6ec', 'Preventive Care Services', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,13,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (14,'ophthalmological_services', 'Ophthalmological Services', '#febe89', 'Ophthalmological Services', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,14,'encounters|notes');
-INSERT INTO `openemr_postcalendar_categories`(`pc_catid`, `pc_constant_id`, `pc_catname`, `pc_catcolor`, `pc_catdesc`, `pc_recurrtype`, `pc_enddate`, `pc_recurrspec`, `pc_recurrfreq`, `pc_duration`, `pc_end_date_flag`, `pc_end_date_type`, `pc_end_date_freq`, `pc_end_all_day`, `pc_dailylimit`, `pc_cattype`, `pc_active`, `pc_seq`, `aco_spec`)
-  VALUES (15,'group_therapy', 'Group Therapy' , '#adb5bd' , 'Group Therapy', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 3600, 0, 0, 0, 0, 0, 3, 1, 15,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (1,'no_show', 'No Show', '#dee2e6', 'Reserved to define when an event did not occur as specified.', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 0, 0, 0, 0, 0, 0,1,1,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (2,'in_office', 'In Office', '#cce5ff', 'Reserved todefine when a provider may haveavailable appointments after.', 1, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 1, 3, 2, 0, 0, 1,1,2,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (3,'out_of_office', 'Out Of Office', '#fdb172', 'Reserved to define when a provider may not have available appointments after.', 1, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 1, 3, 2, 0, 0, 1,1,3,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (4,'vacation', 'Vacation', '#e9ecef', 'Reserved for use to define Scheduled Vacation Time', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 0, 0, 0, 0, 1, 0, 1,1,4,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (5,'office_visit', 'Office Visit', '#ffecb4', 'Normal Office Visit', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,5,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (6,'holidays','Holidays','#8663ba','Clinic holiday',0,NULL,'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}',0,86400,1,3,2,0,0,2,1,6,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (7,'closed','Closed','#2374ab','Clinic closed',0,NULL,'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}',0,86400,1,3,2,0,0,2,1,7,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (8,'lunch', 'Lunch', '#ffd351', 'Lunch', 1, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"1";s:22:"event_repeat_freq_type";s:1:"4";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 3600, 0, 3, 2, 0, 0, 1,1,8,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (9,'established_patient', 'Established Patient', '#93d3a2', '', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0, 0,1,9,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (10,'new_patient','New Patient', '#a2d9e2', '', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 1800, 0, 0, 0, 0, 0, 0,1,10,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (11,'reserved','Reserved','#b02a37','Reserved',1,NULL,'a:5:{s:17:\"event_repeat_freq\";s:1:\"1\";s:22:\"event_repeat_freq_type\";s:1:\"4\";s:19:\"event_repeat_on_num\";s:1:\"1\";s:19:\"event_repeat_on_day\";s:1:\"0\";s:20:\"event_repeat_on_freq\";s:1:\"0\";}',0,900,0,3,2,0,0, 1,1,11,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (12,'health_and_behavioral_assessment', 'Health and Behavioral Assessment', '#ced4da', 'Health and Behavioral Assessment', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,12,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (13,'preventive_care_services', 'Preventive Care Services', '#d3c6ec', 'Preventive Care Services', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,13,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (14,'ophthalmological_services', 'Ophthalmological Services', '#febe89', 'Ophthalmological Services', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 900, 0, 0, 0, 0, 0,0,1,14,'encounters|notes');
+INSERT INTO `openemr_postcalendar_categories` VALUES (15,'group_therapy', 'Group Therapy' , '#adb5bd' , 'Group Therapy', 0, NULL, 'a:5:{s:17:"event_repeat_freq";s:1:"0";s:22:"event_repeat_freq_type";s:1:"0";s:19:"event_repeat_on_num";s:1:"1";s:19:"event_repeat_on_day";s:1:"0";s:20:"event_repeat_on_freq";s:1:"0";}', 0, 3600, 0, 0, 0, 0, 0, 3, 1, 15,'encounters|notes');
 
 -- --------------------------------------------------------
 
@@ -7398,11 +7308,9 @@ CREATE TABLE `openemr_postcalendar_events` (
   `pc_sendalertemail` VARCHAR( 3 ) NOT NULL DEFAULT 'NO',
   `pc_billing_location` SMALLINT (6) NOT NULL DEFAULT '0',
   `pc_room` varchar(20) NOT NULL DEFAULT '',
-  `uuid` binary(16) DEFAULT NULL,
   PRIMARY KEY  (`pc_eid`),
   KEY `basic_event` (`pc_catid`,`pc_aid`,`pc_eventDate`,`pc_endDate`,`pc_eventstatus`,`pc_sharing`,`pc_topic`),
-  KEY `pc_eventDate` (`pc_eventDate`),
-  UNIQUE KEY `uuid` (`uuid`)
+  KEY `pc_eventDate` (`pc_eventDate`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7;
 
 -- --------------------------------------------------------
@@ -7557,9 +7465,6 @@ CREATE TABLE `patient_data` (
   `provider_since_date` TINYTEXT,
   `created_by` BIGINT(20) DEFAULT NULL COMMENT 'users.id the user that first created this record',
   `updated_by` BIGINT(20) DEFAULT NULL COMMENT 'users.id the user that last modified this record',
-  `preferred_name` TINYTEXT,
-  `nationality_country` TINYTEXT,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `pid` (`pid`),
   UNIQUE KEY `uuid` (`uuid`),
   KEY `id` (`id`)
@@ -7808,7 +7713,7 @@ CREATE TABLE `prescriptions` (
   `quantity` varchar(31) default NULL,
   `size` varchar(25) DEFAULT NULL,
   `unit` int(11) default NULL,
-  `route` varchar(100) default NULL COMMENT 'Max size 100 characters is same max as immunizations',
+  `route` int(11) default NULL,
   `interval` int(11) default NULL,
   `substitute` int(11) default NULL,
   `refills` int(11) default NULL,
@@ -7902,7 +7807,6 @@ CREATE TABLE `registry` (
   `patient_encounter` TINYINT NOT NULL DEFAULT '1',
   `therapy_group_encounter` TINYINT NOT NULL DEFAULT '0',
   `aco_spec` varchar(63) NOT NULL default 'encounters|notes',
-  `form_foreign_id` BIGINT(21) NULL DEFAULT NULL COMMENT 'An id to a form repository. Primarily questionnaire_repository.',
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=25;
 
@@ -7910,24 +7814,24 @@ CREATE TABLE `registry` (
 -- Inserting data for table `registry`
 --
 
-INSERT INTO `registry` VALUES ('New Encounter Form', 1, 'newpatient', 1, 1, 1, '2003-09-14 15:16:45', 0, 'Administrative', '',1,0,'patients|appt', NULL);
-INSERT INTO `registry` VALUES ('Review of Systems Checks', 1, 'reviewofs', 9, 1, 1, '2003-09-14 15:16:45', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Speech Dictation', 1, 'dictation', 10, 1, 1, '2003-09-14 15:16:45', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('SOAP', 1, 'soap', 11, 1, 1, '2005-03-03 00:16:35', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Vitals', 1, 'vitals', 12, 1, 1, '2005-03-03 00:16:34', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Review Of Systems', 1, 'ros', 13, 1, 1, '2005-03-03 00:16:30', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Fee Sheet', 1, 'fee_sheet', 14, 1, 1, '2007-07-28 00:00:00', 0, 'Administrative', '',1,0,'encounters|coding', NULL);
-INSERT INTO `registry` VALUES ('Misc Billing Options HCFA', 1, 'misc_billing_options', 15, 1, 1, '2007-07-28 00:00:00', 0, 'Administrative', '',1,0,'encounters|coding', NULL);
-INSERT INTO `registry` VALUES ('Procedure Order', 1, 'procedure_order', 16, 1, 1, '2010-02-25 00:00:00', 0, 'Orders', '',1,0,'patients|lab', NULL);
-INSERT INTO `registry` VALUES ('Observation', 1, 'observation', 17, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Care Plan', 1, 'care_plan', 18, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Functional and Cognitive Status', 1, 'functional_cognitive_status', 19, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Clinical Instructions', 1, 'clinical_instructions', 20, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Eye Exam', 1, 'eye_mag', 21, 1, 1, '2015-10-15 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('Group Attendance Form', 1, 'group_attendance', 22, 1, 1, '2015-10-15 00:00:00', 0, 'Clinical', '',0,1,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('New Group Encounter Form', 1, 'newGroupEncounter', 23, 1, 1, '2015-10-15 00:00:00', 0, 'Clinical', '',0,1,'patients|appt', NULL);
-INSERT INTO `registry` VALUES ('Clinical Notes', 1, 'clinical_notes', 24, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes', NULL);
-INSERT INTO `registry` VALUES ('New Questionnaire', 1, 'questionnaire_assessments', 25, 1, 1, '2022-08-04 14:45:15', 0, 'Questionnaires', '', 1, 0, 'admin|forms', NULL);
+INSERT INTO `registry` VALUES ('New Encounter Form', 1, 'newpatient', 1, 1, 1, '2003-09-14 15:16:45', 0, 'Administrative', '',1,0,'patients|appt');
+INSERT INTO `registry` VALUES ('Review of Systems Checks', 1, 'reviewofs', 9, 1, 1, '2003-09-14 15:16:45', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Speech Dictation', 1, 'dictation', 10, 1, 1, '2003-09-14 15:16:45', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('SOAP', 1, 'soap', 11, 1, 1, '2005-03-03 00:16:35', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Vitals', 1, 'vitals', 12, 1, 1, '2005-03-03 00:16:34', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Review Of Systems', 1, 'ros', 13, 1, 1, '2005-03-03 00:16:30', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Fee Sheet', 1, 'fee_sheet', 14, 1, 1, '2007-07-28 00:00:00', 0, 'Administrative', '',1,0,'encounters|coding');
+INSERT INTO `registry` VALUES ('Misc Billing Options HCFA', 1, 'misc_billing_options', 15, 1, 1, '2007-07-28 00:00:00', 0, 'Administrative', '',1,0,'encounters|coding');
+INSERT INTO `registry` VALUES ('Procedure Order', 1, 'procedure_order', 16, 1, 1, '2010-02-25 00:00:00', 0, 'Administrative', '',1,0,'patients|lab');
+INSERT INTO `registry` VALUES ('Observation', 1, 'observation', 17, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Care Plan', 1, 'care_plan', 18, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Functional and Cognitive Status', 1, 'functional_cognitive_status', 19, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Clinical Instructions', 1, 'clinical_instructions', 20, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Eye Exam', 1, 'eye_mag', 21, 1, 1, '2015-10-15 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes');
+INSERT INTO `registry` VALUES ('Group Attendance Form', 1, 'group_attendance', 22, 1, 1, '2015-10-15 00:00:00', 0, 'Clinical', '',0,1,'encounters|notes');
+INSERT INTO `registry` VALUES ('New Group Encounter Form', 1, 'newGroupEncounter', 23, 1, 1, '2015-10-15 00:00:00', 0, 'Clinical', '',0,1,'patients|appt');
+INSERT INTO `registry` VALUES ('Clinical Notes', 1, 'clinical_notes', 24, 1, 1, '2015-09-09 00:00:00', 0, 'Clinical', '',1,0,'encounters|notes');
+
 -- --------------------------------------------------------
 
 --
@@ -8053,7 +7957,7 @@ DROP TABLE IF EXISTS `rule_filter`;
 CREATE TABLE `rule_filter` (
   `id` varchar(31) NOT NULL DEFAULT '' COMMENT 'Maps to the id column in the clinical_rules table',
   `include_flag` tinyint(1) NOT NULL default 0 COMMENT '0 is exclude and 1 is include',
-  `required_flag` tinyint(1) NOT NULL default 0 COMMENT '0 is optional and 1 is required',
+  `required_flag` tinyint(1) NOT NULL default 0 COMMENT '0 is required and 1 is optional',
   `method` varchar(31) NOT NULL DEFAULT '' COMMENT 'Maps to list_options list rule_filters',
   `method_detail` varchar(31) NOT NULL DEFAULT '' COMMENT 'Maps to list_options lists rule__intervals',
   `value` varchar(255) NOT NULL DEFAULT '',
@@ -8671,7 +8575,6 @@ CREATE TABLE `session_tracker` (
   `uuid` binary(16) NOT NULL DEFAULT '',
   `created` timestamp NULL,
   `last_updated` timestamp NULL,
-  `number_scripts` bigint DEFAULT 1,
   PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB;
 
@@ -8827,24 +8730,6 @@ INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_re
 ('CQM_VALUESET', 'NIH_VSAC', '2020-05-07', 'ep_ec_only_cms_20200507.xml.zip', '02dc0b497da979e336c24b0b5c6e1ccb');
 INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
 ( 'CQM_VALUESET', 'NIH_VSAC', '2021-05-06', 'ep_ec_eh_cms_20210506.xml.zip', '6455da86e269edb6d33288e72b467373');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2021-10-01', '2022-Code Descriptions.zip', '11d1d725c84e55d52ef6633da88aa137');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2021-10-01', 'Zip File 3 2022 ICD-10-PCS Codes File.zip', 'a432177acbdaf9908aa528078ae72176');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2022-10-01', '2023 Code Descriptions in Tabular Order.zip', 'a2bd2e87d6fac3f861b03dba9ca87cbc');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2022-10-01', 'Zip File 3 2023 ICD-10-PCS Codes File.zip', 'a4c0e6026557d770dc3d994718acaa21');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2023-10-01', 'Code Descriptions.zip', '15404ef88e0ffa15474e6d6076aa0a8a');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2023-10-01', 'Zip File 3 2024 ICD-10-PCS Codes File.zip', '30e096ed9971755c4dfc134b938f3c1f');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('CQM_VALUESET', 'NIH_VSAC', '2023-05-04', 'ec_only_cms_20230504.xml.zip', 'b77b3c2a88d23de0ec427c1cfc5088ce');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2024-10-01', 'icd10OrderFiles2025_0.zip', '783c2e3c92778295a76b8d7e0ebcf8fd');
-INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
-('ICD10', 'CMS', '2024-10-01', 'Zip File 3 2025 ICD-10-PCS Codes File.zip', 'a47ceb9a09fcc475fec19cee6526a335');
 -- --------------------------------------------------------
 
 --
@@ -8934,8 +8819,6 @@ CREATE TABLE `users` (
   `supervisor_id` int(11) NOT NULL DEFAULT '0',
   `billing_facility` TEXT,
   `billing_facility_id` INT(11) NOT NULL DEFAULT '0',
-  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (`id`),
   UNIQUE KEY `uuid` (`uuid`),
   KEY `abook_type` (`abook_type`)
@@ -8967,10 +8850,7 @@ CREATE TABLE `users_secure` (
   `password_history4` varchar(255),
   `last_challenge_response` datetime DEFAULT NULL,
   `login_work_area` text,
-  `total_login_fail_counter` bigint DEFAULT 0,
   `login_fail_counter` INT(11) DEFAULT '0',
-  `last_login_fail` datetime DEFAULT NULL,
-  `auto_block_emailed` tinyint DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `USERNAME_ID` (`id`,`username`)
 ) ENGINE=InnoDb;
@@ -9127,7 +9007,6 @@ CREATE TABLE `x12_partners` (
   `x12_per06` varchar(80) NOT NULL DEFAULT '',
   `x12_dtp03` char(1)     NOT NULL DEFAULT 'A',
   `x12_gs03` varchar(15) DEFAULT NULL,
-  `x12_submitter_id` smallint(6) DEFAULT NULL,
   `x12_submitter_name` varchar(255) DEFAULT NULL,
   `x12_sftp_login` varchar(255) DEFAULT NULL,
   `x12_sftp_pass` varchar(255) DEFAULT NULL,
@@ -9135,12 +9014,6 @@ CREATE TABLE `x12_partners` (
   `x12_sftp_port` varchar(255) DEFAULT NULL,
   `x12_sftp_local_dir` varchar(255) DEFAULT NULL,
   `x12_sftp_remote_dir` varchar(255) DEFAULT NULL,
-  `x12_token_endpoint` tinytext,
-  `x12_eligibility_endpoint` tinytext,
-  `x12_claim_status_endpoint` tinytext,
-  `x12_attachment_endpoint` tinytext,
-  `x12_client_id` tinytext,
-  `x12_client_secret` tinytext,
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB;
 
@@ -9292,7 +9165,6 @@ CREATE TABLE ar_activity (
   reason_code varchar(255) DEFAULT NULL COMMENT 'Use as needed to show the primary payer adjustment reason code',
   deleted        datetime DEFAULT NULL COMMENT 'NULL if active, otherwise when voided',
   post_date      date DEFAULT NULL COMMENT 'Posting date if specified at payment time',
-  payer_claim_number varchar(30) DEFAULT NULL,
   PRIMARY KEY (pid, encounter, sequence_no),
   KEY session_id (session_id)
 ) ENGINE=InnoDB;
@@ -9384,8 +9256,6 @@ CREATE TABLE `procedure_providers` (
   `lab_director` bigint(20)   NOT NULL DEFAULT '0',
   `active`       tinyint(1)   NOT NULL DEFAULT '1',
   `type`         varchar(31)  DEFAULT NULL,
-  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`ppid`),
   UNIQUE KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB;
@@ -11287,8 +11157,6 @@ INSERT INTO list_options (`list_id`, `option_id`, `title`, `seq`, `is_default`, 
 
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('lists','Document_Template_Categories','Document Template Categories',0,1,0,'',NULL,'',0,0,1);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('Document_Template_Categories','repository','Repository',1,1,0,'','','',0,0,1);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('Document_Template_Categories','questionnaire','Questionnaires',10,0,0,'','','',0,0,1);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('Document_Template_Categories','notification_template','Notification Template',20,0,0,'','','',0,0,1);
 
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`, `subtype`, `edit_options`) VALUES ('lists','Clinical_Note_Type','Clinical Note Type',0,1,0,'',NULL,'',0,0,1,'',1);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`, `subtype`, `edit_options`) VALUES ('Clinical_Note_Type','evaluation_note','Evaluation Note',5,0,0,'','LOINC:51848-0','',0,0,1,'',1);
@@ -11730,7 +11598,7 @@ CREATE TABLE ccda (
   `uuid` binary(16) DEFAULT NULL,
   pid BIGINT(20) DEFAULT NULL,
   encounter BIGINT(20) DEFAULT NULL,
-  ccda_data LONGTEXT,
+  ccda_data MEDIUMTEXT,
   time VARCHAR(50) DEFAULT NULL,
   status SMALLINT(6) DEFAULT NULL,
   updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -13136,8 +13004,6 @@ CREATE TABLE `oauth_clients` (
 `policy_uri` text,
 `tos_uri` text,
 `is_enabled` tinyint(1) NOT NULL DEFAULT '0',
-`skip_ehr_launch_authorization_flow` tinyint(1) NOT NULL DEFAULT '0',
-`dsi_type` TINYINT UNSIGNED NOT NULL DEFAULT '1' COMMENT '0=none, 1=evidence-based,2=predictive',
 PRIMARY KEY (`client_id`)
 ) ENGINE=InnoDB;
 
@@ -13252,8 +13118,6 @@ CREATE TABLE `document_template_profiles` (
   `recurring` tinyint(1) NOT NULL DEFAULT 1,
   `event_trigger` varchar(31) NOT NULL,
   `period` int(4) NOT NULL,
-  `notify_trigger` varchar(31) NOT NULL,
-  `notify_period` int(4) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `location` (`profile`,`template_id`,`member_of`)
 ) ENGINE=InnoDB;
@@ -13269,6 +13133,12 @@ INSERT INTO `document_templates` (`id`, `pid`, `provider`, `encounter`, `modifie
 INSERT INTO `document_templates` (`id`, `pid`, `provider`, `encounter`, `modified_date`, `profile`, `category`, `location`, `template_name`, `status`, `send_date`, `end_date`, `size`, `template_content`, `mime`) VALUES(9, 0, 18, NULL, '2021-11-21 15:51:42', '', '', NULL, 'Privacy Document', 'New', '0000-00-00 00:00:00', '0000-00-00 00:00:00', 2536, 0x3c703e4e4f54494345204f462050524956414359205052414354494345532050415449454e542041434b4e4f574c454447454d454e5420414e4420434f4e53454e5420544f204d45444943414c2054524541544d454e540d0a50617469656e74204e616d653a203c656d3e7b50617469656e744e616d657d3c2f656d3e0d0a44617465206f662042697274683a207b50617469656e74444f427d0d0a0d0a49206861766520726563656976656420616e6420756e6465727374616e6420746869732070726163746963652773204e6f74696365206f66205072697661637920507261637469636573207772697474656e20696e20706c61696e20456e676c6973682e20546865206e6f746963652070726f766964657320696e2064657461696c20746865207573657320616e6420646973636c6f7375726573206f66206d792070726f746563746564206865616c746820696e666f726d6174696f6e2074686174206d6179206265206d61646520627920746869732070726163746963652c206d7920696e646976696475616c207269676874732c20686f772049206d61792065786572636973652074686f7365207269676874732c20616e642074686520707261637469636573206c6567616c206475746965732077697468207265737065637420746f206d7920696e666f726d6174696f6e2e0d0a0d0a4920756e6465727374616e642074686174207468652070726163746963652072657365727665732074686520726967687420746f206368616e676520746865207465726d73206f66207468652050726976616379205072616374696365732c20616e6420746f206d616b65206368616e67657320726567617264696e6720616c6c2070726f746563746564206865616c746820696e666f726d6174696f6e2e204966206368616e676573206f63637572207468656e207468652070726163746963652077696c6c2070726f76696465206d6520776974682061207265766973656420636f70792075706f6e20726571756573742e0d0a0d0a4920766f6c756e746172696c7920636f6e73656e7420746f20636172652c20696e636c7564696e672070687973696369616e206578616d696e6174696f6e20616e64207465737473207375636820617320782d7261792c206c61626f7261746f727920746573747320616e6420746f206d65646963616c2074726561746d656e74206279206d792070687973696369616e206f72206869732f68657220617373697374616e7473206f722064657369676e6565732c206173206d6179206265206e656365737361727920696e20746865206a7564676d656e74206f66206d792070687973696369616e2e204e6f2067756172616e746565732068617665206265656e206d61646520746f206d652061732074686520726573756c74206f662074726561746d656e74206f72206578616d696e6174696f6e2e0d0a0d0a417574686f72697a6174696f6e20666f723a0d0a496e20636f6e73696465726174696f6e20666f72207365727669636573207265636569766564206279203c656d3e7b526566657272696e67444f437d3c2f656d3e204920616772656520746f2070617920616e7920616e6420616c6c20636861726765732061732062696c6c65642e204920616c736f2072657175657374207468617420646972656374207061796d656e7473206265206d61646520746f203c656d3e7b526566657272696e67444f437d3c2f656d3e206f6e206d7920626568616c6620627920696e73757265727320616e64206167656e6369657320696e2074686520736574746c656d656e74206f6620616e79206f66206d7920636c61696d732e204920756e6465727374616e642074686174206d792070726f746563746564206865616c746820696e666f726d6174696f6e206d6179206e65656420746f2062652072656c656173656420666f722074686520707572706f7365206f662074726561746d656e742c207061796d656e74206f72206865616c74682063617265206f7065726174696f6e732e0d0a0d0a4d656469636172652050617469656e74733a0d0a49206365727469667920746861742074686520696e666f726d6174696f6e20676976656e206279206d6520666f72206170706c69636174696f6e20666f72207061796d656e7420756e646572207469746c65205856494949206f662074686520536f6369616c2053656375726974792041637420697320636f72726563742e204920617574686f72697a6520616e7920686f6c646572206f66206d65646963616c206f72206f746865722072656c6576616e7420696e666f726d6174696f6e2061626f7574206d652062652072656c656173656420746f2074686520536f6369616c2053656375726974792041646d696e697374726174696f6e206f72206974277320696e7465726d6564696172696573206f6620636172726965727320616e64207375636820696e666f726d6174696f6e206e656564656420746f20737570706f7274206170706c69636174696f6e20666f72207061796d656e742e20496e636c7564696e67207265636f726473207065727461696e696e6720746f2048495620737461747573206f722074726561746d656e74202841494453207265636f726473292c206472756720616e6420616c636f686f6c2074726561746d656e742c20616e64206f722070737963686961747269632074726561746d656e742e20492061737369676e20616e6420617574686f72697a65207061796d656e74206469726563746c7920746f203c656d3e7b526566657272696e67444f437d3c2f656d3e20666f722074686520756e70616964206368617267657320666f72207468652070687973696369616e27732073657276696365732e204920756e6465727374616e642074686174204920616d20726573706f6e7369626c6520666f7220616c6c20696e737572616e63652064656475637469626c657320616e6420636f696e737572616e63652e0d0a436f6d6d656e74733a207b54657874496e7075747d0d0a5369676e61747572653a207b50617469656e745369676e61747572657d0d0a446f20796f7520617574686f72697a6520656c656374726f6e6963207369676e6174757265207b436865636b4d61726b7d200d0a52656c6174696f6e7368697020746f2070617469656e7420286966207369676e6564206279206120706572736f6e616c20726570726573656e746174697665293a207b54657874496e7075747d0d0a41726520796f75205072696d61727920436172652047697665723a7b796e526164696f47726f75707d0d0a446174653a207b444f537d0d0a3c2f703e3c703e436c696e696320526570726573656e746174697665205369676e6174757265266e6273703b7b526566657272696e67444f437d205369676e65643a207b41646d696e5369676e61747572657d203c2f703e3c703e3c6272202f3e3c2f703e, 'text/plain');
 INSERT INTO `document_templates` (`id`, `pid`, `provider`, `encounter`, `modified_date`, `profile`, `category`, `location`, `template_name`, `status`, `send_date`, `end_date`, `size`, `template_content`, `mime`) VALUES(10, -1, 1, NULL, '2021-11-30 16:02:52', '', '', NULL, 'Privacy Document', 'New', '0000-00-00 00:00:00', '0000-00-00 00:00:00', 2536, 0x3c703e4e4f54494345204f462050524956414359205052414354494345532050415449454e542041434b4e4f574c454447454d454e5420414e4420434f4e53454e5420544f204d45444943414c2054524541544d454e540d0a50617469656e74204e616d653a203c656d3e7b50617469656e744e616d657d3c2f656d3e0d0a44617465206f662042697274683a207b50617469656e74444f427d0d0a0d0a49206861766520726563656976656420616e6420756e6465727374616e6420746869732070726163746963652773204e6f74696365206f66205072697661637920507261637469636573207772697474656e20696e20706c61696e20456e676c6973682e20546865206e6f746963652070726f766964657320696e2064657461696c20746865207573657320616e6420646973636c6f7375726573206f66206d792070726f746563746564206865616c746820696e666f726d6174696f6e2074686174206d6179206265206d61646520627920746869732070726163746963652c206d7920696e646976696475616c207269676874732c20686f772049206d61792065786572636973652074686f7365207269676874732c20616e642074686520707261637469636573206c6567616c206475746965732077697468207265737065637420746f206d7920696e666f726d6174696f6e2e0d0a0d0a4920756e6465727374616e642074686174207468652070726163746963652072657365727665732074686520726967687420746f206368616e676520746865207465726d73206f66207468652050726976616379205072616374696365732c20616e6420746f206d616b65206368616e67657320726567617264696e6720616c6c2070726f746563746564206865616c746820696e666f726d6174696f6e2e204966206368616e676573206f63637572207468656e207468652070726163746963652077696c6c2070726f76696465206d6520776974682061207265766973656420636f70792075706f6e20726571756573742e0d0a0d0a4920766f6c756e746172696c7920636f6e73656e7420746f20636172652c20696e636c7564696e672070687973696369616e206578616d696e6174696f6e20616e64207465737473207375636820617320782d7261792c206c61626f7261746f727920746573747320616e6420746f206d65646963616c2074726561746d656e74206279206d792070687973696369616e206f72206869732f68657220617373697374616e7473206f722064657369676e6565732c206173206d6179206265206e656365737361727920696e20746865206a7564676d656e74206f66206d792070687973696369616e2e204e6f2067756172616e746565732068617665206265656e206d61646520746f206d652061732074686520726573756c74206f662074726561746d656e74206f72206578616d696e6174696f6e2e0d0a0d0a417574686f72697a6174696f6e20666f723a0d0a496e20636f6e73696465726174696f6e20666f72207365727669636573207265636569766564206279203c656d3e7b526566657272696e67444f437d3c2f656d3e204920616772656520746f2070617920616e7920616e6420616c6c20636861726765732061732062696c6c65642e204920616c736f2072657175657374207468617420646972656374207061796d656e7473206265206d61646520746f203c656d3e7b526566657272696e67444f437d3c2f656d3e206f6e206d7920626568616c6620627920696e73757265727320616e64206167656e6369657320696e2074686520736574746c656d656e74206f6620616e79206f66206d7920636c61696d732e204920756e6465727374616e642074686174206d792070726f746563746564206865616c746820696e666f726d6174696f6e206d6179206e65656420746f2062652072656c656173656420666f722074686520707572706f7365206f662074726561746d656e742c207061796d656e74206f72206865616c74682063617265206f7065726174696f6e732e0d0a0d0a4d656469636172652050617469656e74733a0d0a49206365727469667920746861742074686520696e666f726d6174696f6e20676976656e206279206d6520666f72206170706c69636174696f6e20666f72207061796d656e7420756e646572207469746c65205856494949206f662074686520536f6369616c2053656375726974792041637420697320636f72726563742e204920617574686f72697a6520616e7920686f6c646572206f66206d65646963616c206f72206f746865722072656c6576616e7420696e666f726d6174696f6e2061626f7574206d652062652072656c656173656420746f2074686520536f6369616c2053656375726974792041646d696e697374726174696f6e206f72206974277320696e7465726d6564696172696573206f6620636172726965727320616e64207375636820696e666f726d6174696f6e206e656564656420746f20737570706f7274206170706c69636174696f6e20666f72207061796d656e742e20496e636c7564696e67207265636f726473207065727461696e696e6720746f2048495620737461747573206f722074726561746d656e74202841494453207265636f726473292c206472756720616e6420616c636f686f6c2074726561746d656e742c20616e64206f722070737963686961747269632074726561746d656e742e20492061737369676e20616e6420617574686f72697a65207061796d656e74206469726563746c7920746f203c656d3e7b526566657272696e67444f437d3c2f656d3e20666f722074686520756e70616964206368617267657320666f72207468652070687973696369616e27732073657276696365732e204920756e6465727374616e642074686174204920616d20726573706f6e7369626c6520666f7220616c6c20696e737572616e63652064656475637469626c657320616e6420636f696e737572616e63652e0d0a436f6d6d656e74733a207b54657874496e7075747d0d0a5369676e61747572653a207b50617469656e745369676e61747572657d0d0a446f20796f7520617574686f72697a6520656c656374726f6e6963207369676e6174757265207b436865636b4d61726b7d200d0a52656c6174696f6e7368697020746f2070617469656e7420286966207369676e6564206279206120706572736f6e616c20726570726573656e746174697665293a207b54657874496e7075747d0d0a41726520796f75205072696d61727920436172652047697665723a7b796e526164696f47726f75707d0d0a446174653a207b444f537d0d0a3c2f703e3c703e436c696e696320526570726573656e746174697665205369676e6174757265266e6273703b7b526566657272696e67444f437d205369676e65643a207b41646d696e5369676e61747572657d203c2f703e3c703e3c6272202f3e3c2f703e, 'text/plain');
 
+INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
+('ICD10', 'CMS', '2021-10-01', '2022-Code Descriptions.zip', '11d1d725c84e55d52ef6633da88aa137');
+
+INSERT INTO `supported_external_dataloads` (`load_type`, `load_source`, `load_release_date`, `load_filename`, `load_checksum`) VALUES
+('ICD10', 'CMS', '2021-10-01', 'Zip File 3 2022 ICD-10-PCS Codes File.zip', 'a432177acbdaf9908aa528078ae72176');
+
 DROP TABLE IF EXISTS `valueset_oid`;
 CREATE TABLE `valueset_oid` (
   `nqf_code` varchar(255) NOT NULL DEFAULT '',
@@ -13280,441 +13150,3 @@ CREATE TABLE `valueset_oid` (
   `valueset_name` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`nqf_code`,`code`,`valueset`)
 ) ENGINE=InnoDB;
-
-DROP TABLE IF EXISTS `questionnaire_repository`;
-CREATE TABLE `questionnaire_repository` (
-    `id` bigint(21) UNSIGNED NOT NULL AUTO_INCREMENT,
-    `uuid` binary(16) DEFAULT NULL,
-    `questionnaire_id` varchar(255) DEFAULT NULL,
-    `provider` int(11) UNSIGNED DEFAULT NULL,
-    `version` int(11) NOT NULL DEFAULT 1,
-    `created_date` datetime DEFAULT current_timestamp(),
-    `modified_date` datetime DEFAULT current_timestamp(),
-    `name` varchar(255) DEFAULT NULL,
-    `type` varchar(63) NOT NULL DEFAULT 'Questionnaire',
-    `profile` varchar(255) DEFAULT NULL,
-    `active` tinyint(2) NOT NULL DEFAULT 1,
-    `status` varchar(31) DEFAULT NULL,
-    `source_url` text,
-    `code` varchar(255) DEFAULT NULL,
-    `code_display` text,
-    `questionnaire` longtext,
-    `lform` longtext,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uuid` (`uuid`),
-    KEY `search` (`name`,`questionnaire_id`)
-) ENGINE=InnoDB;
-
-DROP TABLE IF EXISTS `questionnaire_response`;
-CREATE TABLE `questionnaire_response` (
-  `id` bigint(21) NOT NULL AUTO_INCREMENT,
-  `uuid` binary(16) DEFAULT NULL,
-  `response_id` varchar(255) DEFAULT NULL COMMENT 'A globally unique id for answer set. String version of UUID',
-  `questionnaire_foreign_id` bigint(21) DEFAULT NULL COMMENT 'questionnaire_repository id for subject questionnaire',
-  `questionnaire_id` varchar(255) DEFAULT NULL COMMENT 'Id for questionnaire content. String version of UUID',
-  `questionnaire_name` varchar(255) DEFAULT NULL,
-  `patient_id` int(11) DEFAULT NULL,
-  `encounter` int(11) DEFAULT NULL COMMENT 'May or may not be associated with an encounter',
-  `audit_user_id` int(11) DEFAULT NULL,
-  `creator_user_id` int(11) DEFAULT NULL COMMENT 'user id if answers are provider',
-  `create_time` datetime DEFAULT current_timestamp(),
-  `last_updated` datetime DEFAULT NULL,
-  `version` int(11) NOT NULL DEFAULT 1,
-  `status` varchar(63) DEFAULT NULL COMMENT 'form current status. completed,active,incomplete',
-  `questionnaire` longtext COMMENT 'the subject questionnaire json',
-  `questionnaire_response` longtext COMMENT 'questionnaire response json',
-  `form_response` longtext COMMENT 'lform answers array json',
-  `form_score` int(11) DEFAULT NULL COMMENT 'Arithmetic scoring of questionnaires',
-  `tscore` double DEFAULT NULL COMMENT 'T-Score',
-  `error` double DEFAULT NULL COMMENT 'Standard error for the T-Score',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uuid` (`uuid`),
-  KEY `response_index` (`response_id`, `patient_id`, `questionnaire_id`, `questionnaire_name`)
-) ENGINE=InnoDB;
-
-DROP TABLE IF EXISTS `form_questionnaire_assessments`;
-CREATE TABLE `form_questionnaire_assessments` (
-  `id` bigint(21) NOT NULL AUTO_INCREMENT,
-  `date` datetime DEFAULT current_timestamp(),
-  `response_id` TEXT COMMENT 'The foreign id to the questionnaire_response repository',
-  `pid` bigint(21) NOT NULL DEFAULT 0,
-  `user` varchar(255) DEFAULT NULL,
-  `groupname` varchar(255) DEFAULT NULL,
-  `authorized` tinyint(4) NOT NULL DEFAULT 0,
-  `activity` tinyint(4) NOT NULL DEFAULT 1,
-  `copyright` text,
-  `form_name` varchar(255) DEFAULT NULL,
-  `response_meta` text COMMENT 'json meta data for the response resource',
-  `questionnaire_id` TEXT COMMENT 'The foreign id to the questionnaire_repository',
-  `questionnaire` longtext,
-  `questionnaire_response` longtext,
-  `lform` longtext,
-  `lform_response` longtext,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB;
-
-DROP TABLE IF EXISTS `onetime_auth`;
-CREATE TABLE `onetime_auth` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `pid` bigint(20) DEFAULT NULL,
-    `create_user_id` bigint(20) DEFAULT NULL,
-    `context` varchar(64) DEFAULT NULL,
-    `access_count` int(11) NOT NULL DEFAULT 0,
-    `remote_ip` varchar(32) DEFAULT NULL,
-    `onetime_pin` varchar(10) DEFAULT NULL COMMENT 'Max 10 numeric. Default 6',
-    `onetime_token` tinytext,
-    `redirect_url` tinytext,
-    `expires` int(11) DEFAULT NULL,
-    `date_created` datetime DEFAULT current_timestamp(),
-    `last_accessed` datetime DEFAULT NULL,
-    `scope` tinytext COMMENT 'context scope for this token',
-    `profile` tinytext COMMENT 'profile of scope for this token',
-    `onetime_actions` text COMMENT 'JSON array of actions that can be performed with this token',
-    PRIMARY KEY (`id`),
-    KEY `pid` (`pid`,`onetime_token`(255))
-) ENGINE=InnoDB;
-
-
-DROP TABLE IF EXISTS `patient_settings`;
-CREATE TABLE `patient_settings` (
-     `setting_patient`  bigint(20)   NOT NULL DEFAULT 0,
-     `setting_label` varchar(100)  NOT NULL,
-     `setting_value` varchar(255) NOT NULL DEFAULT '',
-     PRIMARY KEY (`setting_patient`, `setting_label`)
-) ENGINE=InnoDB;
-
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`) VALUES ('lists', 'default_open_tabs', 'Default Open Tabs');
-INSERT INTO `list_options` (`list_id`, `notes`, `title`, `seq`, `option_id`, `activity`) VALUES ('default_open_tabs', 'interface/main/main_info.php', 'Calendar', 10, 'cal', '1');
-INSERT INTO `list_options` (`list_id`, `notes`, `title`, `seq`, `option_id`, `activity`) VALUES ('default_open_tabs', 'interface/new/new.php', 'Patient Search / Add', 20, 'pat', '0');
-INSERT INTO `list_options` (`list_id`, `notes`, `title`, `seq`, `option_id`, `activity`) VALUES ('default_open_tabs', 'interface/main/finder/dynamic_finder.php', 'Patient Finder', 30, 'fin', '0');
-INSERT INTO `list_options` (`list_id`, `notes`, `title`, `seq`, `option_id`, `activity`) VALUES ('default_open_tabs', 'interface/patient_tracker/patient_tracker.php?skip_timeout_reset=1', 'Flow Board', 40, 'flb', '0');
-INSERT INTO `list_options` (`list_id`, `notes`, `title`, `seq`, `option_id`, `activity`) VALUES ('default_open_tabs', 'interface/main/messages/messages.php?form_active=1', 'Message Inbox', 50, 'msg', '1');
-
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`) VALUES ('lists', 'recent_patient_columns', 'Recent Patient Columns');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('recent_patient_columns', 'fname', 'First Name', '10');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('recent_patient_columns', 'mname', 'Middle Name', '20');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('recent_patient_columns', 'lname', 'Last Name', '30');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('recent_patient_columns', 'DOB', 'Date of Birth', '40');
-
-CREATE TABLE recent_patients (
-    user_id varchar(40) NOT NULL,
-    patients TEXT,
-    PRIMARY KEY (user_id)
-) ENGINE=InnoDB;
-
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`, `subtype`, `edit_options`, `timestamp`) VALUES ('lists','nationality_with_country','Nationality',1,1,0,'',NULL,'',0,0,1,'',1,'2023-09-24 18:21:13');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AF', 'Afghan', '10', '0', '0', '', 'Afghanistan', 'AFG:004');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AX', 'Ålandish', '20', '0', '0', '', 'Åland Islands', 'ALA:248');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AL', 'Albanian', '30', '0', '0', '', 'Albania', 'ALB:008');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'DZ', 'Algerian', '40', '0', '0', '', 'Algeria', 'DZA:012');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'US', 'American', '50', '0', '0', '', 'United States', 'USA:840');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'UM', 'American Islander', '60', '0', '0', '', 'United States Minor Outlying Islands', 'UMI:581');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MP', 'American Mariana Islands', '70', '0', '0', '', 'Northern Mariana Islands', 'MNP:580');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AS', 'American Samoan', '80', '0', '0', '', 'American Samoa', 'ASM:016');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AD', 'Andorran', '90', '0', '0', '', 'Andorra', 'AND:020');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AO', 'Angolan', '100', '0', '0', '', 'Angola', 'AGO:024');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AI', 'Anguillian', '110', '0', '0', '', 'Anguilla', 'AIA:660');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AQ', 'Antarctican', '120', '0', '0', '', 'Antarctica', 'ATA:010');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AG', 'Antiguan, Barbudan', '130', '0', '0', '', 'Antigua and Barbuda', 'ATG:028');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AR', 'Argentine', '140', '0', '0', '', 'Argentina', 'ARG:032');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AM', 'Armenian', '150', '0', '0', '', 'Armenia', 'ARM:051');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AW', 'Aruban', '160', '0', '0', '', 'Aruba', 'ABW:533');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AU', 'Australian', '170', '0', '0', '', 'Australia', 'AUS:036');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AT', 'Austrian', '180', '0', '0', '', 'Austria', 'AUT:040');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AZ', 'Azerbaijani', '190', '0', '0', '', 'Azerbaijan', 'AZE:031');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BS', 'Bahamian', '200', '0', '0', '', 'Bahamas', 'BHS:044');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BH', 'Bahraini', '210', '0', '0', '', 'Bahrain', 'BHR:048');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BD', 'Bangladeshi', '220', '0', '0', '', 'Bangladesh', 'BGD:050');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BB', 'Barbadian', '230', '0', '0', '', 'Barbados', 'BRB:052');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BY', 'Belarusian', '240', '0', '0', '', 'Belarus', 'BLR:112');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BE', 'Belgian', '250', '0', '0', '', 'Belgium', 'BEL:056');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BZ', 'Belizean', '260', '0', '0', '', 'Belize', 'BLZ:084');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BJ', 'Beninese', '270', '0', '0', '', 'Benin', 'BEN:204');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BM', 'Bermudian', '280', '0', '0', '', 'Bermuda', 'BMU:060');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BT', 'Bhutanese', '290', '0', '0', '', 'Bhutan', 'BTN:064');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BO', 'Bolivian', '300', '0', '0', '', 'Bolivia', 'BOL:068');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BA', 'Bosnian, Herzegovinian', '310', '0', '0', '', 'Bosnia and Herzegovina', 'BIH:070');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BR', 'Brazilian', '320', '0', '0', '', 'Brazil', 'BRA:076');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GB', 'British', '330', '0', '0', '', 'United Kingdom', 'GBR:826');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IO', 'British Indian', '1080', '0', '0', '', 'British Indian Ocean Territory', 'IOT:086');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BN', 'Bruneian', '340', '0', '0', '', 'Brunei', 'BRN:096');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BG', 'Bulgarian', '350', '0', '0', '', 'Bulgaria', 'BGR:100');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BF', 'Burkinabe', '360', '0', '0', '', 'Burkina Faso', 'BFA:854');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MM', 'Burmese', '370', '0', '0', '', 'Myanmar', 'MMR:104');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BI', 'Burundian', '380', '0', '0', '', 'Burundi', 'BDI:108');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KH', 'Cambodian', '390', '0', '0', '', 'Cambodia', 'KHM:116');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CM', 'Cameroonian', '400', '0', '0', '', 'Cameroon', 'CMR:120');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CA', 'Canadian', '410', '0', '0', '', 'Canada', 'CAN:124');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CV', 'Cape Verdian', '420', '0', '0', '', 'Cape Verde', 'CPV:132');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KY', 'Caymanian', '430', '0', '0', '', 'Cayman Islands', 'CYM:136');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CF', 'Central African', '440', '0', '0', '', 'Central African Republic', 'CAF:140');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TD', 'Chadian', '450', '0', '0', '', 'Chad', 'TCD:148');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GG', 'Channel Islander Guernsey', '470', '0', '0', '', 'Guernsey', 'GGY:831');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'JE', 'Channel Islander Jersey', '460', '0', '0', '', 'Jersey', 'JEY:832');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CL', 'Chilean', '480', '0', '0', '', 'Chile', 'CHL:152');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CN', 'Chinese', '490', '0', '0', '', 'China', 'CHN:156');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CX', 'Christmas Islander', '500', '0', '0', '', 'Christmas Island', 'CXR:162');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CC', 'Cocos Islander', '510', '0', '0', '', 'Cocos (Keeling) Islands', 'CCK:166');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CO', 'Colombian', '520', '0', '0', '', 'Colombia', 'COL:170');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KM', 'Comoran', '530', '0', '0', '', 'Comoros', 'COM:174');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CG', 'Congolese', '540', '0', '0', '', 'Republic of the Congo', 'COG:178');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CK', 'Cook Islander', '550', '0', '0', '', 'Cook Islands', 'COK:184');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CR', 'Costa Rican', '560', '0', '0', '', 'Costa Rica', 'CRI:188');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'HR', 'Croatian', '570', '0', '0', '', 'Croatia', 'HRV:191');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CU', 'Cuban', '580', '0', '0', '', 'Cuba', 'CUB:192');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CW', 'Curaçaoan', '590', '0', '0', '', 'Curaçao', 'CUW:531');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CY', 'Cypriot', '600', '0', '0', '', 'Cyprus', 'CYP:196');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CZ', 'Czech', '610', '0', '0', '', 'Czechia', 'CZE:203');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'DK', 'Danish', '620', '0', '0', '', 'Denmark', 'DNK:208');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'DJ', 'Djibouti', '630', '0', '0', '', 'Djibouti', 'DJI:262');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'DO', 'Dominican', '640', '0', '0', '', 'Dominican Republic', 'DOM:214');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NL', 'Dutch', '660', '0', '0', '', 'Netherlands', 'NLD:528');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BQ', 'Dutch Caribbean ', '650', '0', '0', '', 'Caribbean Netherlands', 'BES:535');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TL', 'East Timorese', '670', '0', '0', '', 'Timor-Leste', 'TLS:626');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'EC', 'Ecuadorean', '680', '0', '0', '', 'Ecuador', 'ECU:218');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'EG', 'Egyptian', '690', '0', '0', '', 'Egypt', 'EGY:818');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'AE', 'Emirati', '700', '0', '0', '', 'United Arab Emirates', 'ARE:784');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'English', 'English', '710', '', '', '', 'England', '');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GQ', 'Equatorial Guinean', '720', '0', '0', '', 'Equatorial Guinea', 'GNQ:226');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ER', 'Eritrean', '730', '0', '0', '', 'Eritrea', 'ERI:232');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'EE', 'Estonian', '740', '0', '0', '', 'Estonia', 'EST:233');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ET', 'Ethiopian', '750', '0', '0', '', 'Ethiopia', 'ETH:231');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'FK', 'Falkland Islander', '760', '0', '0', '', 'Falkland Islands', 'FLK:238');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'FO', 'Faroese', '770', '0', '0', '', 'Faroe Islands', 'FRO:234');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'FJ', 'Fijian', '780', '0', '0', '', 'Fiji', 'FJI:242');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PH', 'Filipino', '790', '0', '0', '', 'Philippines', 'PHL:608');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'FI', 'Finnish', '800', '0', '0', '', 'Finland', 'FIN:246');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'FR', 'French', '820', '0', '0', '', 'France', 'FRA:250');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PF', 'French Polynesian', '830', '0', '0', '', 'French Polynesia', 'PYF:258');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TF', 'French Southern ', '810', '0', '0', '', 'French Southern and Antarctic Lands', 'ATF:260');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GA', 'Gabonese', '840', '0', '0', '', 'Gabon', 'GAB:266');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GM', 'Gambian', '850', '0', '0', '', 'Gambia', 'GMB:270');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GE', 'Georgian', '860', '0', '0', '', 'Georgia', 'GEO:268');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'DE', 'German', '870', '0', '0', '', 'Germany', 'DEU:276');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GH', 'Ghanaian', '880', '0', '0', '', 'Ghana', 'GHA:288');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GI', 'Gibraltar', '890', '0', '0', '', 'Gibraltar', 'GIB:292');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GR', 'Greek', '900', '0', '0', '', 'Greece', 'GRC:300');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GL', 'Greenlandic', '910', '0', '0', '', 'Greenland', 'GRL:304');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GD', 'Grenadian', '920', '0', '0', '', 'Grenada', 'GRD:308');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GP', 'Guadeloupian', '930', '0', '0', '', 'Guadeloupe', 'GLP:312');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GU', 'Guamanian', '940', '0', '0', '', 'Guam', 'GUM:316');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GT', 'Guatemalan', '950', '0', '0', '', 'Guatemala', 'GTM:320');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GF', 'Guianan', '960', '0', '0', '', 'French Guiana', 'GUF:254');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GW', 'Guinea-Bissauan', '970', '0', '0', '', 'Guinea-Bissau', 'GNB:624');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GN', 'Guinean', '980', '0', '0', '', 'Guinea', 'GIN:324');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GY', 'Guyanese', '990', '0', '0', '', 'Guyana', 'GUY:328');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'HT', 'Haitian', '1000', '0', '0', '', 'Haiti', 'HTI:332');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'HM', 'Heard and McDonald Islander', '1010', '0', '0', '', 'Heard Island and McDonald Islands', 'HMD:334');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'HN', 'Honduran', '1020', '0', '0', '', 'Honduras', 'HND:340');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'HK', 'Hong Konger', '1030', '0', '0', '', 'Hong Kong', 'HKG:344');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'HU', 'Hungarian', '1040', '0', '0', '', 'Hungary', 'HUN:348');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KI', 'I-Kiribati', '1050', '0', '0', '', 'Kiribati', 'KIR:296');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IS', 'Icelander', '1060', '0', '0', '', 'Iceland', 'ISL:352');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IN', 'Indian', '1070', '0', '0', '', 'India', 'IND:356');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ID', 'Indonesian', '1090', '0', '0', '', 'Indonesia', 'IDN:360');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IR', 'Iranian', '1100', '0', '0', '', 'Iran', 'IRN:364');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IQ', 'Iraqi', '1110', '0', '0', '', 'Iraq', 'IRQ:368');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IE', 'Irish', '1120', '0', '0', '', 'Ireland', 'IRL:372');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IL', 'Israeli', '1130', '0', '0', '', 'Israel', 'ISR:376');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IT', 'Italian', '1140', '0', '0', '', 'Italy', 'ITA:380');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CI', 'Ivorian', '1150', '0', '0', '', 'Ivory Coast', 'CIV:384');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'JM', 'Jamaican', '1160', '0', '0', '', 'Jamaica', 'JAM:388');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'JP', 'Japanese', '1170', '0', '0', '', 'Japan', 'JPN:392');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'JO', 'Jordanian', '1180', '0', '0', '', 'Jordan', 'JOR:400');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KZ', 'Kazakhstani', '1190', '0', '0', '', 'Kazakhstan', 'KAZ:398');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KE', 'Kenyan', '1200', '0', '0', '', 'Kenya', 'KEN:404');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KG', 'Kirghiz', '1210', '0', '0', '', 'Kyrgyzstan', 'KGZ:417');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KN', 'Kittitian or Nevisian', '1220', '0', '0', '', 'Saint Kitts and Nevis', 'KNA:659');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'XK', 'Kosovar', '1230', '0', '0', '', 'Kosovo', 'UNK:');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KW', 'Kuwaiti', '1240', '0', '0', '', 'Kuwait', 'KWT:414');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LA', 'Laotian', '1250', '0', '0', '', 'Laos', 'LAO:418');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LV', 'Latvian', '1260', '0', '0', '', 'Latvia', 'LVA:428');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LB', 'Lebanese', '1270', '0', '0', '', 'Lebanon', 'LBN:422');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LR', 'Liberian', '1280', '0', '0', '', 'Liberia', 'LBR:430');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LY', 'Libyan', '1290', '0', '0', '', 'Libya', 'LBY:434');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LI', 'Liechtensteiner', '1300', '0', '0', '', 'Liechtenstein', 'LIE:438');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LT', 'Lithuanian', '1310', '0', '0', '', 'Lithuania', 'LTU:440');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LU', 'Luxembourger', '1320', '0', '0', '', 'Luxembourg', 'LUX:442');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MO', 'Macanese', '1330', '0', '0', '', 'Macau', 'MAC:446');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MK', 'Macedonian', '1340', '0', '0', '', 'North Macedonia', 'MKD:807');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'YT', 'Mahoran', '1350', '0', '0', '', 'Mayotte', 'MYT:175');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MG', 'Malagasy', '1360', '0', '0', '', 'Madagascar', 'MDG:450');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MW', 'Malawian', '1370', '0', '0', '', 'Malawi', 'MWI:454');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MY', 'Malaysian', '1380', '0', '0', '', 'Malaysia', 'MYS:458');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MV', 'Maldivan', '1390', '0', '0', '', 'Maldives', 'MDV:462');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ML', 'Malian', '1400', '0', '0', '', 'Mali', 'MLI:466');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MT', 'Maltese', '1410', '0', '0', '', 'Malta', 'MLT:470');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'IM', 'Manx', '1420', '0', '0', '', 'Isle of Man', 'IMN:833');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MH', 'Marshallese', '1430', '0', '0', '', 'Marshall Islands', 'MHL:584');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MQ', 'Martinican', '1440', '0', '0', '', 'Martinique', 'MTQ:474');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MR', 'Mauritanian', '1450', '0', '0', '', 'Mauritania', 'MRT:478');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MU', 'Mauritian', '1460', '0', '0', '', 'Mauritius', 'MUS:480');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MX', 'Mexican', '1470', '0', '0', '', 'Mexico', 'MEX:484');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'FM', 'Micronesian', '1480', '0', '0', '', 'Micronesia', 'FSM:583');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MD', 'Moldovan', '1490', '0', '0', '', 'Moldova', 'MDA:498');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MC', 'Monegasque', '1500', '0', '0', '', 'Monaco', 'MCO:492');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MN', 'Mongolian', '1510', '0', '0', '', 'Mongolia', 'MNG:496');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ME', 'Montenegrin', '1520', '0', '0', '', 'Montenegro', 'MNE:499');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MS', 'Montserratian', '1530', '0', '0', '', 'Montserrat', 'MSR:500');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MA', 'Moroccan', '1540', '0', '0', '', 'Morocco', 'MAR:504');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LS', 'Mosotho', '1550', '0', '0', '', 'Lesotho', 'LSO:426');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BW', 'Motswana', '1560', '0', '0', '', 'Botswana', 'BWA:072');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MZ', 'Mozambican', '1570', '0', '0', '', 'Mozambique', 'MOZ:508');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NA', 'Namibian', '1580', '0', '0', '', 'Namibia', 'NAM:516');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NR', 'Nauruan', '1590', '0', '0', '', 'Nauru', 'NRU:520');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NP', 'Nepalese', '1600', '0', '0', '', 'Nepal', 'NPL:524');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NC', 'New Caledonian', '1610', '0', '0', '', 'New Caledonia', 'NCL:540');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NZ', 'New Zealander', '1620', '0', '0', '', 'New Zealand', 'NZL:554');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VU', 'Ni-Vanuatu', '1630', '0', '0', '', 'Vanuatu', 'VUT:548');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NI', 'Nicaraguan', '1640', '0', '0', '', 'Nicaragua', 'NIC:558');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NG', 'Nigerian', '1650', '0', '0', '', 'Nigeria', 'NGA:566');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NE', 'Nigerien', '1660', '0', '0', '', 'Niger', 'NER:562');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NU', 'Niuean', '1670', '0', '0', '', 'Niue', 'NIU:570');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NF', 'Norfolk Islander', '1680', '0', '0', '', 'Norfolk Island', 'NFK:574');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KP', 'North Korean', '1690', '0', '0', '', 'North Korea', 'PRK:408');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'NO', 'Norwegian', '1710', '0', '0', '', 'Norway', 'NOR:578');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BV', 'Norwegian Bouvet', '1720', '0', '0', '', 'Bouvet Island', 'BVT:074');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SJ', 'Norwegian Svalbard and Jan Mayen', '1700', '0', '0', '', 'Svalbard and Jan Mayen', 'SJM:744');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'OM', 'Omani', '1730', '0', '0', '', 'Oman', 'OMN:512');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PK', 'Pakistani', '1740', '0', '0', '', 'Pakistan', 'PAK:586');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PW', 'Palauan', '1750', '0', '0', '', 'Palau', 'PLW:585');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PS', 'Palestinian', '1760', '0', '0', '', 'Palestine', 'PSE:275');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PA', 'Panamanian', '1770', '0', '0', '', 'Panama', 'PAN:591');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PG', 'Papua New Guinean', '1780', '0', '0', '', 'Papua New Guinea', 'PNG:598');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PY', 'Paraguayan', '1790', '0', '0', '', 'Paraguay', 'PRY:600');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PE', 'Peruvian', '1800', '0', '0', '', 'Peru', 'PER:604');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PN', 'Pitcairn Islander', '1810', '0', '0', '', 'Pitcairn Islands', 'PCN:612');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PL', 'Polish', '1820', '0', '0', '', 'Poland', 'POL:616');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PT', 'Portuguese', '1830', '0', '0', '', 'Portugal', 'PRT:620');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PR', 'Puerto Rican', '1840', '0', '0', '', 'Puerto Rico', 'PRI:630');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'QA', 'Qatari', '1850', '0', '0', '', 'Qatar', 'QAT:634');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'RE', 'Réunionese', '1860', '0', '0', '', 'Réunion', 'REU:638');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'RO', 'Romanian', '1870', '0', '0', '', 'Romania', 'ROU:642');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'RU', 'Russian', '1880', '0', '0', '', 'Russia', 'RUS:643');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'RW', 'Rwandan', '1890', '0', '0', '', 'Rwanda', 'RWA:646');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'EH', 'Sahrawi', '1900', '0', '0', '', 'Western Sahara', 'ESH:732');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'BL', 'Saint Barthélemy Islander', '1910', '0', '0', '', 'Saint Barthélemy', 'BLM:652');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SH', 'Saint Helenian', '1920', '0', '0', '', 'Saint Helena, Ascension and Tristan da Cunha', 'SHN:654');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LC', 'Saint Lucian', '1930', '0', '0', '', 'Saint Lucia', 'LCA:662');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'MF', 'Saint Martin Islander', '1940', '0', '0', '', 'Saint Martin', 'MAF:663');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VC', 'Saint Vincentian', '1950', '0', '0', '', 'Saint Vincent and the Grenadines', 'VCT:670');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'PM', 'Saint-Pierrais, Miquelonnais', '1960', '0', '0', '', 'Saint Pierre and Miquelon', 'SPM:666');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SV', 'Salvadoran', '1970', '0', '0', '', 'El Salvador', 'SLV:222');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SM', 'Sammarinese', '1980', '0', '0', '', 'San Marino', 'SMR:674');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'WS', 'Samoan', '1990', '0', '0', '', 'Samoa', 'WSM:882');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ST', 'Sao Tomean', '2000', '0', '0', '', 'São Tomé and Príncipe', 'STP:678');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SA', 'Saudi Arabian', '2010', '0', '0', '', 'Saudi Arabia', 'SAU:682');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'Scottish', 'Scottish', '2020', '0', '0', '', 'Scotland', '');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SN', 'Senegalese', '2030', '0', '0', '', 'Senegal', 'SEN:686');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'RS', 'Serbian', '2040', '0', '0', '', 'Serbia', 'SRB:688');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SC', 'Seychellois', '2050', '0', '0', '', 'Seychelles', 'SYC:690');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SL', 'Sierra Leonean', '2060', '0', '0', '', 'Sierra Leone', 'SLE:694');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SG', 'Singaporean', '2070', '0', '0', '', 'Singapore', 'SGP:702');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SK', 'Slovak', '2080', '0', '0', '', 'Slovakia', 'SVK:703');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SI', 'Slovene', '2090', '0', '0', '', 'Slovenia', 'SVN:705');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SB', 'Solomon Islander', '2100', '0', '0', '', 'Solomon Islands', 'SLB:090');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SO', 'Somali', '2110', '0', '0', '', 'Somalia', 'SOM:706');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ZA', 'South African', '2120', '0', '0', '', 'South Africa', 'ZAF:710');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'GS', 'South Georgian South Sandwich Islander', '2130', '0', '0', '', 'South Georgia', 'SGS:239');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'KR', 'South Korean', '2140', '0', '0', '', 'South Korea', 'KOR:410');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SS', 'South Sudanese', '2150', '0', '0', '', 'South Sudan', 'SSD:728');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ES', 'Spanish', '2160', '0', '0', '', 'Spain', 'ESP:724');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'LK', 'Sri Lankan', '2170', '0', '0', '', 'Sri Lanka', 'LKA:144');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SX', 'St. Maartener', '2180', '0', '0', '', 'Sint Maarten', 'SXM:534');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SD', 'Sudanese', '2190', '0', '0', '', 'Sudan', 'SDN:729');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SR', 'Surinamer', '2200', '0', '0', '', 'Suriname', 'SUR:740');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SZ', 'Swazi', '2210', '0', '0', '', 'Eswatini', 'SWZ:748');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SE', 'Swedish', '2220', '0', '0', '', 'Sweden', 'SWE:752');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'CH', 'Swiss', '2230', '0', '0', '', 'Switzerland', 'CHE:756');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'SY', 'Syrian', '2240', '0', '0', '', 'Syria', 'SYR:760');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TJ', 'Tadzhik', '2250', '0', '0', '', 'Tajikistan', 'TJK:762');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TW', 'Taiwanese', '2260', '0', '0', '', 'Taiwan', 'TWN:158');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TZ', 'Tanzanian', '2270', '0', '0', '', 'Tanzania', 'TZA:834');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TH', 'Thai', '2280', '0', '0', '', 'Thailand', 'THA:764');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TG', 'Togolese', '2290', '0', '0', '', 'Togo', 'TGO:768');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TK', 'Tokelauan', '2300', '0', '0', '', 'Tokelau', 'TKL:772');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TO', 'Tongan', '2310', '0', '0', '', 'Tonga', 'TON:776');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TT', 'Trinidadian', '2320', '0', '0', '', 'Trinidad and Tobago', 'TTO:780');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TN', 'Tunisian', '2330', '0', '0', '', 'Tunisia', 'TUN:788');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TR', 'Turkish', '2340', '0', '0', '', 'Turkey', 'TUR:792');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TM', 'Turkmen', '2350', '0', '0', '', 'Turkmenistan', 'TKM:795');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TC', 'Turks and Caicos Islander', '2360', '0', '0', '', 'Turks and Caicos Islands', 'TCA:796');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'TV', 'Tuvaluan', '2370', '0', '0', '', 'Tuvalu', 'TUV:798');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'UG', 'Ugandan', '2380', '0', '0', '', 'Uganda', 'UGA:800');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'UA', 'Ukrainian', '2390', '0', '0', '', 'Ukraine', 'UKR:804');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'UY', 'Uruguayan', '2400', '0', '0', '', 'Uruguay', 'URY:858');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'UZ', 'Uzbekistani', '2410', '0', '0', '', 'Uzbekistan', 'UZB:860');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VA', 'Vatican', '2420', '0', '0', '', 'Vatican City', 'VAT:336');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VE', 'Venezuelan', '2430', '0', '0', '', 'Venezuela', 'VEN:862');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VN', 'Vietnamese', '2440', '0', '0', '', 'Vietnam', 'VNM:704');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VG', 'Virgin Islander British', '2450', '0', '0', '', 'British Virgin Islands', 'VGB:092');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'VI', 'Virgin Islander US', '2460', '0', '0', '', 'United States Virgin Islands', 'VIR:850');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'WF', 'Wallis and Futuna Islander', '2470', '0', '0', '', 'Wallis and Futuna', 'WLF:876');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'YE', 'Yemeni', '2480', '0', '0', '', 'Yemen', 'YEM:887');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ZM', 'Zambian', '2490', '0', '0', '', 'Zambia', 'ZMB:894');
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`) VALUES('nationality_with_country', 'ZW', 'Zimbabwean', '2500', '0', '0', '', 'Zimbabwe', 'ZWE:716');
-
-CREATE TABLE `dsi_source_attributes` (
- `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
- `client_id` VARCHAR(80) NOT NULL,
- `list_id` VARCHAR(100) NOT NULL,
- `option_id` VARCHAR(100) NOT NULL,
- `clinical_rule_id` VARCHAR(31) DEFAULT NULL,
- `source_value` TEXT,
- `created_by` BIGINT(20) DEFAULT NULL,
- `last_updated_by` BIGINT(20) DEFAULT NULL,
- `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
- `last_updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
- PRIMARY KEY (`id`),
- UNIQUE (`list_id`, `option_id`, `client_id`)
-) ENGINE=InnoDB COMMENT = 'Holds information about decission support intervention system source attributes';
-
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`) VALUES ('lists', 'dsi_predictive_source_attributes', 'Predictive Decision Support Interventions Source Attributes');
--- Populate list with ONC default values
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_details_developer', 'Name and contact information for the intervention developer', 10);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_details_funding', 'Funding source of the technical implementation for the intervention(s) development', 20);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_details_output_value', 'Description of value that the intervention produces as an output', 30);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_details_output_type', 'Whether the intervention output is a prediction, classification, recommendation, evaluation, analysis, or other type of output', 40);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_purpose_intended_use', 'Intended use of the intervention', 50);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_purpose_patient_population', 'Intended patient population(s) for the intervention''s use', 60);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_purpose_intended_users', 'Intended user(s)', 70);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_purpose_decision_role', 'Intended decision-making role for which the intervention was designed to be used/for (e_g_, informs, augments, replaces clinical management)', 80);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_cautions_inappropriate_use', 'Description of tasks, situations, or populations where a user is cautioned against applying the intervention', 90);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_cautions_risks', 'Known risks, inappropriate settings, inappropriate uses, or known limitations of the intervention', 100);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_development_criteria', 'Exclusion and inclusion criteria that influenced the training data set', 110);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_development_variables', 'Use of variables in paragraph US § 170.315 (b)(11)(iv)(A)(5)-(13) as input features (use of race, ethnicity, language, sexual orientation, gender identity, sex, date of birth, social determinants of health, and health status assessment)', 120);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_development_demographics', 'Description of demographic representativeness according to variables in paragraph US § 170.315 (b)(11)(iv)(A)(5)-(13) including, at a minimum, those used as input features in the intervention', 130);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_development_relevance', 'Description of relevance of training data to intended deployed setting', 140);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_fairness_approach', 'Description of the approach the intervention developer has taken to ensure that the intervention''s output is fair', 150);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_fairness_bias_mitigation', 'Description of approaches to manage, reduce, or eliminate bias', 160);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_validation_data_source', 'Description of the data source, clinical setting, or environment where an intervention''s validity and fairness has been assessed, other than the source of training and testing data', 170);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_validation_tester', 'Party that conducted the external testing', 180);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_validation_demographics', 'Description of demographic representativeness of external data according to variables in paragraph US § 170.315 (b)(11)(iv)(A)(5)-(13) including, at a minimum, those used as input features in the intervention', 190);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_validation_process', 'Description of external validation process', 200);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_performance_internal_validity', 'Validity of intervention in test data derived from the same source as the initial training data', 210);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_performance_internal_fairness', 'Fairness of intervention in test data derived from the same source as the initial training data', 220);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_performance_external_validity', 'Validity of intervention in data external to or from a different source than the initial training data', 230);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_performance_external_fairness', 'Fairness of intervention in data external to or from a different source than the initial training data', 240);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_performance_outcome_evaluation', 'References to evaluation of use of the intervention on outcomes, including, bibliographic citations or hyperlinks to evaluations of how well the intervention reduced morbidity, mortality, length of stay, or other outcomes', 250);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_maintenance_validity_monitoring', 'Description of process and frequency by which the intervention''s validity is monitored over time', 260);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_maintenance_local_validity', 'Validity of intervention in local data', 270);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_maintenance_fairness_monitoring', 'Description of the process and frequency by which the intervention''s fairness is monitored over time', 280);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_maintenance_local_fairness', 'Fairness of intervention in local data', 290);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_updates_process', 'Description of process and frequency by which the intervention is updated', 300);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_predictive_source_attributes', 'predictive_updates_correction', 'Description of frequency by which the intervention''s performance is corrected when risks related to validity and fairness are identified', 310);
-
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`) VALUES ('lists', 'dsi_evidence_source_attributes', 'Evidence Based Decision Support Interventions Source Attributes');
--- Populate list with ONC default values
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_citation', 'Bibliographic citation of the intervention (clinical research or guideline)', 10);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_developer', 'Developer of the intervention (translation from clinical research or guideline)', 20);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_funding', 'Funding source of the technical implementation for the intervention(s) development', 30);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_dates', 'Release and, if applicable, revision dates of the intervention or reference source', 40);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_race', 'Intervention use of race as expressed in the standards in US § 170.213', 50);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_ethnicity', 'Intervention use of ethnicity as expressed in the standards in US § 170.213', 60);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_language', 'Intervention use of language as expressed in the standards in US § 170.213', 70);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_sexual_orientation', 'Intervention use of sexual orientation as expressed in the standards in US § 170.213', 80);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_gender_identity', 'Intervention use of gender identity as expressed in the standards in US § 170.213', 90);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_sex', 'Intervention use of sex as expressed in the standards in US § 170.213', 100);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_dob', 'Intervention use of date of birth as expressed in the standards in US § 170.213', 110);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_sdoh', 'Intervention use of social determinants of health data as expressed in the standards in US § 170.213', 120);
-INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('dsi_evidence_source_attributes', 'evidence_based_health_status', 'Intervention use of health status assessments data as expressed in the standards in US § 170.213', 130);

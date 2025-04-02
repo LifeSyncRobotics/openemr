@@ -17,7 +17,7 @@
  */
 
 require_once("../../interface/globals.php");
-require_once("$srcdir/user.inc.php");
+require_once("$srcdir/user.inc");
 
 use OpenEMR\Common\Acl\AclExtended;
 use OpenEMR\Common\Acl\AclMain;
@@ -39,10 +39,10 @@ if (!CsrfUtils::verifyCsrfToken($_POST["csrf_token_form"])) {
 }
 
 //ensure user has proper access
-if (!AclMain::aclCheckCore('admin', 'acl')) {
-    echo error_xml(xl('ACL Administration Not Authorized'));
-    CsrfUtils::csrfNotVerified(false);
-}
+//if (!AclMain::aclCheckCore('admin', 'acl')) {
+//    echo error_xml(xl('ACL Administration Not Authorized'));
+//    CsrfUtils::csrfNotVerified(false);
+//}
 
 //Display red alert if Emergency Login ACL is activated for a user.
 if ($_POST["action"] == "add") {

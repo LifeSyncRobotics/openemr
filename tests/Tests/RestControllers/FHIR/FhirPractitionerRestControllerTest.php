@@ -117,8 +117,8 @@ class FhirPractitionerRestControllerTest extends TestCase
         $this->assertNotEmpty($actualResults);
 
         foreach ($actualResults->getEntry() as $index => $bundleEntry) {
-            $this->assertObjectHasProperty('fullUrl', $bundleEntry);
-            $this->assertObjectHasProperty('resource', $bundleEntry);
+            $this->assertObjectHasAttribute('fullUrl', $bundleEntry);
+            $this->assertObjectHasAttribute('resource', $bundleEntry);
         }
     }
 }

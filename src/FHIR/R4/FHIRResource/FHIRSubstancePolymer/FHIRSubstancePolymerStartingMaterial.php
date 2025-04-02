@@ -221,7 +221,7 @@ class FHIRSubstancePolymerStartingMaterial extends FHIRBackboneElement implement
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         if (isset($this->material)) {

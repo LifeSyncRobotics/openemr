@@ -37,7 +37,8 @@ Where
     cl2.cl_deleted = 0 And
     cl3.cl_list_type = 3 And
     cl3.cl_deleted = 0 And
-    cl2.cl_list_item_long Like ?
+    cl2.cl_list_item_long Like ? And
+    cl3.cl_creator = ?
 Group By
     cl2.cl_list_item_long
 createQuery;
@@ -45,7 +46,7 @@ createQuery;
 $search = $_GET['search'];
 $eSearch = "%" . $search . "%";
 $results = [];
-$r = sqlStatementNoLog($cq, array($eSearch));
+$r = sqlStatementNoLog($cq, array($eSearch, (int)$_SESSION['authUserID']));
 
 while ($result = sqlFetchArray($r)) {
     $results[] = array_map('text', $result);

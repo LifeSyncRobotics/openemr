@@ -321,7 +321,7 @@ class FHIRMedicinalProductInteraction extends FHIRDomainResource implements \Jso
     /**
      * @return array
      */
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         $json = parent::jsonSerialize();
         $json['resourceType'] = $this->_fhirElementName;

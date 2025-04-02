@@ -16,23 +16,10 @@
 require_once(__DIR__ . "/../globals.php");
 require_once "$srcdir/options.inc.php";
 
-use OpenEMR\Common\{
-    Acl\AclMain,
-    Csrf\CsrfUtils,
-    Twig\TwigContainer
-};
+use OpenEMR\Common\Acl\AclMain;
+use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Core\Header;
-
-//ensure user has proper access
-if (!AclMain::aclCheckCore('acct', 'eob', '', 'write') && !AclMain::aclCheckCore('acct', 'bill', '', 'write')) {
-    echo (
-        new TwigContainer(null, $GLOBALS['kernel']))->getTwig()->render(
-            'core/unauthorized.html.twig',
-            ['pageTitle' => xl("Billing Manager")]
-        );
-    exit;
-}
-
+use OpenEMR\OeUI\OemrUI;
 ?>
 <html>
 <head>
@@ -104,28 +91,8 @@ if (!AclMain::aclCheckCore('acct', 'eob', '', 'write') && !AclMain::aclCheckCore
                             return data;
                         }
                     },
-                    {
-                        "data": "created_at",
-                        "render": function(data, type, row, meta) {
-                            // Build the URL so the user can download the claim batch file
-                            if (type === 'display') {
-                                data = '<td>' + window.top.oeFormatters.I18NDateFormat(data) + '</td>';
-                            }
-
-                            return data;
-                        }
-                    },
-                    {
-                        "data": "updated_at",
-                        "render": function(data, type, row, meta) {
-                            // Build the URL so the user can download the claim batch file
-                            if (type === 'display') {
-                                data = '<td>' + window.top.oeFormatters.I18NDateFormat(data) + '</td>';
-                            }
-
-                            return data;
-                        }
-                    },
+                    { "data": "created_at" },
+                    { "data": "updated_at" },
                 ],
                 "order": [[4, 'desc']] // Order by 'Date Created' with newest first
             });

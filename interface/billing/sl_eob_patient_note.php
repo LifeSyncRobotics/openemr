@@ -14,8 +14,8 @@
  */
 
 require_once("../globals.php");
-require_once("../../library/patient.inc.php");
-require_once("../../library/forms.inc.php");
+require_once("../../library/patient.inc");
+require_once("../../library/forms.inc");
 
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Core\Header;
